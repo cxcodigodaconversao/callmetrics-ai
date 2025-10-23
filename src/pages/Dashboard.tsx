@@ -14,7 +14,8 @@ import {
   Target,
   Plus,
   Play,
-  Trash2
+  Trash2,
+  Users
 } from "lucide-react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
@@ -27,6 +28,7 @@ const Dashboard = () => {
   const { user, signOut, loading } = useAuth();
   const [videos, setVideos] = useState<any[]>([]);
   const [loadingVideos, setLoadingVideos] = useState(true);
+  const [isAdmin, setIsAdmin] = useState(false);
 
   // Redirect to auth if not logged in
   useEffect(() => {
@@ -34,6 +36,7 @@ const Dashboard = () => {
       navigate("/auth");
     } else if (user) {
       fetchVideos();
+      checkAdminStatus();
       
       // Subscribe to real-time updates
       const channel = supabase
@@ -58,6 +61,21 @@ const Dashboard = () => {
       };
     }
   }, [user, loading, navigate]);
+
+  const checkAdminStatus = async () => {
+    if (!user) return;
+
+    const { data } = await supabase
+      .from("user_roles")
+      .select("role")
+      .eq("user_id", user.id)
+      .eq("role", "admin")
+      .single();
+
+    if (data) {
+      setIsAdmin(true);
+    }
+  };
 
   const fetchVideos = async () => {
     try {
@@ -152,6 +170,7 @@ const Dashboard = () => {
     { icon: <LayoutDashboard className="w-5 h-5" />, label: "Dashboard", path: "/dashboard" },
     { icon: <Upload className="w-5 h-5" />, label: "Nova Análise", path: "/dashboard/upload" },
     { icon: <FileText className="w-5 h-5" />, label: "Minhas Análises", path: "/dashboard/analyses" },
+    ...(isAdmin ? [{ icon: <Users className="w-5 h-5" />, label: "Usuários", path: "/dashboard/users" }] : []),
     { icon: <Settings className="w-5 h-5" />, label: "Configurações", path: "/dashboard/settings" },
   ];
 

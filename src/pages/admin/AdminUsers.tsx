@@ -139,6 +139,11 @@ const AdminUsers = () => {
         name: newUserName,
       });
 
+      console.log("Chamando edge function create-user com:", {
+        email: validated.email,
+        name: validated.name,
+      });
+
       const { data, error } = await supabase.functions.invoke("create-user", {
         body: {
           email: validated.email,
@@ -148,19 +153,34 @@ const AdminUsers = () => {
         },
       });
 
-      if (error) throw error;
+      console.log("Resposta da edge function:", { data, error });
+
+      if (error) {
+        console.error("Erro ao invocar função:", error);
+        throw error;
+      }
 
       // Check if the response contains an error message
       if (data && typeof data === 'object' && 'error' in data) {
-        const errorMessage = data.error as string;
+        const errorData = data as any;
+        const errorMessage = errorData.error as string;
+        const errorCode = errorData.code;
+        
+        console.error("Erro retornado pela edge function:", { errorMessage, errorCode, details: errorData.details });
         
         // Handle specific error cases with friendly messages
-        if (errorMessage.includes('already been registered') || errorMessage.includes('email_exists')) {
+        if (errorCode === 'email_exists' || errorMessage.includes('already been registered')) {
           toast.error("Este email já está cadastrado no sistema.");
+        } else if (errorCode === 'user_not_found') {
+          toast.error("Usuário não encontrado.");
+        } else if (errorCode === 'invalid_credentials') {
+          toast.error("Credenciais inválidas.");
         } else if (errorMessage.includes('Invalid')) {
           toast.error("Dados inválidos. Verifique os campos e tente novamente.");
+        } else if (errorMessage.includes('Insufficient permissions')) {
+          toast.error("Você não tem permissão para criar usuários.");
         } else {
-          toast.error(errorMessage);
+          toast.error(`Erro: ${errorMessage}`);
         }
         return;
       }
@@ -172,20 +192,23 @@ const AdminUsers = () => {
       setNewUserName("");
       fetchUsers();
     } catch (error: any) {
+      console.error("Erro no handleCreateUser:", error);
+      
       if (error.errors) {
         // Zod validation errors
         toast.error(error.errors[0]?.message || "Verifique os campos e tente novamente.");
       } else {
-        console.error("Error creating user:", error);
         const errorMessage = error.message || "Erro ao criar usuário";
         
         // Handle specific error cases
         if (errorMessage.includes('already been registered') || errorMessage.includes('email_exists')) {
           toast.error("Este email já está cadastrado no sistema.");
+        } else if (errorMessage.includes('Insufficient permissions')) {
+          toast.error("Você não tem permissão para criar usuários.");
         } else if (errorMessage.includes('Invalid')) {
           toast.error("Dados inválidos. Verifique os campos e tente novamente.");
         } else {
-          toast.error(errorMessage);
+          toast.error(`Erro ao criar usuário: ${errorMessage}`);
         }
       }
     } finally {

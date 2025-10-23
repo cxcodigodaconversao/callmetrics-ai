@@ -101,7 +101,19 @@ serve(async (req) => {
 
     if (createError) {
       console.error("User creation failed:", createError);
-      throw createError;
+      
+      // Return a more detailed error response
+      return new Response(
+        JSON.stringify({ 
+          error: createError.message,
+          code: createError.code || 'user_creation_failed',
+          details: createError
+        }),
+        {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 400,
+        }
+      );
     }
 
     console.log("User created successfully:", newUser.user.id);
@@ -157,9 +169,25 @@ serve(async (req) => {
   } catch (error) {
     console.error("=== ERROR IN CREATE USER ===");
     console.error(error);
-    const errorMessage = error instanceof Error ? error.message : "Unknown error occurred";
+    
+    let errorMessage = "Unknown error occurred";
+    let errorCode = "unknown_error";
+    
+    if (error instanceof Error) {
+      errorMessage = error.message;
+    }
+    
+    // Check for specific error types
+    if (error && typeof error === 'object' && 'code' in error) {
+      errorCode = (error as any).code;
+    }
+    
     return new Response(
-      JSON.stringify({ error: errorMessage }),
+      JSON.stringify({ 
+        error: errorMessage,
+        code: errorCode,
+        details: error
+      }),
       {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
         status: 400,

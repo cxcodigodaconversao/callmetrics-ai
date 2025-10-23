@@ -242,10 +242,12 @@ export default function Analyses() {
                           </div>
 
                           <div className="flex gap-2 pt-4">
-                            <Button variant="outline" size="sm">
-                              <Eye className="w-4 h-4 mr-2" />
-                              Ver Detalhes
-                            </Button>
+                            <Link to={`/dashboard/analyses/${analysis.id}`}>
+                              <Button variant="outline" size="sm">
+                                <Eye className="w-4 h-4 mr-2" />
+                                Ver Detalhes
+                              </Button>
+                            </Link>
                             <Button variant="outline" size="sm">
                               <Download className="w-4 h-4 mr-2" />
                               Baixar Relatório

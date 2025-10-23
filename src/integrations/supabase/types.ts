@@ -14,6 +14,48 @@ export type Database = {
   }
   public: {
     Tables: {
+      ai_usage_logs: {
+        Row: {
+          analysis_id: string | null
+          id: number
+          source: string | null
+          used_at: string | null
+          user_id: string
+          video_id: string | null
+        }
+        Insert: {
+          analysis_id?: string | null
+          id?: number
+          source?: string | null
+          used_at?: string | null
+          user_id: string
+          video_id?: string | null
+        }
+        Update: {
+          analysis_id?: string | null
+          id?: number
+          source?: string | null
+          used_at?: string | null
+          user_id?: string
+          video_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_usage_logs_analysis_id_fkey"
+            columns: ["analysis_id"]
+            isOneToOne: false
+            referencedRelation: "analyses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_usage_logs_video_id_fkey"
+            columns: ["video_id"]
+            isOneToOne: false
+            referencedRelation: "videos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       analyses: {
         Row: {
           cost_usd: number | null
@@ -190,9 +232,9 @@ export type Database = {
           created_at: string
           email: string
           id: string
+          is_active: boolean | null
           name: string | null
           phone: string | null
-          role: string | null
           updated_at: string
         }
         Insert: {
@@ -201,9 +243,9 @@ export type Database = {
           created_at?: string
           email: string
           id: string
+          is_active?: boolean | null
           name?: string | null
           phone?: string | null
-          role?: string | null
           updated_at?: string
         }
         Update: {
@@ -212,9 +254,9 @@ export type Database = {
           created_at?: string
           email?: string
           id?: string
+          is_active?: boolean | null
           name?: string | null
           phone?: string | null
-          role?: string | null
           updated_at?: string
         }
         Relationships: []
@@ -331,7 +373,6 @@ export type Database = {
           email: string
           id: string
           name: string | null
-          role: string | null
           updated_at: string | null
         }
         Insert: {
@@ -339,7 +380,6 @@ export type Database = {
           email: string
           id: string
           name?: string | null
-          role?: string | null
           updated_at?: string | null
         }
         Update: {
@@ -347,7 +387,6 @@ export type Database = {
           email?: string
           id?: string
           name?: string | null
-          role?: string | null
           updated_at?: string | null
         }
         Relationships: []

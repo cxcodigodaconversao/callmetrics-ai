@@ -89,14 +89,25 @@ const Dashboard = () => {
 
       if (error) {
         console.error('Error details:', error);
-        throw error;
+        console.error('Full error object:', JSON.stringify(error, null, 2));
+        
+        // Extract meaningful error message
+        let errorMessage = 'Erro ao processar vídeo';
+        if (error.message) {
+          errorMessage = error.message;
+        } else if (typeof error === 'object') {
+          errorMessage = JSON.stringify(error);
+        }
+        
+        toast.error(errorMessage, { duration: 8000 });
+        return;
       }
 
       toast.success("Vídeo processado com sucesso! Veja os resultados em 'Minhas Análises'.");
       fetchVideos(); // Refresh the list
     } catch (error: any) {
       console.error('Full error:', error);
-      toast.error(`Erro ao processar vídeo: ${error.message || 'Erro desconhecido'}`);
+      toast.error(`Erro ao processar vídeo: ${error.message || 'Erro desconhecido'}`, { duration: 8000 });
     }
   };
 

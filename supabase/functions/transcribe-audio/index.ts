@@ -25,27 +25,64 @@ Deno.serve(async (req) => {
       throw new Error('OPENAI_API_KEY not configured');
     }
 
-    // Download the audio file
+    // Download the audio file (with Google Drive confirmation token handling)
     console.log('Downloading audio file...');
-    const audioResponse = await fetch(audioUrl);
+    
+    let audioResponse = await fetch(audioUrl);
     if (!audioResponse.ok) {
       throw new Error(`Failed to download audio file: ${audioResponse.status} ${audioResponse.statusText}`);
     }
 
-    const audioBlob = await audioResponse.blob();
-    console.log(`Audio file size: ${audioBlob.size} bytes`);
+    let audioBlob = await audioResponse.blob();
+    console.log(`Initial download - Audio file size: ${audioBlob.size} bytes`);
     console.log(`Content type: ${audioBlob.type}`);
 
-    // Check if file is too small (likely an error page)
+    // Check if we got HTML (Google Drive confirmation page for large files)
+    const contentType = audioBlob.type.toLowerCase();
+    if (contentType.includes('text/html') && audioBlob.size < 50000) {
+      console.log('Detected Google Drive confirmation page, extracting confirm token...');
+      
+      // Parse HTML to get confirmation token
+      const htmlText = await audioBlob.text();
+      const confirmMatch = htmlText.match(/confirm=([^&"']+)/);
+      
+      if (confirmMatch && confirmMatch[1]) {
+        const confirmToken = confirmMatch[1];
+        console.log(`Found confirm token, retrying download with token...`);
+        
+        // Retry with confirmation token
+        const confirmedUrl = `${audioUrl}&confirm=${confirmToken}`;
+        audioResponse = await fetch(confirmedUrl);
+        
+        if (!audioResponse.ok) {
+          throw new Error(`Failed to download with confirmation token: ${audioResponse.status}`);
+        }
+        
+        audioBlob = await audioResponse.blob();
+        console.log(`After confirmation - Audio file size: ${audioBlob.size} bytes`);
+      } else {
+        throw new Error('Google Drive retornou página de confirmação, mas não foi possível extrair o token. Recomendação: Baixe o vídeo localmente e use "Upload de Arquivo".');
+      }
+    }
+
+    // Final validation
+    const finalContentType = audioBlob.type.toLowerCase();
+    
+    // Check if file is still too small (error page)
     if (audioBlob.size < 10000) {
-      throw new Error('Arquivo muito pequeno ou inválido. Isso geralmente acontece quando o Google Drive não permite download direto. Recomendação: Baixe o vídeo e use a opção "Upload de Arquivo".');
+      throw new Error('Arquivo muito pequeno ou inválido após tentativa de download. Recomendação: Baixe o vídeo localmente e use "Upload de Arquivo".');
     }
 
     // Validate content type
-    const contentType = audioBlob.type.toLowerCase();
-    if (!contentType.includes('video') && !contentType.includes('audio') && !contentType.includes('octet-stream')) {
-      throw new Error(`Google Drive retornou um arquivo inválido (${contentType}). Solução: Baixe o vídeo localmente e use a opção "Upload de Arquivo" ao invés do link do Google Drive.`);
+    if (finalContentType.includes('text/html')) {
+      throw new Error('Google Drive ainda retornou HTML após confirmação. O arquivo pode estar protegido. Solução: Baixe o vídeo localmente e use "Upload de Arquivo".');
     }
+    
+    if (!finalContentType.includes('video') && !finalContentType.includes('audio') && !finalContentType.includes('octet-stream') && finalContentType !== '') {
+      console.log(`Warning: Unexpected content type: ${finalContentType}, but proceeding with download`);
+    }
+    
+    console.log(`Successfully downloaded file: ${audioBlob.size} bytes`);
 
     // Prepare form data for Whisper API
     const formData = new FormData();

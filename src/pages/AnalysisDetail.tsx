@@ -14,6 +14,7 @@ import { ActionPlan } from "@/components/analysis/ActionPlan";
 import { EvolutionChart } from "@/components/analysis/EvolutionChart";
 import { Transcription } from "@/components/analysis/Transcription";
 import { toast } from "@/hooks/use-toast";
+import { generateAnalysisPDF } from "@/lib/pdfGenerator";
 
 interface AnalysisData {
   id: string;
@@ -110,6 +111,22 @@ export default function AnalysisDetail() {
     return null;
   }
 
+  const handleDownloadPDF = () => {
+    try {
+      generateAnalysisPDF(analysis);
+      toast({
+        title: "PDF gerado com sucesso!",
+        description: "O download do relatório foi iniciado.",
+      });
+    } catch (error) {
+      toast({
+        title: "Erro ao gerar PDF",
+        description: "Não foi possível gerar o relatório.",
+        variant: "destructive",
+      });
+    }
+  };
+
   return (
     <div className="min-h-screen bg-background">
       {/* Navigation Header */}
@@ -125,7 +142,7 @@ export default function AnalysisDetail() {
               Voltar para Análises
             </Button>
             <div className="flex gap-2">
-              <Button variant="outline" className="gap-2">
+              <Button variant="outline" className="gap-2" onClick={handleDownloadPDF}>
                 <Download className="w-4 h-4" />
                 Baixar PDF
               </Button>

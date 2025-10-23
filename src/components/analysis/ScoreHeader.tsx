@@ -4,10 +4,22 @@ import { Progress } from "@/components/ui/progress";
 import { Phone, Calendar, Clock, Video, DollarSign, User } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { generateAnalysisPDF } from "@/lib/pdfGenerator";
 
 interface ScoreHeaderProps {
   analysis: {
     score_global: number;
+    score_conexao: number;
+    score_spin_s: number;
+    score_spin_p: number;
+    score_spin_i: number;
+    score_spin_n: number;
+    score_apresentacao: number;
+    score_fechamento: number;
+    score_objecoes: number;
+    score_compromisso_pagamento: number;
+    insights_json?: any;
+    created_at: string;
     video: {
       title: string;
       created_at: string;
@@ -19,6 +31,10 @@ interface ScoreHeaderProps {
 }
 
 export function ScoreHeader({ analysis }: ScoreHeaderProps) {
+  const handleDownloadPDF = () => {
+    generateAnalysisPDF(analysis);
+  };
+
   const getScoreColor = (score: number) => {
     if (score >= 90) return "text-green-600";
     if (score >= 80) return "text-green-500";

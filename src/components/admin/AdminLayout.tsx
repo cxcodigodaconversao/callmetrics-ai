@@ -31,7 +31,7 @@ export const AdminLayout = ({ children }: AdminLayoutProps) => {
           <Brain className="w-8 h-8 text-primary" />
           <div>
             <span className="text-xl font-bold text-primary block">Admin Panel</span>
-            <span className="text-xs text-muted-foreground">Sales Calls IA</span>
+            <span className="text-xs text-muted-foreground">Call Analyzer</span>
           </div>
         </div>
       </div>

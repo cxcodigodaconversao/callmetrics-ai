@@ -121,7 +121,7 @@ const Index = () => {
       <footer className="bg-card border-t border-border py-12">
         <div className="container mx-auto px-4">
           <div className="text-center text-muted-foreground">
-            <p className="text-lg font-semibold text-primary mb-2">Sales Calls IA</p>
+            <p className="text-lg font-semibold text-primary mb-2">Call Analyzer</p>
             <p>&copy; 2025 Todos os direitos reservados.</p>
           </div>
         </div>

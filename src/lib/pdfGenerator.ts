@@ -39,7 +39,7 @@ export const generateAnalysisPDF = (analysis: AnalysisData) => {
   // Title
   doc.setFontSize(20);
   doc.setFont("helvetica", "bold");
-  doc.text("Relatório de Análise - Sales Call IA", 20, yPosition);
+  doc.text("Relatório de Análise de Chamada", 20, yPosition);
   yPosition += 15;
 
   // Video Info
@@ -189,7 +189,7 @@ export const generateAnalysisPDF = (analysis: AnalysisData) => {
     doc.setFont("helvetica", "normal");
     doc.setTextColor(128, 128, 128);
     doc.text(
-      `Gerado por Sales Call IA - Página ${i} de ${pageCount}`,
+      `Call Analyzer - Página ${i} de ${pageCount}`,
       20,
       pageHeight - 10
     );

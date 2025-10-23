@@ -19,6 +19,7 @@ const Auth = () => {
   const [loginEmail, setLoginEmail] = useState("");
   const [loginPassword, setLoginPassword] = useState("");
   const [loginLoading, setLoginLoading] = useState(false);
+  const [isAdminLogin, setIsAdminLogin] = useState(false);
 
   // Signup state
   const [signupName, setSignupName] = useState("");
@@ -69,12 +70,49 @@ const Auth = () => {
         return;
       }
 
-      toast({
-        title: "Login realizado com sucesso!",
-        description: "Redirecionando para o dashboard...",
-      });
+      // Check if user is admin
+      if (isAdminLogin) {
+        // Get current user
+        const { data: { user: currentUser } } = await supabase.auth.getUser();
+        
+        if (!currentUser) {
+          toast({
+            title: "Erro de autenticação",
+            description: "Não foi possível verificar suas credenciais.",
+            variant: "destructive",
+          });
+          return;
+        }
 
-      navigate("/dashboard");
+        const { data: roleData } = await supabase
+          .from("user_roles")
+          .select("role")
+          .eq("user_id", currentUser.id)
+          .eq("role", "admin")
+          .maybeSingle();
+
+        if (roleData) {
+          toast({
+            title: "Login administrativo realizado!",
+            description: "Redirecionando para o painel admin...",
+          });
+          navigate("/admin");
+        } else {
+          toast({
+            title: "Acesso negado",
+            description: "Você não tem permissões de administrador.",
+            variant: "destructive",
+          });
+          await supabase.auth.signOut();
+          return;
+        }
+      } else {
+        toast({
+          title: "Login realizado com sucesso!",
+          description: "Redirecionando para o dashboard...",
+        });
+        navigate("/dashboard");
+      }
     } catch (error: any) {
       if (error.errors) {
         // Zod validation errors
@@ -213,7 +251,19 @@ const Auth = () => {
                       required
                     />
                   </div>
-                  <Button 
+                  <div className="flex items-center space-x-2">
+                    <input
+                      type="checkbox"
+                      id="admin-login"
+                      checked={isAdminLogin}
+                      onChange={(e) => setIsAdminLogin(e.target.checked)}
+                      className="w-4 h-4 rounded border-input"
+                    />
+                    <Label htmlFor="admin-login" className="text-sm font-normal cursor-pointer">
+                      Sou administrador
+                    </Label>
+                  </div>
+                  <Button
                     type="submit" 
                     className="w-full btn-primary"
                     disabled={loginLoading}

@@ -1,19 +1,20 @@
 import { useEffect, useState } from "react";
 import { useAdminAuth } from "@/hooks/useAdminAuth";
-import { AdminLayout } from "@/components/admin/AdminLayout";
-import { Card } from "@/components/ui/card";
 import { supabase } from "@/integrations/supabase/client";
-import { Brain, Users, TrendingUp, UserPlus } from "lucide-react";
+import { useAuth } from "@/hooks/useAuth";
+import { useNavigate } from "react-router-dom";
 import { 
-  LineChart, 
-  Line, 
-  XAxis, 
-  YAxis, 
-  CartesianGrid, 
-  Tooltip, 
-  ResponsiveContainer 
-} from "recharts";
-import { toast } from "sonner";
+  LayoutDashboard, 
+  Users, 
+  LogOut, 
+  TrendingUp, 
+  UserCheck, 
+  Activity, 
+  Award, 
+  BarChart3, 
+  Loader2, 
+  Database 
+} from "lucide-react";
 
 interface DashboardStats {
   totalUsers: number;
@@ -36,11 +37,14 @@ interface RecentAnalysis {
 
 interface MonthlyData {
   month: string;
-  usage: number;
+  count: number;
 }
 
 const AdminDashboard = () => {
   const { loading } = useAdminAuth();
+  const { signOut, user } = useAuth();
+  const navigate = useNavigate();
+  const [currentView, setCurrentView] = useState<'dashboard' | 'users'>('dashboard');
   const [stats, setStats] = useState<DashboardStats>({
     totalUsers: 0,
     newUsersThisMonth: 0,
@@ -62,29 +66,25 @@ const AdminDashboard = () => {
     try {
       setLoadingData(true);
 
-      // Get current date info
       const now = new Date();
       const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
 
-      // Fetch total users
+      // Fetch statistics
       const { count: totalUsers } = await supabase
         .from("profiles")
         .select("*", { count: "exact", head: true })
         .eq("is_active", true);
 
-      // Fetch new users this month
       const { count: newUsersThisMonth } = await supabase
         .from("profiles")
         .select("*", { count: "exact", head: true })
         .gte("created_at", firstDayOfMonth.toISOString())
         .eq("is_active", true);
 
-      // Fetch total AI usage
       const { count: totalAIUsage } = await supabase
         .from("ai_usage_logs")
         .select("*", { count: "exact", head: true });
 
-      // Fetch AI usage this month
       const { count: aiUsageThisMonth } = await supabase
         .from("ai_usage_logs")
         .select("*", { count: "exact", head: true })
@@ -97,7 +97,7 @@ const AdminDashboard = () => {
         aiUsageThisMonth: aiUsageThisMonth || 0,
       });
 
-      // Fetch top 5 users by AI usage
+      // Fetch top users
       const { data: usageData } = await supabase
         .from("ai_usage_logs")
         .select("user_id, profiles(name)")
@@ -129,7 +129,7 @@ const AdminDashboard = () => {
         .from("ai_usage_logs")
         .select("id, used_at, profiles(name)")
         .order("used_at", { ascending: false })
-        .limit(10);
+        .limit(8);
 
       if (recentData) {
         setRecentAnalyses(
@@ -141,7 +141,7 @@ const AdminDashboard = () => {
         );
       }
 
-      // Fetch monthly usage data (last 12 months)
+      // Fetch monthly data (last 12 months)
       const monthsAgo = new Date();
       monthsAgo.setMonth(monthsAgo.getMonth() - 11);
       monthsAgo.setDate(1);
@@ -154,34 +154,32 @@ const AdminDashboard = () => {
 
       if (monthlyUsage) {
         const monthlyMap: { [key: string]: number } = {};
+        const monthNames = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
         
-        // Initialize all 12 months with 0
         for (let i = 0; i < 12; i++) {
           const date = new Date();
           date.setMonth(date.getMonth() - (11 - i));
-          const monthKey = date.toLocaleDateString("pt-BR", { month: "short", year: "2-digit" });
+          const monthKey = monthNames[date.getMonth()];
           monthlyMap[monthKey] = 0;
         }
 
-        // Count usage per month
         monthlyUsage.forEach((log: any) => {
           const date = new Date(log.used_at);
-          const monthKey = date.toLocaleDateString("pt-BR", { month: "short", year: "2-digit" });
+          const monthKey = monthNames[date.getMonth()];
           if (monthlyMap[monthKey] !== undefined) {
             monthlyMap[monthKey]++;
           }
         });
 
-        const chartData = Object.entries(monthlyMap).map(([month, usage]) => ({
+        const chartData = Object.entries(monthlyMap).map(([month, count]) => ({
           month,
-          usage,
+          count,
         }));
 
         setMonthlyData(chartData);
       }
     } catch (error) {
       console.error("Error fetching dashboard data:", error);
-      toast.error("Erro ao carregar dados do dashboard");
     } finally {
       setLoadingData(false);
     }
@@ -189,152 +187,298 @@ const AdminDashboard = () => {
 
   if (loading || loadingData) {
     return (
-      <AdminLayout>
-        <div className="flex items-center justify-center min-h-[60vh]">
-          <div className="text-center">
-            <Brain className="w-16 h-16 text-primary mx-auto mb-4 animate-pulse" />
-            <p className="text-muted-foreground">Carregando dashboard...</p>
-          </div>
+      <div style={{ display: 'flex', minHeight: '100vh', backgroundColor: '#0c121c', alignItems: 'center', justifyContent: 'center' }}>
+        <div style={{ textAlign: 'center', color: '#d2bc8f' }}>
+          <Loader2 size={48} style={{ animation: 'spin 1s linear infinite', margin: '0 auto 16px' }} />
+          <p style={{ fontSize: '16px' }}>Carregando dashboard...</p>
         </div>
-      </AdminLayout>
+      </div>
     );
   }
 
-  const statCards = [
-    { 
-      label: "Total de Usuários", 
-      value: stats.totalUsers, 
-      icon: <Users className="w-6 h-6" />,
-      color: "text-blue-500" 
-    },
-    { 
-      label: "Novos este Mês", 
-      value: stats.newUsersThisMonth, 
-      icon: <UserPlus className="w-6 h-6" />,
-      color: "text-green-500" 
-    },
-    { 
-      label: "Uso Total IA", 
-      value: stats.totalAIUsage, 
-      icon: <Brain className="w-6 h-6" />,
-      color: "text-purple-500" 
-    },
-    { 
-      label: "Uso IA este Mês", 
-      value: stats.aiUsageThisMonth, 
-      icon: <TrendingUp className="w-6 h-6" />,
-      color: "text-orange-500" 
-    },
-  ];
+  const maxValue = Math.max(...monthlyData.map(d => d.count), 1);
+  const avgPerUser = stats.totalUsers > 0 ? (stats.totalAIUsage / stats.totalUsers).toFixed(1) : '0';
 
   return (
-    <AdminLayout>
-      <div className="max-w-7xl mx-auto">
-        {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-4xl font-bold mb-2">Dashboard Administrativo</h1>
-          <p className="text-muted-foreground text-lg">
-            Visão geral do sistema e uso de IA
-          </p>
+    <div style={{ display: 'flex', minHeight: '100vh', backgroundColor: '#0c121c', color: 'white', fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif' }}>
+      {/* Sidebar */}
+      <div style={{ width: '280px', backgroundColor: '#1a2332', borderRight: '1px solid #333', display: 'flex', flexDirection: 'column', position: 'fixed', height: '100vh', zIndex: 100 }}>
+        <div style={{ padding: '32px 24px', borderBottom: '1px solid #333' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <div style={{ 
+              width: '48px', 
+              height: '48px', 
+              background: 'linear-gradient(135deg, #d2bc8f 0%, #e6d0a3 100%)', 
+              borderRadius: '12px', 
+              display: 'flex', 
+              alignItems: 'center', 
+              justifyContent: 'center', 
+              fontSize: '24px', 
+              fontWeight: 'bold', 
+              color: '#0c121c',
+              boxShadow: '0 4px 12px rgba(210, 188, 143, 0.3)'
+            }}>
+              A
+            </div>
+            <div>
+              <h1 style={{ fontSize: '20px', fontWeight: 'bold', margin: 0, color: '#d2bc8f', letterSpacing: '-0.5px' }}>Admin</h1>
+              <p style={{ fontSize: '13px', color: '#888', margin: 0 }}>Dashboard</p>
+            </div>
+          </div>
         </div>
 
-        {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          {statCards.map((stat, index) => (
-            <Card key={index} className="stat-card">
-              <div className="flex items-start justify-between">
-                <div>
-                  <p className="stat-label">{stat.label}</p>
-                  <p className="stat-value">{stat.value}</p>
-                </div>
-                <div className={stat.color}>
-                  {stat.icon}
-                </div>
-              </div>
-            </Card>
-          ))}
-        </div>
+        <nav style={{ flex: 1, padding: '24px 16px' }}>
+          <button
+            onClick={() => setCurrentView('dashboard')}
+            style={{
+              width: '100%',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '12px',
+              padding: '14px 16px',
+              backgroundColor: currentView === 'dashboard' ? '#2a3441' : 'transparent',
+              border: currentView === 'dashboard' ? '1px solid #444' : '1px solid transparent',
+              borderRadius: '10px',
+              color: currentView === 'dashboard' ? '#d2bc8f' : '#ccc',
+              fontSize: '15px',
+              fontWeight: currentView === 'dashboard' ? '600' : '500',
+              cursor: 'pointer',
+              marginBottom: '8px',
+              transition: 'all 0.2s',
+              outline: 'none'
+            }}
+          >
+            <LayoutDashboard size={20} />
+            <span>Dashboard</span>
+          </button>
 
-        {/* Monthly Usage Chart */}
-        <Card className="p-6 mb-8">
-          <h2 className="text-2xl font-bold mb-6">Uso Mensal de IA (Últimos 12 Meses)</h2>
-          <ResponsiveContainer width="100%" height={300}>
-            <LineChart data={monthlyData}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="month" />
-              <YAxis />
-              <Tooltip />
-              <Line 
-                type="monotone" 
-                dataKey="usage" 
-                stroke="hsl(var(--primary))" 
-                strokeWidth={2}
-                name="Usos de IA"
-              />
-            </LineChart>
-          </ResponsiveContainer>
-        </Card>
+          <button
+            onClick={() => navigate('/admin/users')}
+            style={{
+              width: '100%',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '12px',
+              padding: '14px 16px',
+              backgroundColor: 'transparent',
+              border: '1px solid transparent',
+              borderRadius: '10px',
+              color: '#ccc',
+              fontSize: '15px',
+              fontWeight: '500',
+              cursor: 'pointer',
+              marginBottom: '8px',
+              transition: 'all 0.2s',
+              outline: 'none'
+            }}
+          >
+            <Users size={20} />
+            <span>Usuários</span>
+          </button>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Top Users */}
-          <Card className="p-6">
-            <h2 className="text-2xl font-bold mb-6">Top 5 Usuários</h2>
-            <div className="space-y-4">
-              {topUsers.length === 0 ? (
-                <p className="text-muted-foreground text-center py-4">
-                  Nenhum dado disponível
-                </p>
-              ) : (
-                topUsers.map((user, index) => (
-                  <div
-                    key={user.user_id}
-                    className="flex items-center justify-between p-3 bg-secondary rounded-lg"
-                  >
-                    <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center font-bold text-primary">
-                        {index + 1}
-                      </div>
-                      <span className="font-medium">{user.name}</span>
-                    </div>
-                    <span className="text-sm text-muted-foreground">
-                      {user.usage_count} usos
-                    </span>
-                  </div>
-                ))
-              )}
+          <div style={{ height: '1px', backgroundColor: '#333', margin: '16px 0' }} />
+
+          <button
+            onClick={signOut}
+            style={{
+              width: '100%',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '12px',
+              padding: '14px 16px',
+              backgroundColor: 'transparent',
+              border: '1px solid transparent',
+              borderRadius: '10px',
+              color: '#ccc',
+              fontSize: '15px',
+              fontWeight: '500',
+              cursor: 'pointer',
+              transition: 'all 0.2s',
+              outline: 'none'
+            }}
+          >
+            <LogOut size={20} />
+            <span>Sair</span>
+          </button>
+        </nav>
+
+        <div style={{ padding: '20px 24px', borderTop: '1px solid #333' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <div style={{ 
+              width: '40px', 
+              height: '40px', 
+              background: 'linear-gradient(135deg, #d2bc8f 0%, #e6d0a3 100%)', 
+              borderRadius: '50%', 
+              display: 'flex', 
+              alignItems: 'center', 
+              justifyContent: 'center', 
+              fontSize: '15px', 
+              fontWeight: 'bold', 
+              color: '#0c121c' 
+            }}>
+              AD
             </div>
-          </Card>
-
-          {/* Recent Analyses */}
-          <Card className="p-6">
-            <h2 className="text-2xl font-bold mb-6">Últimas Análises</h2>
-            <div className="space-y-3">
-              {recentAnalyses.length === 0 ? (
-                <p className="text-muted-foreground text-center py-4">
-                  Nenhuma análise ainda
-                </p>
-              ) : (
-                recentAnalyses.map((analysis) => (
-                  <div
-                    key={analysis.id}
-                    className="flex items-center justify-between p-3 bg-secondary rounded-lg"
-                  >
-                    <span className="font-medium">{analysis.user_name}</span>
-                    <span className="text-sm text-muted-foreground">
-                      {new Date(analysis.used_at).toLocaleDateString("pt-BR")} às{" "}
-                      {new Date(analysis.used_at).toLocaleTimeString("pt-BR", {
-                        hour: "2-digit",
-                        minute: "2-digit",
-                      })}
-                    </span>
-                  </div>
-                ))
-              )}
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <p style={{ fontSize: '14px', fontWeight: '600', margin: 0, color: 'white', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>Administrador</p>
+              <p style={{ fontSize: '12px', color: '#888', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{user?.email || 'admin@app.com'}</p>
             </div>
-          </Card>
+          </div>
         </div>
       </div>
-    </AdminLayout>
+
+      {/* Main Content */}
+      <div style={{ flex: 1, marginLeft: '280px', overflow: 'auto', minHeight: '100vh' }}>
+        <div style={{ padding: '48px' }}>
+          <div style={{ marginBottom: '40px' }}>
+            <h2 style={{ fontSize: '36px', fontWeight: 'bold', margin: '0 0 8px 0', color: '#d2bc8f', letterSpacing: '-1px' }}>Painel do Administrador</h2>
+            <p style={{ fontSize: '16px', color: '#888', margin: 0 }}>Visão geral do sistema e estatísticas</p>
+          </div>
+
+          {/* Stats Cards */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '24px', marginBottom: '48px' }}>
+            <div style={{ backgroundColor: '#1a2332', padding: '28px', borderRadius: '16px', border: '1px solid #333' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px' }}>
+                <div style={{ width: '56px', height: '56px', backgroundColor: '#2a3441', borderRadius: '14px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#d2bc8f', border: '1px solid #444' }}>
+                  <Users size={28} />
+                </div>
+              </div>
+              <p style={{ fontSize: '14px', color: '#888', margin: '0 0 12px 0', fontWeight: '500' }}>Total de Usuários</p>
+              <p style={{ fontSize: '42px', fontWeight: 'bold', margin: 0, color: '#d2bc8f', letterSpacing: '-2px' }}>{stats.totalUsers}</p>
+            </div>
+
+            <div style={{ backgroundColor: '#1a2332', padding: '28px', borderRadius: '16px', border: '1px solid #333' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px' }}>
+                <div style={{ width: '56px', height: '56px', backgroundColor: '#2a3441', borderRadius: '14px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#d2bc8f', border: '1px solid #444' }}>
+                  <UserCheck size={28} />
+                </div>
+              </div>
+              <p style={{ fontSize: '14px', color: '#888', margin: '0 0 12px 0', fontWeight: '500' }}>Novos no Mês</p>
+              <p style={{ fontSize: '42px', fontWeight: 'bold', margin: 0, color: '#d2bc8f', letterSpacing: '-2px' }}>{stats.newUsersThisMonth}</p>
+              <p style={{ fontSize: '13px', color: '#888', marginTop: '8px' }}>+{stats.newUsersThisMonth} este mês</p>
+            </div>
+
+            <div style={{ backgroundColor: '#1a2332', padding: '28px', borderRadius: '16px', border: '1px solid #333' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px' }}>
+                <div style={{ width: '56px', height: '56px', backgroundColor: '#2a3441', borderRadius: '14px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#d2bc8f', border: '1px solid #444' }}>
+                  <Activity size={28} />
+                </div>
+              </div>
+              <p style={{ fontSize: '14px', color: '#888', margin: '0 0 12px 0', fontWeight: '500' }}>Análises de IA</p>
+              <p style={{ fontSize: '42px', fontWeight: 'bold', margin: 0, color: '#d2bc8f', letterSpacing: '-2px' }}>{stats.aiUsageThisMonth}</p>
+              <p style={{ fontSize: '13px', color: '#888', marginTop: '8px' }}>Neste mês</p>
+            </div>
+
+            <div style={{ backgroundColor: '#1a2332', padding: '28px', borderRadius: '16px', border: '1px solid #333' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px' }}>
+                <div style={{ width: '56px', height: '56px', backgroundColor: '#2a3441', borderRadius: '14px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#d2bc8f', border: '1px solid #444' }}>
+                  <TrendingUp size={28} />
+                </div>
+              </div>
+              <p style={{ fontSize: '14px', color: '#888', margin: '0 0 12px 0', fontWeight: '500' }}>Média por Usuário</p>
+              <p style={{ fontSize: '42px', fontWeight: 'bold', margin: 0, color: '#d2bc8f', letterSpacing: '-2px' }}>{avgPerUser}</p>
+              <p style={{ fontSize: '13px', color: '#888', marginTop: '8px' }}>Análises/mês</p>
+            </div>
+          </div>
+
+          {/* Top Users & Chart Row */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: '24px', marginBottom: '48px' }}>
+            {/* Top 5 Users */}
+            <div style={{ backgroundColor: '#1a2332', padding: '32px', borderRadius: '16px', border: '1px solid #333' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '28px' }}>
+                <Award size={24} style={{ color: '#d2bc8f' }} />
+                <h3 style={{ fontSize: '20px', fontWeight: 'bold', margin: 0, color: 'white' }}>Top 5 Usuários</h3>
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                {topUsers.length === 0 ? (
+                  <div style={{ textAlign: 'center', padding: '40px', color: '#888' }}>
+                    <Database size={32} style={{ margin: '0 auto 12px', opacity: 0.5 }} />
+                    <p>Nenhum dado disponível</p>
+                  </div>
+                ) : (
+                  topUsers.map((user, index) => (
+                    <div key={user.user_id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '18px', backgroundColor: '#2a3441', borderRadius: '12px', border: '1px solid #444' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+                        <div style={{ 
+                          width: '36px', 
+                          height: '36px', 
+                          background: index === 0 ? 'linear-gradient(135deg, #d2bc8f 0%, #e6d0a3 100%)' : '#333', 
+                          borderRadius: '50%', 
+                          display: 'flex', 
+                          alignItems: 'center', 
+                          justifyContent: 'center', 
+                          fontSize: '14px', 
+                          fontWeight: 'bold', 
+                          color: index === 0 ? '#0c121c' : '#d2bc8f',
+                          border: index === 0 ? 'none' : '1px solid #444'
+                        }}>
+                          {index + 1}
+                        </div>
+                        <span style={{ fontSize: '15px', fontWeight: '500', color: 'white' }}>{user.name}</span>
+                      </div>
+                      <span style={{ fontSize: '18px', fontWeight: 'bold', color: '#d2bc8f' }}>{user.usage_count}</span>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+
+            {/* Monthly Chart */}
+            <div style={{ backgroundColor: '#1a2332', padding: '32px', borderRadius: '16px', border: '1px solid #333' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '28px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                  <BarChart3 size={24} style={{ color: '#d2bc8f' }} />
+                  <h3 style={{ fontSize: '20px', fontWeight: 'bold', margin: 0, color: 'white' }}>Uso de IA - Últimos 12 Meses</h3>
+                </div>
+                <div style={{ fontSize: '14px', color: '#888' }}>Total: {monthlyData.reduce((a, b) => a + b.count, 0)}</div>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', height: '220px', gap: '10px', padding: '0 8px' }}>
+                {monthlyData.map((data, index) => (
+                  <div key={index} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '10px' }}>
+                    <div style={{ fontSize: '12px', color: '#d2bc8f', fontWeight: '600' }}>{data.count}</div>
+                    <div style={{ width: '100%', height: `${(data.count / maxValue) * 100}%`, background: 'linear-gradient(180deg, #e6d0a3 0%, #d2bc8f 100%)', borderRadius: '6px 6px 0 0', minHeight: '24px', boxShadow: '0 -2px 8px rgba(210, 188, 143, 0.2)' }} />
+                    <div style={{ fontSize: '11px', color: '#888', fontWeight: '500' }}>{data.month}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* Recent Analyses */}
+          <div style={{ backgroundColor: '#1a2332', padding: '32px', borderRadius: '16px', border: '1px solid #333' }}>
+            <h3 style={{ fontSize: '20px', fontWeight: 'bold', marginBottom: '28px', color: 'white' }}>Últimas Análises de IA</h3>
+            {recentAnalyses.length === 0 ? (
+              <div style={{ textAlign: 'center', padding: '40px', color: '#888' }}>
+                <Database size={32} style={{ margin: '0 auto 12px', opacity: 0.5 }} />
+                <p>Nenhuma análise ainda</p>
+              </div>
+            ) : (
+              <div style={{ overflowX: 'auto' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                  <thead>
+                    <tr style={{ borderBottom: '2px solid #333' }}>
+                      <th style={{ textAlign: 'left', padding: '18px 16px', fontSize: '13px', fontWeight: '600', color: '#d2bc8f', textTransform: 'uppercase', letterSpacing: '0.5px' }}>ID</th>
+                      <th style={{ textAlign: 'left', padding: '18px 16px', fontSize: '13px', fontWeight: '600', color: '#d2bc8f', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Usuário</th>
+                      <th style={{ textAlign: 'left', padding: '18px 16px', fontSize: '13px', fontWeight: '600', color: '#d2bc8f', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Data</th>
+                      <th style={{ textAlign: 'left', padding: '18px 16px', fontSize: '13px', fontWeight: '600', color: '#d2bc8f', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Hora</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {recentAnalyses.map((analysis) => (
+                      <tr key={analysis.id} style={{ borderBottom: '1px solid #2a3441' }}>
+                        <td style={{ padding: '18px 16px', fontSize: '14px', color: '#ccc', fontFamily: 'monospace' }}>{analysis.id.substring(0, 8)}</td>
+                        <td style={{ padding: '18px 16px', fontSize: '14px', color: 'white', fontWeight: '500' }}>{analysis.user_name}</td>
+                        <td style={{ padding: '18px 16px', fontSize: '14px', color: '#ccc' }}>{new Date(analysis.used_at).toLocaleDateString('pt-BR')}</td>
+                        <td style={{ padding: '18px 16px', fontSize: '14px', color: '#ccc' }}>{new Date(analysis.used_at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
   );
 };
 

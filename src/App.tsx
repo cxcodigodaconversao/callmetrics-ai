@@ -10,7 +10,6 @@ import Upload from "./pages/Upload";
 import Analyses from "./pages/Analyses";
 import AnalysisDetail from "./pages/AnalysisDetail";
 import Settings from "./pages/Settings";
-import UserManagement from "./pages/UserManagement";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -29,7 +28,6 @@ const App = () => (
           <Route path="/dashboard/analyses" element={<Analyses />} />
           <Route path="/dashboard/analyses/:id" element={<AnalysisDetail />} />
           <Route path="/dashboard/settings" element={<Settings />} />
-          <Route path="/dashboard/users" element={<UserManagement />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>

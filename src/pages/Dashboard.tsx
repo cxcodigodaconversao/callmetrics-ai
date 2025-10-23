@@ -14,8 +14,7 @@ import {
   Target,
   Plus,
   Play,
-  Trash2,
-  Users
+  Trash2
 } from "lucide-react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
@@ -148,14 +147,10 @@ const Dashboard = () => {
     return null;
   }
   
-  // Menu de navegação - Usuários APENAS para o admin master
-  const isMasterAdmin = user?.email === "cxcodigodaconversao@gmail.com";
-  
   const navItems = [
     { icon: <LayoutDashboard className="w-5 h-5" />, label: "Dashboard", path: "/dashboard" },
     { icon: <Upload className="w-5 h-5" />, label: "Nova Análise", path: "/dashboard/upload" },
     { icon: <FileText className="w-5 h-5" />, label: "Minhas Análises", path: "/dashboard/analyses" },
-    ...(isMasterAdmin ? [{ icon: <Users className="w-5 h-5" />, label: "Usuários", path: "/dashboard/users" }] : []),
     { icon: <Settings className="w-5 h-5" />, label: "Configurações", path: "/dashboard/settings" },
   ];
 

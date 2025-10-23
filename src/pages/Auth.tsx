@@ -8,6 +8,8 @@ import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { loginSchema } from "@/lib/validations/auth";
+import { supabase } from "@/integrations/supabase/client";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 const Auth = () => {
   const navigate = useNavigate();
@@ -17,6 +19,12 @@ const Auth = () => {
   const [loginEmail, setLoginEmail] = useState("");
   const [loginPassword, setLoginPassword] = useState("");
   const [loginLoading, setLoginLoading] = useState(false);
+
+  // Signup state
+  const [signupName, setSignupName] = useState("");
+  const [signupEmail, setSignupEmail] = useState("");
+  const [signupPassword, setSignupPassword] = useState("");
+  const [signupLoading, setSignupLoading] = useState(false);
 
   // Redirect if already logged in
   useEffect(() => {
@@ -87,6 +95,68 @@ const Auth = () => {
     }
   };
 
+  const handleSignup = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSignupLoading(true);
+
+    try {
+      // Validate password length
+      if (signupPassword.length < 6) {
+        toast({
+          title: "Senha muito curta",
+          description: "A senha deve ter no mínimo 6 caracteres.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Create user via edge function (admin only)
+      const { data: sessionData } = await supabase.auth.getSession();
+      const accessToken = sessionData.session?.access_token;
+
+      if (!accessToken) {
+        toast({
+          title: "Erro de autenticação",
+          description: "Você precisa estar logado como administrador para criar usuários.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      const { data, error } = await supabase.functions.invoke("create-user", {
+        body: { 
+          email: signupEmail, 
+          password: signupPassword, 
+          name: signupName,
+          role: "user"
+        },
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
+      });
+
+      if (error) throw error;
+
+      toast({
+        title: "Usuário criado com sucesso!",
+        description: `${signupName} foi adicionado ao sistema.`,
+      });
+
+      // Clear form
+      setSignupName("");
+      setSignupEmail("");
+      setSignupPassword("");
+    } catch (error: any) {
+      toast({
+        title: "Erro ao criar usuário",
+        description: error.message || "Ocorreu um erro ao criar o usuário.",
+        variant: "destructive",
+      });
+    } finally {
+      setSignupLoading(false);
+    }
+  };
+
   return (
     <div className="min-h-screen flex items-center justify-center p-4 bg-gradient-to-br from-background via-card to-background">
       <div className="w-full max-w-md">
@@ -99,55 +169,120 @@ const Auth = () => {
 
         <Card className="border-2 border-border">
           <CardHeader>
-            <CardTitle className="text-3xl text-center">Login</CardTitle>
+            <CardTitle className="text-3xl text-center">Acesso ao Sistema</CardTitle>
             <CardDescription className="text-center text-lg">
-              Entre com suas credenciais para acessar o sistema
+              Entre ou crie uma nova conta
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <form onSubmit={handleLogin} className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="login-email">Email</Label>
-                <Input
-                  id="login-email"
-                  type="email"
-                  placeholder="seu@email.com"
-                  value={loginEmail}
-                  onChange={(e) => setLoginEmail(e.target.value)}
-                  className="input-field"
-                  required
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="login-password">Senha</Label>
-                <Input
-                  id="login-password"
-                  type="password"
-                  placeholder="••••••••"
-                  value={loginPassword}
-                  onChange={(e) => setLoginPassword(e.target.value)}
-                  className="input-field"
-                  required
-                />
-              </div>
-              <Button 
-                type="submit" 
-                className="w-full btn-primary"
-                disabled={loginLoading}
-              >
-                {loginLoading ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Entrando...
-                  </>
-                ) : (
-                  "Entrar"
-                )}
-              </Button>
-              <p className="text-center text-sm text-muted-foreground">
-                Contate um administrador para obter acesso ao sistema
-              </p>
-            </form>
+            <Tabs defaultValue="login" className="w-full">
+              <TabsList className="grid w-full grid-cols-2">
+                <TabsTrigger value="login">Login</TabsTrigger>
+                <TabsTrigger value="signup">Cadastro</TabsTrigger>
+              </TabsList>
+              
+              <TabsContent value="login">
+                <form onSubmit={handleLogin} className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="login-email">Email</Label>
+                    <Input
+                      id="login-email"
+                      type="email"
+                      placeholder="seu@email.com"
+                      value={loginEmail}
+                      onChange={(e) => setLoginEmail(e.target.value)}
+                      className="input-field"
+                      required
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="login-password">Senha</Label>
+                    <Input
+                      id="login-password"
+                      type="password"
+                      placeholder="••••••••"
+                      value={loginPassword}
+                      onChange={(e) => setLoginPassword(e.target.value)}
+                      className="input-field"
+                      required
+                    />
+                  </div>
+                  <Button 
+                    type="submit" 
+                    className="w-full btn-primary"
+                    disabled={loginLoading}
+                  >
+                    {loginLoading ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Entrando...
+                      </>
+                    ) : (
+                      "Entrar"
+                    )}
+                  </Button>
+                </form>
+              </TabsContent>
+
+              <TabsContent value="signup">
+                <form onSubmit={handleSignup} className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="signup-name">Nome Completo</Label>
+                    <Input
+                      id="signup-name"
+                      type="text"
+                      placeholder="João Silva"
+                      value={signupName}
+                      onChange={(e) => setSignupName(e.target.value)}
+                      className="input-field"
+                      required
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="signup-email">Email</Label>
+                    <Input
+                      id="signup-email"
+                      type="email"
+                      placeholder="seu@email.com"
+                      value={signupEmail}
+                      onChange={(e) => setSignupEmail(e.target.value)}
+                      className="input-field"
+                      required
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="signup-password">Senha</Label>
+                    <Input
+                      id="signup-password"
+                      type="password"
+                      placeholder="Mínimo 6 caracteres"
+                      value={signupPassword}
+                      onChange={(e) => setSignupPassword(e.target.value)}
+                      className="input-field"
+                      required
+                      minLength={6}
+                    />
+                  </div>
+                  <Button 
+                    type="submit" 
+                    className="w-full btn-primary"
+                    disabled={signupLoading}
+                  >
+                    {signupLoading ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Criando conta...
+                      </>
+                    ) : (
+                      "Criar Conta"
+                    )}
+                  </Button>
+                  <p className="text-center text-sm text-muted-foreground">
+                    Apenas administradores podem criar novas contas
+                  </p>
+                </form>
+              </TabsContent>
+            </Tabs>
           </CardContent>
         </Card>
       </div>

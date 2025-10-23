@@ -33,6 +33,28 @@ const Dashboard = () => {
       navigate("/auth");
     } else if (user) {
       fetchVideos();
+      
+      // Subscribe to real-time updates
+      const channel = supabase
+        .channel('videos-changes')
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'videos',
+            filter: `user_id=eq.${user.id}`
+          },
+          (payload) => {
+            console.log('Video status changed:', payload);
+            fetchVideos(); // Refresh the list when a video changes
+          }
+        )
+        .subscribe();
+
+      return () => {
+        supabase.removeChannel(channel);
+      };
     }
   }, [user, loading, navigate]);
 
@@ -55,7 +77,7 @@ const Dashboard = () => {
 
   const handleProcessVideo = async (videoId: string) => {
     try {
-      toast.info("Iniciando processamento do vídeo...");
+      toast.info("Iniciando processamento do vídeo... Isso pode levar 2-4 minutos.");
       
       console.log('Calling process-video function with videoId:', videoId);
       
@@ -70,7 +92,7 @@ const Dashboard = () => {
         throw error;
       }
 
-      toast.success("Vídeo processado com sucesso!");
+      toast.success("Vídeo processado com sucesso! Veja os resultados em 'Minhas Análises'.");
       fetchVideos(); // Refresh the list
     } catch (error: any) {
       console.error('Full error:', error);
@@ -108,16 +130,23 @@ const Dashboard = () => {
   ];
 
   const getStatusBadge = (status: string) => {
-    const statusConfig: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline" }> = {
-      completed: { label: "Completo", variant: "default" },
-      processing: { label: "Processando", variant: "secondary" },
-      pending: { label: "Pendente", variant: "outline" },
-      queued: { label: "Na fila", variant: "outline" },
-      failed: { label: "Falhou", variant: "destructive" },
+    const statusConfig: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline"; description?: string }> = {
+      completed: { label: "Completo", variant: "default", description: "Análise concluída" },
+      processing: { label: "Em Análise", variant: "secondary", description: "Processando vídeo..." },
+      pending: { label: "Pendente", variant: "outline", description: "Aguardando processamento" },
+      queued: { label: "Na Fila", variant: "outline", description: "Na fila de processamento" },
+      failed: { label: "Falhou", variant: "destructive", description: "Erro no processamento" },
     };
     
     const config = statusConfig[status] || statusConfig.pending;
-    return <Badge variant={config.variant}>{config.label}</Badge>;
+    return (
+      <div className="flex flex-col items-end">
+        <Badge variant={config.variant}>{config.label}</Badge>
+        {config.description && (
+          <span className="text-xs text-muted-foreground mt-1">{config.description}</span>
+        )}
+      </div>
+    );
   };
 
   return (
@@ -240,12 +269,27 @@ const Dashboard = () => {
                           Processar
                         </Button>
                       )}
+                      {video.status === 'processing' && (
+                        <Button 
+                          size="sm" 
+                          disabled
+                          variant="secondary"
+                        >
+                          <Brain className="w-4 h-4 mr-2 animate-pulse" />
+                          Analisando...
+                        </Button>
+                      )}
                       {video.status === 'completed' && (
                         <Link to="/dashboard/analyses">
                           <Button size="sm" variant="outline" className="btn-outline">
                             Ver Análise
                           </Button>
                         </Link>
+                      )}
+                      {video.status === 'failed' && video.error_message && (
+                        <span className="text-xs text-destructive max-w-xs truncate">
+                          {video.error_message}
+                        </span>
                       )}
                     </div>
                   </div>

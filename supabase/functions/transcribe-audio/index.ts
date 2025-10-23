@@ -29,11 +29,23 @@ Deno.serve(async (req) => {
     console.log('Downloading audio file...');
     const audioResponse = await fetch(audioUrl);
     if (!audioResponse.ok) {
-      throw new Error('Failed to download audio file');
+      throw new Error(`Failed to download audio file: ${audioResponse.status} ${audioResponse.statusText}`);
     }
 
     const audioBlob = await audioResponse.blob();
     console.log(`Audio file size: ${audioBlob.size} bytes`);
+    console.log(`Content type: ${audioBlob.type}`);
+
+    // Check if file is too small (likely an error page)
+    if (audioBlob.size < 10000) {
+      throw new Error('Arquivo muito pequeno ou inválido. Se for Google Drive, verifique se o link está público (Qualquer pessoa com o link pode visualizar) e tente novamente.');
+    }
+
+    // Validate content type
+    const contentType = audioBlob.type.toLowerCase();
+    if (!contentType.includes('video') && !contentType.includes('audio') && contentType !== 'application/octet-stream') {
+      throw new Error(`Formato inválido detectado: ${contentType}. Verifique se o link do Google Drive está público e acessível.`);
+    }
 
     // Prepare form data for Whisper API
     const formData = new FormData();

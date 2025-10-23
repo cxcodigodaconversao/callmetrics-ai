@@ -16,6 +16,7 @@ const Upload = () => {
 
   const [youtubeUrl, setYoutubeUrl] = useState("");
   const [driveUrl, setDriveUrl] = useState("");
+  const [videoTitle, setVideoTitle] = useState("");
   const [dragActive, setDragActive] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -96,6 +97,7 @@ const Upload = () => {
           user_id: user.id,
           mode: "youtube",
           source_url: youtubeUrl,
+          title: videoTitle.trim() || "Vídeo YouTube",
           status: "pending"
         })
         .select()
@@ -125,6 +127,7 @@ const Upload = () => {
           user_id: user.id,
           mode: "drive",
           source_url: driveUrl,
+          title: videoTitle.trim() || "Vídeo Google Drive",
           status: "pending"
         })
         .select()
@@ -165,7 +168,7 @@ const Upload = () => {
           user_id: user.id,
           mode: "upload",
           storage_path: fileName,
-          title: selectedFile.name,
+          title: videoTitle.trim() || selectedFile.name,
           mime_type: selectedFile.type,
           file_size_bytes: selectedFile.size,
           status: "pending"
@@ -220,6 +223,24 @@ const Upload = () => {
             <TabsContent value="youtube">
               <form onSubmit={handleYoutubeSubmit} className="space-y-6">
                 <div className="space-y-2">
+                  <Label htmlFor="video-title-yt" className="text-lg">
+                    Título do Vídeo *
+                  </Label>
+                  <Input
+                    id="video-title-yt"
+                    type="text"
+                    placeholder="Ex: Call com Cliente João - 23/10/2024"
+                    value={videoTitle}
+                    onChange={(e) => setVideoTitle(e.target.value)}
+                    className="input-field text-lg"
+                    required
+                  />
+                  <p className="text-sm text-muted-foreground">
+                    Identifique quem fez a call e com qual cliente
+                  </p>
+                </div>
+
+                <div className="space-y-2">
                   <Label htmlFor="youtube-url" className="text-lg">
                     URL do YouTube
                   </Label>
@@ -265,6 +286,24 @@ const Upload = () => {
             <TabsContent value="drive">
               <form onSubmit={handleDriveSubmit} className="space-y-6">
                 <div className="space-y-2">
+                  <Label htmlFor="video-title-gd" className="text-lg">
+                    Título do Vídeo *
+                  </Label>
+                  <Input
+                    id="video-title-gd"
+                    type="text"
+                    placeholder="Ex: Call com Cliente Maria - 23/10/2024"
+                    value={videoTitle}
+                    onChange={(e) => setVideoTitle(e.target.value)}
+                    className="input-field text-lg"
+                    required
+                  />
+                  <p className="text-sm text-muted-foreground">
+                    Identifique quem fez a call e com qual cliente
+                  </p>
+                </div>
+
+                <div className="space-y-2">
                   <Label htmlFor="drive-url" className="text-lg">
                     URL do Google Drive
                   </Label>
@@ -278,7 +317,7 @@ const Upload = () => {
                     required
                   />
                   <p className="text-sm text-muted-foreground">
-                    Cole o link completo do vídeo do Google Drive
+                    Cole o link completo do vídeo do Google Drive. <strong>Importante:</strong> Configure o link como "Qualquer pessoa com o link pode visualizar"
                   </p>
                 </div>
 
@@ -313,6 +352,24 @@ const Upload = () => {
 
             <TabsContent value="upload">
               <form onSubmit={handleFileSubmit} className="space-y-6">
+                <div className="space-y-2">
+                  <Label htmlFor="video-title-upload" className="text-lg">
+                    Título do Vídeo *
+                  </Label>
+                  <Input
+                    id="video-title-upload"
+                    type="text"
+                    placeholder="Ex: Call com Cliente Pedro - 23/10/2024"
+                    value={videoTitle}
+                    onChange={(e) => setVideoTitle(e.target.value)}
+                    className="input-field text-lg"
+                    required
+                  />
+                  <p className="text-sm text-muted-foreground">
+                    Identifique quem fez a call e com qual cliente
+                  </p>
+                </div>
+
                 <div
                   className={`border-2 border-dashed rounded-lg p-12 text-center transition-colors ${
                     dragActive

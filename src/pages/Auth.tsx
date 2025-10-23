@@ -3,13 +3,14 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Brain, Loader2 } from "lucide-react";
+import { Brain, Loader2, Search, Trash2 } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { loginSchema } from "@/lib/validations/auth";
 import { supabase } from "@/integrations/supabase/client";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 const Auth = () => {
   const navigate = useNavigate();
@@ -25,6 +26,22 @@ const Auth = () => {
   const [signupEmail, setSignupEmail] = useState("");
   const [signupPassword, setSignupPassword] = useState("");
   const [signupLoading, setSignupLoading] = useState(false);
+
+  // Admin state
+  const [adminEmail, setAdminEmail] = useState("");
+  const [adminPassword, setAdminPassword] = useState("");
+  const [adminLoading, setAdminLoading] = useState(false);
+  const [adminLoggedIn, setAdminLoggedIn] = useState(false);
+  
+  // User management state
+  const [newUserName, setNewUserName] = useState("");
+  const [newUserEmail, setNewUserEmail] = useState("");
+  const [newUserPassword, setNewUserPassword] = useState("");
+  const [newUserRole, setNewUserRole] = useState("user");
+  const [createUserLoading, setCreateUserLoading] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [users, setUsers] = useState<any[]>([]);
+  const [usersLoading, setUsersLoading] = useState(false);
 
   // Redirect if already logged in
   useEffect(() => {
@@ -157,6 +174,179 @@ const Auth = () => {
     }
   };
 
+  const handleAdminLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setAdminLoading(true);
+
+    try {
+      // Only allow cxcodigodaconversao@gmail.com as admin
+      if (adminEmail !== "cxcodigodaconversao@gmail.com") {
+        toast({
+          title: "Acesso negado",
+          description: "Apenas o administrador master pode acessar esta área.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      const { error } = await signIn(adminEmail, adminPassword);
+
+      if (error) {
+        toast({
+          title: "Erro ao fazer login",
+          description: error.message,
+          variant: "destructive",
+        });
+        return;
+      }
+
+      setAdminLoggedIn(true);
+      loadUsers();
+      
+      toast({
+        title: "Login admin realizado!",
+        description: "Bem-vindo ao painel administrativo.",
+      });
+    } catch (error: any) {
+      toast({
+        title: "Erro ao fazer login",
+        description: error.message || "Ocorreu um erro inesperado.",
+        variant: "destructive",
+      });
+    } finally {
+      setAdminLoading(false);
+    }
+  };
+
+  const loadUsers = async () => {
+    setUsersLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("id, email, name, created_at")
+        .order("created_at", { ascending: false });
+
+      if (error) throw error;
+      setUsers(data || []);
+    } catch (error: any) {
+      toast({
+        title: "Erro ao carregar usuários",
+        description: error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setUsersLoading(false);
+    }
+  };
+
+  const handleCreateUser = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setCreateUserLoading(true);
+
+    try {
+      if (newUserPassword.length < 6) {
+        toast({
+          title: "Senha muito curta",
+          description: "A senha deve ter no mínimo 6 caracteres.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      const { data: sessionData } = await supabase.auth.getSession();
+      const accessToken = sessionData.session?.access_token;
+
+      if (!accessToken) {
+        toast({
+          title: "Erro de autenticação",
+          description: "Faça login novamente.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      const { error } = await supabase.functions.invoke("create-user", {
+        body: { 
+          email: newUserEmail, 
+          password: newUserPassword, 
+          name: newUserName,
+          role: newUserRole
+        },
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
+      });
+
+      if (error) throw error;
+
+      toast({
+        title: "Usuário criado com sucesso!",
+        description: `${newUserName} foi adicionado ao sistema.`,
+      });
+
+      setNewUserName("");
+      setNewUserEmail("");
+      setNewUserPassword("");
+      setNewUserRole("user");
+      loadUsers();
+    } catch (error: any) {
+      toast({
+        title: "Erro ao criar usuário",
+        description: error.message || "Ocorreu um erro ao criar o usuário.",
+        variant: "destructive",
+      });
+    } finally {
+      setCreateUserLoading(false);
+    }
+  };
+
+  const handleDeleteUser = async (userId: string, userName: string) => {
+    if (!confirm(`Tem certeza que deseja excluir o usuário ${userName}?`)) {
+      return;
+    }
+
+    try {
+      const { data: sessionData } = await supabase.auth.getSession();
+      const accessToken = sessionData.session?.access_token;
+
+      if (!accessToken) {
+        toast({
+          title: "Erro de autenticação",
+          description: "Faça login novamente.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      const { error } = await supabase.functions.invoke("delete-user", {
+        body: { userId },
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
+      });
+
+      if (error) throw error;
+
+      toast({
+        title: "Usuário excluído",
+        description: `${userName} foi removido do sistema.`,
+      });
+
+      loadUsers();
+    } catch (error: any) {
+      toast({
+        title: "Erro ao excluir usuário",
+        description: error.message || "Ocorreu um erro ao excluir o usuário.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const filteredUsers = users.filter(user => 
+    user.email?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    user.name?.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
   return (
     <div className="min-h-screen flex items-center justify-center p-4 bg-gradient-to-br from-background via-card to-background">
       <div className="w-full max-w-md">
@@ -176,9 +366,10 @@ const Auth = () => {
           </CardHeader>
           <CardContent>
             <Tabs defaultValue="login" className="w-full">
-              <TabsList className="grid w-full grid-cols-2">
+              <TabsList className="grid w-full grid-cols-3">
                 <TabsTrigger value="login">Login</TabsTrigger>
                 <TabsTrigger value="signup">Cadastro</TabsTrigger>
+                <TabsTrigger value="admin">ADM</TabsTrigger>
               </TabsList>
               
               <TabsContent value="login">
@@ -281,6 +472,175 @@ const Auth = () => {
                     Apenas administradores podem criar novas contas
                   </p>
                 </form>
+              </TabsContent>
+
+              <TabsContent value="admin">
+                {!adminLoggedIn ? (
+                  <form onSubmit={handleAdminLogin} className="space-y-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="admin-email">Email Administrador</Label>
+                      <Input
+                        id="admin-email"
+                        type="email"
+                        placeholder="admin@email.com"
+                        value={adminEmail}
+                        onChange={(e) => setAdminEmail(e.target.value)}
+                        className="input-field"
+                        required
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="admin-password">Senha</Label>
+                      <Input
+                        id="admin-password"
+                        type="password"
+                        placeholder="••••••••"
+                        value={adminPassword}
+                        onChange={(e) => setAdminPassword(e.target.value)}
+                        className="input-field"
+                        required
+                      />
+                    </div>
+                    <Button 
+                      type="submit" 
+                      className="w-full btn-primary"
+                      disabled={adminLoading}
+                    >
+                      {adminLoading ? (
+                        <>
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          Entrando...
+                        </>
+                      ) : (
+                        "Entrar como Admin"
+                      )}
+                    </Button>
+                    <p className="text-center text-sm text-muted-foreground">
+                      Acesso restrito ao administrador master
+                    </p>
+                  </form>
+                ) : (
+                  <div className="space-y-6">
+                    <div>
+                      <h3 className="text-lg font-semibold mb-4">Criar Novo Usuário</h3>
+                      <form onSubmit={handleCreateUser} className="space-y-4">
+                        <div className="space-y-2">
+                          <Label htmlFor="new-user-name">Nome Completo</Label>
+                          <Input
+                            id="new-user-name"
+                            type="text"
+                            placeholder="João Silva"
+                            value={newUserName}
+                            onChange={(e) => setNewUserName(e.target.value)}
+                            className="input-field"
+                            required
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="new-user-email">Email</Label>
+                          <Input
+                            id="new-user-email"
+                            type="email"
+                            placeholder="joao@email.com"
+                            value={newUserEmail}
+                            onChange={(e) => setNewUserEmail(e.target.value)}
+                            className="input-field"
+                            required
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="new-user-password">Senha</Label>
+                          <Input
+                            id="new-user-password"
+                            type="password"
+                            placeholder="Mínimo 6 caracteres"
+                            value={newUserPassword}
+                            onChange={(e) => setNewUserPassword(e.target.value)}
+                            className="input-field"
+                            required
+                            minLength={6}
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="new-user-role">Função</Label>
+                          <Select value={newUserRole} onValueChange={setNewUserRole}>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Selecione a função" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="user">Usuário</SelectItem>
+                              <SelectItem value="admin">Administrador</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <Button 
+                          type="submit" 
+                          className="w-full btn-primary"
+                          disabled={createUserLoading}
+                        >
+                          {createUserLoading ? (
+                            <>
+                              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                              Criando...
+                            </>
+                          ) : (
+                            "Criar Usuário"
+                          )}
+                        </Button>
+                      </form>
+                    </div>
+
+                    <div className="border-t pt-6">
+                      <h3 className="text-lg font-semibold mb-4">Gerenciar Usuários</h3>
+                      <div className="space-y-4">
+                        <div className="relative">
+                          <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                          <Input
+                            type="text"
+                            placeholder="Buscar por email ou nome..."
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                            className="pl-10"
+                          />
+                        </div>
+
+                        {usersLoading ? (
+                          <div className="text-center py-4">
+                            <Loader2 className="h-6 w-6 animate-spin mx-auto" />
+                          </div>
+                        ) : (
+                          <div className="space-y-2 max-h-[300px] overflow-y-auto">
+                            {filteredUsers.length === 0 ? (
+                              <p className="text-center text-muted-foreground py-4">
+                                Nenhum usuário encontrado
+                              </p>
+                            ) : (
+                              filteredUsers.map((user) => (
+                                <div 
+                                  key={user.id}
+                                  className="flex items-center justify-between p-3 border rounded-lg hover:bg-accent/50 transition-colors"
+                                >
+                                  <div className="flex-1">
+                                    <p className="font-medium">{user.name || "Sem nome"}</p>
+                                    <p className="text-sm text-muted-foreground">{user.email}</p>
+                                  </div>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    onClick={() => handleDeleteUser(user.id, user.name || user.email)}
+                                    className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                                  >
+                                    <Trash2 className="h-4 w-4" />
+                                  </Button>
+                                </div>
+                              ))
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                )}
               </TabsContent>
             </Tabs>
           </CardContent>

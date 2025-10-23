@@ -104,11 +104,20 @@ Deno.serve(async (req) => {
     if (!whisperResponse.ok) {
       const errorText = await whisperResponse.text();
       console.error('Whisper API error:', errorText);
-      throw new Error(`Whisper API error: ${errorText}`);
+      
+      let errorMessage = 'Erro na API Whisper';
+      try {
+        const errorJson = JSON.parse(errorText);
+        errorMessage = errorJson.error?.message || errorText;
+      } catch {
+        errorMessage = errorText || 'Erro desconhecido na transcrição';
+      }
+      
+      throw new Error(`Whisper API error: ${errorMessage}`);
     }
 
     const whisperData = await whisperResponse.json();
-    console.log('Transcription received');
+    console.log('Transcription received, length:', whisperData.text?.length || 0);
 
     // Initialize Supabase client
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;

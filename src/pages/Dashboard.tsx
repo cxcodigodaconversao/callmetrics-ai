@@ -57,16 +57,24 @@ const Dashboard = () => {
     try {
       toast.info("Iniciando processamento do vídeo...");
       
+      console.log('Calling process-video function with videoId:', videoId);
+      
       const { data, error } = await supabase.functions.invoke('process-video', {
         body: { videoId }
       });
 
-      if (error) throw error;
+      console.log('Response:', { data, error });
+
+      if (error) {
+        console.error('Error details:', error);
+        throw error;
+      }
 
       toast.success("Vídeo processado com sucesso!");
       fetchVideos(); // Refresh the list
     } catch (error: any) {
-      toast.error(`Erro ao processar vídeo: ${error.message}`);
+      console.error('Full error:', error);
+      toast.error(`Erro ao processar vídeo: ${error.message || 'Erro desconhecido'}`);
     }
   };
 

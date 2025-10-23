@@ -27,6 +27,24 @@ const Dashboard = () => {
   const { user, signOut, loading } = useAuth();
   const [videos, setVideos] = useState<any[]>([]);
   const [loadingVideos, setLoadingVideos] = useState(true);
+  const [isAdmin, setIsAdmin] = useState(false);
+
+  useEffect(() => {
+    const checkAdminStatus = async () => {
+      if (user) {
+        const { data: roles } = await supabase
+          .from("user_roles")
+          .select("role")
+          .eq("user_id", user.id)
+          .eq("role", "admin")
+          .maybeSingle();
+        
+        setIsAdmin(!!roles);
+      }
+    };
+    
+    checkAdminStatus();
+  }, [user]);
 
   useEffect(() => {
     if (!loading && !user) {
@@ -152,6 +170,7 @@ const Dashboard = () => {
     { icon: <Upload className="w-5 h-5" />, label: "Nova Análise", path: "/dashboard/upload" },
     { icon: <FileText className="w-5 h-5" />, label: "Minhas Análises", path: "/dashboard/analyses" },
     { icon: <Settings className="w-5 h-5" />, label: "Configurações", path: "/dashboard/settings" },
+    ...(isAdmin ? [{ icon: <Settings className="w-5 h-5" />, label: "Admin", path: "/admin" }] : []),
   ];
 
   const stats = [

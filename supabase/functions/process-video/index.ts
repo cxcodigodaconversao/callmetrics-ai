@@ -43,8 +43,9 @@ Deno.serve(async (req) => {
 
     console.log(`Video status updated to processing`);
 
-    // Step 1: Download audio from storage
+    // Step 1: Get video URL based on mode
     let audioUrl = '';
+    
     if (video.mode === 'upload') {
       if (!video.storage_path) {
         throw new Error('Video storage_path is missing');
@@ -59,12 +60,27 @@ Deno.serve(async (req) => {
         throw new Error(`Failed to get signed URL: ${downloadError?.message}`);
       }
       audioUrl = fileData.signedUrl;
+      
     } else if (video.mode === 'youtube') {
-      // For YouTube, we'd need to extract audio - for now throw error
-      throw new Error('YouTube processing not yet implemented');
+      throw new Error('YouTube processing not yet implemented. Please download the video and upload it directly.');
+      
     } else if (video.mode === 'drive') {
-      // For Drive, similar to YouTube
-      throw new Error('Google Drive processing not yet implemented');
+      // Convert Google Drive link to direct download link
+      if (!video.source_url) {
+        throw new Error('Google Drive URL is missing');
+      }
+      
+      // Extract file ID from Google Drive URL
+      // Format: https://drive.google.com/file/d/{FILE_ID}/view
+      const fileIdMatch = video.source_url.match(/\/d\/([^\/]+)/);
+      if (!fileIdMatch) {
+        throw new Error('Invalid Google Drive URL format. Please use a valid share link.');
+      }
+      
+      const fileId = fileIdMatch[1];
+      // Use direct download URL
+      audioUrl = `https://drive.google.com/uc?export=download&id=${fileId}`;
+      console.log(`Google Drive direct download URL: ${audioUrl}`);
     }
 
     console.log(`Audio URL obtained: ${audioUrl}`);

@@ -59,10 +59,10 @@ const Upload = () => {
     
     if (e.dataTransfer.files && e.dataTransfer.files[0]) {
       const file = e.dataTransfer.files[0];
-      const maxSize = 500 * 1024 * 1024; // 500MB in bytes
+      const maxSize = 50 * 1024 * 1024; // 50MB (Supabase free tier limit)
       
       if (file.size > maxSize) {
-        toast.error(`Arquivo muito grande! Tamanho máximo: 500MB. Seu arquivo: ${(file.size / (1024 * 1024)).toFixed(2)}MB`);
+        toast.error(`Arquivo muito grande! Tamanho máximo: 50MB (plano gratuito). Seu arquivo: ${(file.size / (1024 * 1024)).toFixed(2)}MB`);
         return;
       }
       
@@ -73,10 +73,10 @@ const Upload = () => {
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
-      const maxSize = 500 * 1024 * 1024; // 500MB in bytes
+      const maxSize = 50 * 1024 * 1024; // 50MB (Supabase free tier limit)
       
       if (file.size > maxSize) {
-        toast.error(`Arquivo muito grande! Tamanho máximo: 500MB. Seu arquivo: ${(file.size / (1024 * 1024)).toFixed(2)}MB`);
+        toast.error(`Arquivo muito grande! Tamanho máximo: 50MB (plano gratuito). Seu arquivo: ${(file.size / (1024 * 1024)).toFixed(2)}MB`);
         return;
       }
       
@@ -363,7 +363,7 @@ const Upload = () => {
                         />
                       </div>
                       <p className="text-sm text-muted-foreground">
-                        Formatos suportados: MP4, MOV, AVI (máx. 500MB)
+                        Formatos suportados: MP4, MOV, AVI (máx. 50MB - plano gratuito)
                       </p>
                     </div>
                   )}

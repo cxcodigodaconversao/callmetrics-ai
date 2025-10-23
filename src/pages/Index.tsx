@@ -56,16 +56,13 @@ const Index = () => {
               Analise automaticamente suas chamadas, identifique oportunidades de melhoria e 
               aumente sua taxa de conversão com insights baseados em IA.
             </p>
-            <div className="flex flex-col sm:flex-row gap-4 justify-center">
+            <div className="flex justify-center">
               <Link to="/auth">
                 <Button size="lg" className="btn-primary text-lg px-8 py-6 group">
                   Começar Agora
                   <ArrowRight className="ml-2 group-hover:translate-x-1 transition-transform" />
                 </Button>
               </Link>
-              <Button size="lg" variant="outline" className="btn-outline text-lg px-8 py-6">
-                Ver Demo
-              </Button>
             </div>
           </div>
         </div>

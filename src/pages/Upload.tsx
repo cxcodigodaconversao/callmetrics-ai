@@ -58,13 +58,29 @@ const Upload = () => {
     setDragActive(false);
     
     if (e.dataTransfer.files && e.dataTransfer.files[0]) {
-      setSelectedFile(e.dataTransfer.files[0]);
+      const file = e.dataTransfer.files[0];
+      const maxSize = 100 * 1024 * 1024; // 100MB in bytes
+      
+      if (file.size > maxSize) {
+        toast.error(`Arquivo muito grande! Tamanho máximo: 100MB. Seu arquivo: ${(file.size / (1024 * 1024)).toFixed(2)}MB`);
+        return;
+      }
+      
+      setSelectedFile(file);
     }
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
-      setSelectedFile(e.target.files[0]);
+      const file = e.target.files[0];
+      const maxSize = 100 * 1024 * 1024; // 100MB in bytes
+      
+      if (file.size > maxSize) {
+        toast.error(`Arquivo muito grande! Tamanho máximo: 100MB. Seu arquivo: ${(file.size / (1024 * 1024)).toFixed(2)}MB`);
+        return;
+      }
+      
+      setSelectedFile(file);
     }
   };
 
@@ -347,7 +363,7 @@ const Upload = () => {
                         />
                       </div>
                       <p className="text-sm text-muted-foreground">
-                        Formatos suportados: MP4, MOV, AVI (máx. 500MB)
+                        Formatos suportados: MP4, MOV, AVI (máx. 100MB)
                       </p>
                     </div>
                   )}

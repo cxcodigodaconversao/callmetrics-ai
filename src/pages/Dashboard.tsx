@@ -12,7 +12,8 @@ import {
   TrendingUp,
   Clock,
   Target,
-  Plus
+  Plus,
+  Play
 } from "lucide-react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
@@ -49,6 +50,23 @@ const Dashboard = () => {
       toast.error("Erro ao carregar vídeos");
     } finally {
       setLoadingVideos(false);
+    }
+  };
+
+  const handleProcessVideo = async (videoId: string) => {
+    try {
+      toast.info("Iniciando processamento do vídeo...");
+      
+      const { data, error } = await supabase.functions.invoke('process-video', {
+        body: { videoId }
+      });
+
+      if (error) throw error;
+
+      toast.success("Vídeo processado com sucesso!");
+      fetchVideos(); // Refresh the list
+    } catch (error: any) {
+      toast.error(`Erro ao processar vídeo: ${error.message}`);
     }
   };
 
@@ -204,6 +222,16 @@ const Dashboard = () => {
                     </div>
                     <div className="flex items-center gap-4">
                       {getStatusBadge(video.status)}
+                      {video.status === 'pending' && (
+                        <Button 
+                          size="sm" 
+                          onClick={() => handleProcessVideo(video.id)}
+                          className="btn-primary"
+                        >
+                          <Play className="w-4 h-4 mr-2" />
+                          Processar
+                        </Button>
+                      )}
                       {video.status === 'completed' && (
                         <Link to="/dashboard/analyses">
                           <Button size="sm" variant="outline" className="btn-outline">

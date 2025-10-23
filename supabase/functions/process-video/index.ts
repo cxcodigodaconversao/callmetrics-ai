@@ -46,6 +46,10 @@ Deno.serve(async (req) => {
     // Step 1: Download audio from storage
     let audioUrl = '';
     if (video.mode === 'upload') {
+      if (!video.storage_path) {
+        throw new Error('Video storage_path is missing');
+      }
+      
       const { data: fileData, error: downloadError } = await supabase
         .storage
         .from('uploads')
@@ -56,11 +60,11 @@ Deno.serve(async (req) => {
       }
       audioUrl = fileData.signedUrl;
     } else if (video.mode === 'youtube') {
-      // For YouTube, we'd need to extract audio - simplified for now
-      audioUrl = video.source_url;
+      // For YouTube, we'd need to extract audio - for now throw error
+      throw new Error('YouTube processing not yet implemented');
     } else if (video.mode === 'drive') {
       // For Drive, similar to YouTube
-      audioUrl = video.source_url;
+      throw new Error('Google Drive processing not yet implemented');
     }
 
     console.log(`Audio URL obtained: ${audioUrl}`);

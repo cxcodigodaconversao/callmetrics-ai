@@ -164,7 +164,10 @@ const Upload = () => {
         .insert({
           user_id: user.id,
           mode: "upload",
-          source_url: fileName,
+          storage_path: fileName,
+          title: selectedFile.name,
+          mime_type: selectedFile.type,
+          file_size_bytes: selectedFile.size,
           status: "pending"
         })
         .select()

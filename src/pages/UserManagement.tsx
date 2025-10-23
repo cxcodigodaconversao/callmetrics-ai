@@ -7,8 +7,9 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { useNavigate } from "react-router-dom";
-import { Loader2, UserPlus, Trash2, Shield, User } from "lucide-react";
+import { Loader2, UserPlus, Trash2, Shield, User, Search } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 
 interface UserWithRole {
   id: string;
@@ -16,6 +17,9 @@ interface UserWithRole {
   name: string;
   created_at: string;
   role: "admin" | "user";
+  videosCount: number;
+  analysesCount: number;
+  monthlyAnalyses: number;
 }
 
 const UserManagement = () => {
@@ -25,6 +29,7 @@ const UserManagement = () => {
   const [loading, setLoading] = useState(false);
   const [users, setUsers] = useState<UserWithRole[]>([]);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
 
   // Form state
   const [email, setEmail] = useState("");
@@ -73,7 +78,12 @@ const UserManagement = () => {
 
       if (usersError) throw usersError;
 
-      // Fetch roles for each user
+      // Get current month start date
+      const currentMonth = new Date();
+      currentMonth.setDate(1);
+      currentMonth.setHours(0, 0, 0, 0);
+
+      // Fetch roles and stats for each user
       const usersWithRoles = await Promise.all(
         (usersData || []).map(async (user) => {
           const { data: roleData } = await supabase
@@ -83,9 +93,31 @@ const UserManagement = () => {
             .eq("role", "admin")
             .single();
 
+          // Count videos
+          const { count: videosCount } = await supabase
+            .from("videos")
+            .select("*", { count: "exact", head: true })
+            .eq("user_id", user.id);
+
+          // Count total analyses
+          const { count: analysesCount } = await supabase
+            .from("analyses")
+            .select("*, videos!inner(user_id)", { count: "exact", head: true })
+            .eq("videos.user_id", user.id);
+
+          // Count monthly analyses
+          const { count: monthlyAnalyses } = await supabase
+            .from("analyses")
+            .select("*, videos!inner(user_id)", { count: "exact", head: true })
+            .eq("videos.user_id", user.id)
+            .gte("analyses.created_at", currentMonth.toISOString());
+
           return {
             ...user,
             role: roleData ? "admin" : "user",
+            videosCount: videosCount || 0,
+            analysesCount: analysesCount || 0,
+            monthlyAnalyses: monthlyAnalyses || 0,
           } as UserWithRole;
         })
       );
@@ -169,9 +201,18 @@ const UserManagement = () => {
     );
   }
 
+  // Filter users based on search term
+  const filteredUsers = users.filter((u) => {
+    const searchLower = searchTerm.toLowerCase();
+    return (
+      u.name?.toLowerCase().includes(searchLower) ||
+      u.email.toLowerCase().includes(searchLower)
+    );
+  });
+
   return (
     <div className="min-h-screen bg-background p-8">
-      <div className="max-w-6xl mx-auto space-y-8">
+      <div className="max-w-7xl mx-auto space-y-8">
         <div>
           <h1 className="text-4xl font-bold">Gerenciamento de Usuários</h1>
           <p className="text-muted-foreground mt-2">
@@ -179,66 +220,66 @@ const UserManagement = () => {
           </p>
         </div>
 
-        <div className="grid gap-8 md:grid-cols-2">
-          {/* Create User Form */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <UserPlus className="h-5 w-5" />
-                Criar Novo Usuário
-              </CardTitle>
-              <CardDescription>
-                Adicione um novo usuário ao sistema
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <form onSubmit={handleCreateUser} className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="name">Nome Completo</Label>
-                  <Input
-                    id="name"
-                    type="text"
-                    placeholder="João Silva"
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    required
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="email">Email</Label>
-                  <Input
-                    id="email"
-                    type="email"
-                    placeholder="usuario@email.com"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    required
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="password">Senha</Label>
-                  <Input
-                    id="password"
-                    type="password"
-                    placeholder="••••••••"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    required
-                    minLength={6}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="role">Função</Label>
-                  <select
-                    id="role"
-                    value={role}
-                    onChange={(e) => setRole(e.target.value as "admin" | "user")}
-                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                  >
-                    <option value="user">Usuário</option>
-                    <option value="admin">Administrador</option>
-                  </select>
-                </div>
+        {/* Create User Form */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <UserPlus className="h-5 w-5" />
+              Criar Novo Usuário
+            </CardTitle>
+            <CardDescription>
+              Adicione um novo usuário ao sistema
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={handleCreateUser} className="grid grid-cols-1 md:grid-cols-5 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="name">Nome Completo</Label>
+                <Input
+                  id="name"
+                  type="text"
+                  placeholder="João Silva"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="email">Email</Label>
+                <Input
+                  id="email"
+                  type="email"
+                  placeholder="usuario@email.com"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="password">Senha</Label>
+                <Input
+                  id="password"
+                  type="password"
+                  placeholder="••••••••"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
+                  minLength={6}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="role">Função</Label>
+                <select
+                  id="role"
+                  value={role}
+                  onChange={(e) => setRole(e.target.value as "admin" | "user")}
+                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                >
+                  <option value="user">Usuário</option>
+                  <option value="admin">Administrador</option>
+                </select>
+              </div>
+              <div className="flex items-end">
                 <Button type="submit" className="w-full" disabled={loading}>
                   {loading ? (
                     <>
@@ -249,58 +290,96 @@ const UserManagement = () => {
                     "Criar Usuário"
                   )}
                 </Button>
-              </form>
-            </CardContent>
-          </Card>
-
-          {/* Users List */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Usuários do Sistema</CardTitle>
-              <CardDescription>
-                Total de {users.length} usuários cadastrados
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-3">
-                {users.map((u) => (
-                  <div
-                    key={u.id}
-                    className="flex items-center justify-between p-3 border rounded-lg"
-                  >
-                    <div className="flex items-center gap-3">
-                      {u.role === "admin" ? (
-                        <Shield className="h-5 w-5 text-primary" />
-                      ) : (
-                        <User className="h-5 w-5 text-muted-foreground" />
-                      )}
-                      <div>
-                        <p className="font-medium">{u.name || u.email}</p>
-                        <p className="text-sm text-muted-foreground">{u.email}</p>
-                      </div>
-                    </div>
-                    {u.id !== user?.id && (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleDeleteUser(u.id)}
-                      >
-                        <Trash2 className="h-4 w-4 text-destructive" />
-                      </Button>
-                    )}
-                  </div>
-                ))}
-                {users.length === 0 && (
-                  <Alert>
-                    <AlertDescription>
-                      Nenhum usuário cadastrado ainda.
-                    </AlertDescription>
-                  </Alert>
-                )}
               </div>
-            </CardContent>
-          </Card>
-        </div>
+            </form>
+          </CardContent>
+        </Card>
+
+        {/* Users Table */}
+        <Card>
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle>Usuários do Sistema</CardTitle>
+                <CardDescription>
+                  Total de {users.length} usuários cadastrados
+                </CardDescription>
+              </div>
+              <div className="relative w-64">
+                <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Buscar por nome ou email..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="pl-8"
+                />
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent>
+            {filteredUsers.length === 0 ? (
+              <Alert>
+                <AlertDescription>
+                  {searchTerm 
+                    ? "Nenhum usuário encontrado com esse critério de busca."
+                    : "Nenhum usuário cadastrado ainda."}
+                </AlertDescription>
+              </Alert>
+            ) : (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Usuário</TableHead>
+                    <TableHead>Email</TableHead>
+                    <TableHead>Função</TableHead>
+                    <TableHead className="text-right">Vídeos</TableHead>
+                    <TableHead className="text-right">Total Análises</TableHead>
+                    <TableHead className="text-right">Análises (Mês)</TableHead>
+                    <TableHead className="text-right">Ações</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {filteredUsers.map((u) => (
+                    <TableRow key={u.id}>
+                      <TableCell>
+                        <div className="flex items-center gap-2">
+                          {u.role === "admin" ? (
+                            <Shield className="h-4 w-4 text-primary" />
+                          ) : (
+                            <User className="h-4 w-4 text-muted-foreground" />
+                          )}
+                          <span className="font-medium">{u.name || "Sem nome"}</span>
+                        </div>
+                      </TableCell>
+                      <TableCell>{u.email}</TableCell>
+                      <TableCell>
+                        <span className={u.role === "admin" ? "text-primary font-medium" : ""}>
+                          {u.role === "admin" ? "Administrador" : "Usuário"}
+                        </span>
+                      </TableCell>
+                      <TableCell className="text-right">{u.videosCount}</TableCell>
+                      <TableCell className="text-right">{u.analysesCount}</TableCell>
+                      <TableCell className="text-right font-medium">{u.monthlyAnalyses}</TableCell>
+                      <TableCell className="text-right">
+                        {u.id !== user?.id ? (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleDeleteUser(u.id)}
+                          >
+                            <Trash2 className="h-4 w-4 text-destructive" />
+                          </Button>
+                        ) : (
+                          <span className="text-xs text-muted-foreground">Você</span>
+                        )}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            )}
+          </CardContent>
+        </Card>
 
         <div className="flex justify-center">
           <Button variant="outline" onClick={() => navigate("/dashboard")}>

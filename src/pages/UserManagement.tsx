@@ -50,6 +50,9 @@ const UserManagement = () => {
   const checkAdminStatus = async () => {
     if (!user) return;
 
+    console.log("Checking admin status for user:", user.id);
+    console.log("User email:", user.email);
+
     const { data, error } = await supabase
       .from("user_roles")
       .select("role")
@@ -57,15 +60,19 @@ const UserManagement = () => {
       .eq("role", "admin")
       .single();
 
+    console.log("Admin check result:", { data, error });
+
     if (data && !error) {
+      console.log("User is admin!");
       setIsAdmin(true);
     } else {
+      console.log("User is NOT admin");
       toast({
         title: "Acesso negado",
         description: "Você não tem permissão para acessar esta página",
         variant: "destructive",
       });
-      navigate("/dashboard");
+      setTimeout(() => navigate("/dashboard"), 2000);
     }
   };
 

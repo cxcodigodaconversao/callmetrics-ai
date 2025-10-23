@@ -78,9 +78,22 @@ Deno.serve(async (req) => {
       }
       
       const fileId = fileIdMatch[1];
-      // Use direct download URL
-      audioUrl = `https://drive.google.com/uc?export=download&id=${fileId}`;
-      console.log(`Google Drive direct download URL: ${audioUrl}`);
+      
+      // Try to get direct download URL with virus scan bypass
+      // First attempt: standard download
+      audioUrl = `https://drive.google.com/uc?export=download&id=${fileId}&confirm=t`;
+      console.log(`Google Drive download URL: ${audioUrl}`);
+      
+      // Make a HEAD request to check if file is accessible
+      const headResponse = await fetch(audioUrl, { method: 'HEAD' });
+      console.log(`HEAD response status: ${headResponse.status}`);
+      console.log(`HEAD response content-type: ${headResponse.headers.get('content-type')}`);
+      
+      // If we get HTML back, it means we need a different approach
+      const contentType = headResponse.headers.get('content-type') || '';
+      if (contentType.includes('text/html')) {
+        throw new Error('Não foi possível acessar o arquivo do Google Drive. Por favor: 1) Verifique se o link está configurado como "Qualquer pessoa com o link pode visualizar", 2) Tente fazer o download do vídeo e fazer upload direto pela opção "Upload de Arquivo"');
+      }
     }
 
     console.log(`Audio URL obtained: ${audioUrl}`);

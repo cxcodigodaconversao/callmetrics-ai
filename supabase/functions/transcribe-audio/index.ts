@@ -38,13 +38,13 @@ Deno.serve(async (req) => {
 
     // Check if file is too small (likely an error page)
     if (audioBlob.size < 10000) {
-      throw new Error('Arquivo muito pequeno ou inválido. Se for Google Drive, verifique se o link está público (Qualquer pessoa com o link pode visualizar) e tente novamente.');
+      throw new Error('Arquivo muito pequeno ou inválido. Isso geralmente acontece quando o Google Drive não permite download direto. Recomendação: Baixe o vídeo e use a opção "Upload de Arquivo".');
     }
 
     // Validate content type
     const contentType = audioBlob.type.toLowerCase();
-    if (!contentType.includes('video') && !contentType.includes('audio') && contentType !== 'application/octet-stream') {
-      throw new Error(`Formato inválido detectado: ${contentType}. Verifique se o link do Google Drive está público e acessível.`);
+    if (!contentType.includes('video') && !contentType.includes('audio') && !contentType.includes('octet-stream')) {
+      throw new Error(`Google Drive retornou um arquivo inválido (${contentType}). Solução: Baixe o vídeo localmente e use a opção "Upload de Arquivo" ao invés do link do Google Drive.`);
     }
 
     // Prepare form data for Whisper API

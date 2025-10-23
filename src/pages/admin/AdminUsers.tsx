@@ -150,6 +150,21 @@ const AdminUsers = () => {
 
       if (error) throw error;
 
+      // Check if the response contains an error message
+      if (data && typeof data === 'object' && 'error' in data) {
+        const errorMessage = data.error as string;
+        
+        // Handle specific error cases with friendly messages
+        if (errorMessage.includes('already been registered') || errorMessage.includes('email_exists')) {
+          toast.error("Este email já está cadastrado no sistema.");
+        } else if (errorMessage.includes('Invalid')) {
+          toast.error("Dados inválidos. Verifique os campos e tente novamente.");
+        } else {
+          toast.error(errorMessage);
+        }
+        return;
+      }
+
       toast.success("Usuário criado com sucesso!");
       setIsCreateDialogOpen(false);
       setNewUserEmail("");
@@ -162,7 +177,16 @@ const AdminUsers = () => {
         toast.error(error.errors[0]?.message || "Verifique os campos e tente novamente.");
       } else {
         console.error("Error creating user:", error);
-        toast.error(error.message || "Erro ao criar usuário");
+        const errorMessage = error.message || "Erro ao criar usuário";
+        
+        // Handle specific error cases
+        if (errorMessage.includes('already been registered') || errorMessage.includes('email_exists')) {
+          toast.error("Este email já está cadastrado no sistema.");
+        } else if (errorMessage.includes('Invalid')) {
+          toast.error("Dados inválidos. Verifique os campos e tente novamente.");
+        } else {
+          toast.error(errorMessage);
+        }
       }
     } finally {
       setCreatingUser(false);

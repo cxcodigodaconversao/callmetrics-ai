@@ -15,7 +15,7 @@ const profileSchema = z.object({
   email: z.string().email("Email inválido"),
   phone: z.string().trim().max(20, "Telefone muito longo").optional(),
   company: z.string().trim().max(100, "Nome da empresa muito longo").optional(),
-  role: z.string().trim().max(50, "Cargo muito longo").optional(),
+  job_title: z.string().trim().max(50, "Cargo muito longo").optional(),
 });
 
 type ProfileData = z.infer<typeof profileSchema>;
@@ -29,7 +29,7 @@ export default function Settings() {
     email: "",
     phone: "",
     company: "",
-    role: "",
+    job_title: "",
   });
   const [errors, setErrors] = useState<Partial<Record<keyof ProfileData, string>>>({});
 
@@ -59,7 +59,7 @@ export default function Settings() {
           email: data.email || "",
           phone: data.phone || "",
           company: data.company || "",
-          role: data.role || "",
+          job_title: data.job_title || "",
         });
       }
     } catch (error: any) {
@@ -113,7 +113,7 @@ export default function Settings() {
           name: profile.name,
           phone: profile.phone || null,
           company: profile.company || null,
-          role: profile.role || null,
+          job_title: profile.job_title || null,
           updated_at: new Date().toISOString(),
         })
         .eq("id", user.id);
@@ -253,19 +253,19 @@ export default function Settings() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="role" className="flex items-center gap-2">
+                <Label htmlFor="job_title" className="flex items-center gap-2">
                   <Briefcase className="w-4 h-4" />
                   Cargo
                 </Label>
                 <Input
-                  id="role"
-                  value={profile.role}
-                  onChange={(e) => handleInputChange("role", e.target.value)}
+                  id="job_title"
+                  value={profile.job_title}
+                  onChange={(e) => handleInputChange("job_title", e.target.value)}
                   placeholder="Seu cargo na empresa"
-                  className={errors.role ? "border-red-500" : ""}
+                  className={errors.job_title ? "border-red-500" : ""}
                 />
-                {errors.role && (
-                  <p className="text-sm text-red-500">{errors.role}</p>
+                {errors.job_title && (
+                  <p className="text-sm text-red-500">{errors.job_title}</p>
                 )}
               </div>
 

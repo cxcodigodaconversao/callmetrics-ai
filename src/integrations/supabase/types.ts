@@ -14,48 +14,6 @@ export type Database = {
   }
   public: {
     Tables: {
-      ai_usage_logs: {
-        Row: {
-          analysis_id: string | null
-          id: number
-          source: string | null
-          used_at: string | null
-          user_id: string
-          video_id: string | null
-        }
-        Insert: {
-          analysis_id?: string | null
-          id?: number
-          source?: string | null
-          used_at?: string | null
-          user_id: string
-          video_id?: string | null
-        }
-        Update: {
-          analysis_id?: string | null
-          id?: number
-          source?: string | null
-          used_at?: string | null
-          user_id?: string
-          video_id?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "ai_usage_logs_analysis_id_fkey"
-            columns: ["analysis_id"]
-            isOneToOne: false
-            referencedRelation: "analyses"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "ai_usage_logs_video_id_fkey"
-            columns: ["video_id"]
-            isOneToOne: false
-            referencedRelation: "videos"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       analyses: {
         Row: {
           cost_usd: number | null
@@ -232,7 +190,6 @@ export type Database = {
           created_at: string
           email: string
           id: string
-          is_active: boolean | null
           name: string | null
           phone: string | null
           role: string | null
@@ -244,7 +201,6 @@ export type Database = {
           created_at?: string
           email: string
           id: string
-          is_active?: boolean | null
           name?: string | null
           phone?: string | null
           role?: string | null
@@ -256,7 +212,6 @@ export type Database = {
           created_at?: string
           email?: string
           id?: string
-          is_active?: boolean | null
           name?: string | null
           phone?: string | null
           role?: string | null

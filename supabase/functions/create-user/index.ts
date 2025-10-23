@@ -117,23 +117,9 @@ serve(async (req) => {
     }
 
     console.log("User created successfully:", newUser.user.id);
-
-    // Create profile
-    console.log("Creating profile...");
-    const { error: profileError } = await supabaseAdmin
-      .from("profiles")
-      .insert({
-        id: newUser.user.id,
-        email: validated.email,
-        name: validated.name,
-      });
-
-    if (profileError) {
-      console.error("Profile creation failed:", profileError);
-      throw profileError;
-    }
-
-    console.log("Profile created successfully");
+    
+    // Note: Profile is created automatically by the handle_new_user_profile trigger
+    console.log("Profile will be created automatically by trigger");
 
     // Assign role
     console.log("Assigning role:", validated.role);

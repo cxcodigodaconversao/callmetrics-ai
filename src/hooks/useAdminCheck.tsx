@@ -8,12 +8,17 @@ export const useAdminCheck = () => {
   const navigate = useNavigate();
 
   useEffect(() => {
+    let mounted = true;
+    
     const checkAdminStatus = async () => {
       try {
         const { data: { user } } = await supabase.auth.getUser();
         
+        if (!mounted) return;
+        
         if (!user) {
-          navigate("/auth");
+          setLoading(false);
+          setTimeout(() => navigate("/auth"), 0);
           return;
         }
 
@@ -24,20 +29,28 @@ export const useAdminCheck = () => {
           .eq("role", "admin")
           .maybeSingle();
 
+        if (!mounted) return;
+
         setIsAdmin(!!roles);
+        setLoading(false);
         
         if (!roles) {
-          navigate("/dashboard");
+          setTimeout(() => navigate("/dashboard"), 0);
         }
       } catch (error) {
         console.error("Error checking admin status:", error);
-        navigate("/dashboard");
-      } finally {
-        setLoading(false);
+        if (mounted) {
+          setLoading(false);
+          setTimeout(() => navigate("/dashboard"), 0);
+        }
       }
     };
 
     checkAdminStatus();
+    
+    return () => {
+      mounted = false;
+    };
   }, [navigate]);
 
   return { isAdmin, loading };

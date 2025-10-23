@@ -7,11 +7,11 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { useNavigate } from "react-router-dom";
-import { Loader2, UserPlus, Trash2, Shield, User, Search } from "lucide-react";
+import { Loader2, UserPlus, Trash2, Shield, User, Search, BarChart3 } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 
-interface UserWithRole {
+interface UserWithStats {
   id: string;
   email: string;
   name: string;
@@ -27,9 +27,10 @@ const UserManagement = () => {
   const { toast } = useToast();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
-  const [users, setUsers] = useState<UserWithRole[]>([]);
+  const [users, setUsers] = useState<UserWithStats[]>([]);
   const [isAdmin, setIsAdmin] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
+  const [initializing, setInitializing] = useState(true);
 
   // Form state
   const [email, setEmail] = useState("");
@@ -38,45 +39,56 @@ const UserManagement = () => {
   const [role, setRole] = useState<"admin" | "user">("user");
 
   useEffect(() => {
+    console.log("UserManagement mounted, user:", user?.email);
     if (!user) {
+      console.log("No user, redirecting to auth");
       navigate("/auth");
       return;
     }
 
     checkAdminStatus();
-    fetchUsers();
   }, [user, navigate]);
 
   const checkAdminStatus = async () => {
     if (!user) return;
 
-    console.log("Checking admin status for user:", user.id);
-    console.log("User email:", user.email);
+    console.log("=== CHECKING ADMIN STATUS ===");
+    console.log("User ID:", user.id);
+    console.log("User Email:", user.email);
 
-    const { data, error } = await supabase
-      .from("user_roles")
-      .select("role")
-      .eq("user_id", user.id)
-      .eq("role", "admin")
-      .single();
+    try {
+      const { data, error } = await supabase
+        .from("user_roles")
+        .select("role")
+        .eq("user_id", user.id)
+        .eq("role", "admin")
+        .single();
 
-    console.log("Admin check result:", { data, error });
+      console.log("Admin check result:", { data, error });
 
-    if (data && !error) {
-      console.log("User is admin!");
-      setIsAdmin(true);
-    } else {
-      console.log("User is NOT admin");
-      toast({
-        title: "Acesso negado",
-        description: "Você não tem permissão para acessar esta página",
-        variant: "destructive",
-      });
-      setTimeout(() => navigate("/dashboard"), 2000);
+      if (data && !error) {
+        console.log("✅ USER IS ADMIN - Granting access");
+        setIsAdmin(true);
+        fetchUsers();
+      } else {
+        console.log("❌ USER IS NOT ADMIN - Denying access");
+        toast({
+          title: "Acesso Negado",
+          description: "Você não tem permissão para acessar esta página.",
+          variant: "destructive",
+        });
+        setTimeout(() => navigate("/dashboard"), 2000);
+      }
+    } catch (error) {
+      console.error("Error checking admin status:", error);
+      navigate("/dashboard");
+    } finally {
+      setInitializing(false);
     }
   };
 
   const fetchUsers = async () => {
+    console.log("=== FETCHING USERS ===");
     try {
       const { data: usersData, error: usersError } = await supabase
         .from("profiles")
@@ -84,6 +96,7 @@ const UserManagement = () => {
         .order("created_at", { ascending: false });
 
       if (usersError) throw usersError;
+      console.log("Fetched profiles:", usersData?.length);
 
       // Get current month start date
       const currentMonth = new Date();
@@ -91,8 +104,9 @@ const UserManagement = () => {
       currentMonth.setHours(0, 0, 0, 0);
 
       // Fetch roles and stats for each user
-      const usersWithRoles = await Promise.all(
+      const usersWithStats = await Promise.all(
         (usersData || []).map(async (user) => {
+          // Check if admin
           const { data: roleData } = await supabase
             .from("user_roles")
             .select("role")
@@ -125,12 +139,14 @@ const UserManagement = () => {
             videosCount: videosCount || 0,
             analysesCount: analysesCount || 0,
             monthlyAnalyses: monthlyAnalyses || 0,
-          } as UserWithRole;
+          } as UserWithStats;
         })
       );
 
-      setUsers(usersWithRoles);
+      console.log("Users with stats:", usersWithStats.length);
+      setUsers(usersWithStats);
     } catch (error: any) {
+      console.error("Error fetching users:", error);
       toast({
         title: "Erro ao carregar usuários",
         description: error.message,
@@ -143,17 +159,32 @@ const UserManagement = () => {
     e.preventDefault();
     setLoading(true);
 
+    console.log("=== CREATING USER ===");
+    console.log("Request:", { email, name, role });
+
     try {
-      // Call edge function to create user
+      const { data: sessionData } = await supabase.auth.getSession();
+      const accessToken = sessionData.session?.access_token;
+
+      if (!accessToken) {
+        throw new Error("Não autenticado");
+      }
+
+      console.log("Calling create-user edge function...");
       const { data, error } = await supabase.functions.invoke("create-user", {
         body: { email, password, name, role },
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
       });
+
+      console.log("Create user response:", { data, error });
 
       if (error) throw error;
 
       toast({
-        title: "Usuário criado com sucesso!",
-        description: `${name} foi adicionado ao sistema.`,
+        title: "Usuário criado!",
+        description: `${name} foi adicionado ao sistema com sucesso.`,
       });
 
       // Clear form
@@ -165,9 +196,10 @@ const UserManagement = () => {
       // Refresh users list
       fetchUsers();
     } catch (error: any) {
+      console.error("Error creating user:", error);
       toast({
         title: "Erro ao criar usuário",
-        description: error.message,
+        description: error.message || "Erro desconhecido",
         variant: "destructive",
       });
     } finally {
@@ -175,35 +207,59 @@ const UserManagement = () => {
     }
   };
 
-  const handleDeleteUser = async (userId: string) => {
-    if (!confirm("Tem certeza que deseja excluir este usuário?")) return;
+  const handleDeleteUser = async (userId: string, userName: string) => {
+    if (!confirm(`Tem certeza que deseja excluir o usuário "${userName}"? Esta ação não pode ser desfeita.`)) {
+      return;
+    }
+
+    console.log("=== DELETING USER ===");
+    console.log("User ID:", userId);
 
     try {
-      const { error } = await supabase.functions.invoke("delete-user", {
+      const { data: sessionData } = await supabase.auth.getSession();
+      const accessToken = sessionData.session?.access_token;
+
+      if (!accessToken) {
+        throw new Error("Não autenticado");
+      }
+
+      console.log("Calling delete-user edge function...");
+      const { data, error } = await supabase.functions.invoke("delete-user", {
         body: { userId },
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
       });
+
+      console.log("Delete user response:", { data, error });
 
       if (error) throw error;
 
       toast({
         title: "Usuário excluído",
-        description: "O usuário foi removido do sistema.",
+        description: `${userName} foi removido do sistema.`,
       });
 
       fetchUsers();
     } catch (error: any) {
+      console.error("Error deleting user:", error);
       toast({
         title: "Erro ao excluir usuário",
-        description: error.message,
+        description: error.message || "Erro desconhecido",
         variant: "destructive",
       });
     }
   };
 
-  if (!isAdmin) {
+  if (initializing || !isAdmin) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin" />
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="text-center">
+          <Loader2 className="h-8 w-8 animate-spin text-primary mx-auto mb-4" />
+          <p className="text-muted-foreground">
+            {initializing ? "Verificando permissões..." : "Acesso negado"}
+          </p>
+        </div>
       </div>
     );
   }
@@ -220,11 +276,17 @@ const UserManagement = () => {
   return (
     <div className="min-h-screen bg-background p-8">
       <div className="max-w-7xl mx-auto space-y-8">
-        <div>
-          <h1 className="text-4xl font-bold">Gerenciamento de Usuários</h1>
-          <p className="text-muted-foreground mt-2">
-            Crie e gerencie usuários do sistema
-          </p>
+        {/* Header */}
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-4xl font-bold">Gerenciamento de Usuários</h1>
+            <p className="text-muted-foreground mt-2">
+              Crie e gerencie usuários do sistema
+            </p>
+          </div>
+          <Button variant="outline" onClick={() => navigate("/dashboard")}>
+            Voltar ao Dashboard
+          </Button>
         </div>
 
         {/* Create User Form */}
@@ -267,7 +329,7 @@ const UserManagement = () => {
                 <Input
                   id="password"
                   type="password"
-                  placeholder="••••••••"
+                  placeholder="Mínimo 6 caracteres"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   required
@@ -280,7 +342,7 @@ const UserManagement = () => {
                   id="role"
                   value={role}
                   onChange={(e) => setRole(e.target.value as "admin" | "user")}
-                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 >
                   <option value="user">Usuário</option>
                   <option value="admin">Administrador</option>
@@ -294,7 +356,10 @@ const UserManagement = () => {
                       Criando...
                     </>
                   ) : (
-                    "Criar Usuário"
+                    <>
+                      <UserPlus className="mr-2 h-4 w-4" />
+                      Criar
+                    </>
                   )}
                 </Button>
               </div>
@@ -307,7 +372,10 @@ const UserManagement = () => {
           <CardHeader>
             <div className="flex items-center justify-between">
               <div>
-                <CardTitle>Usuários do Sistema</CardTitle>
+                <CardTitle className="flex items-center gap-2">
+                  <BarChart3 className="h-5 w-5" />
+                  Usuários do Sistema
+                </CardTitle>
                 <CardDescription>
                   Total de {users.length} usuários cadastrados
                 </CardDescription>
@@ -333,66 +401,65 @@ const UserManagement = () => {
                 </AlertDescription>
               </Alert>
             ) : (
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Usuário</TableHead>
-                    <TableHead>Email</TableHead>
-                    <TableHead>Função</TableHead>
-                    <TableHead className="text-right">Vídeos</TableHead>
-                    <TableHead className="text-right">Total Análises</TableHead>
-                    <TableHead className="text-right">Análises (Mês)</TableHead>
-                    <TableHead className="text-right">Ações</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredUsers.map((u) => (
-                    <TableRow key={u.id}>
-                      <TableCell>
-                        <div className="flex items-center gap-2">
-                          {u.role === "admin" ? (
-                            <Shield className="h-4 w-4 text-primary" />
-                          ) : (
-                            <User className="h-4 w-4 text-muted-foreground" />
-                          )}
-                          <span className="font-medium">{u.name || "Sem nome"}</span>
-                        </div>
-                      </TableCell>
-                      <TableCell>{u.email}</TableCell>
-                      <TableCell>
-                        <span className={u.role === "admin" ? "text-primary font-medium" : ""}>
-                          {u.role === "admin" ? "Administrador" : "Usuário"}
-                        </span>
-                      </TableCell>
-                      <TableCell className="text-right">{u.videosCount}</TableCell>
-                      <TableCell className="text-right">{u.analysesCount}</TableCell>
-                      <TableCell className="text-right font-medium">{u.monthlyAnalyses}</TableCell>
-                      <TableCell className="text-right">
-                        {u.id !== user?.id ? (
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleDeleteUser(u.id)}
-                          >
-                            <Trash2 className="h-4 w-4 text-destructive" />
-                          </Button>
-                        ) : (
-                          <span className="text-xs text-muted-foreground">Você</span>
-                        )}
-                      </TableCell>
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Usuário</TableHead>
+                      <TableHead>Email</TableHead>
+                      <TableHead>Função</TableHead>
+                      <TableHead className="text-right">Vídeos</TableHead>
+                      <TableHead className="text-right">Total Análises</TableHead>
+                      <TableHead className="text-right">Análises (Mês)</TableHead>
+                      <TableHead className="text-right">Ações</TableHead>
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+                  </TableHeader>
+                  <TableBody>
+                    {filteredUsers.map((u) => (
+                      <TableRow key={u.id}>
+                        <TableCell>
+                          <div className="flex items-center gap-2">
+                            {u.role === "admin" ? (
+                              <Shield className="h-4 w-4 text-primary" />
+                            ) : (
+                              <User className="h-4 w-4 text-muted-foreground" />
+                            )}
+                            <span className="font-medium">{u.name || "Sem nome"}</span>
+                          </div>
+                        </TableCell>
+                        <TableCell className="text-muted-foreground">{u.email}</TableCell>
+                        <TableCell>
+                          <span className={u.role === "admin" ? "text-primary font-medium" : "text-muted-foreground"}>
+                            {u.role === "admin" ? "Administrador" : "Usuário"}
+                          </span>
+                        </TableCell>
+                        <TableCell className="text-right">{u.videosCount}</TableCell>
+                        <TableCell className="text-right">{u.analysesCount}</TableCell>
+                        <TableCell className="text-right">
+                          <span className="font-medium">{u.monthlyAnalyses}</span>
+                        </TableCell>
+                        <TableCell className="text-right">
+                          {u.id !== user?.id ? (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleDeleteUser(u.id, u.name || u.email)}
+                              className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          ) : (
+                            <span className="text-xs text-muted-foreground">Você</span>
+                          )}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
             )}
           </CardContent>
         </Card>
-
-        <div className="flex justify-center">
-          <Button variant="outline" onClick={() => navigate("/dashboard")}>
-            Voltar ao Dashboard
-          </Button>
-        </div>
       </div>
     </div>
   );

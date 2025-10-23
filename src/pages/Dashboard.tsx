@@ -65,22 +65,30 @@ const Dashboard = () => {
   const checkAdminStatus = async () => {
     if (!user) return;
 
-    console.log("Dashboard - Checking admin for user:", user.id, user.email);
+    console.log("=== DASHBOARD ADMIN CHECK ===");
+    console.log("User ID:", user.id);
+    console.log("User Email:", user.email);
 
-    const { data, error } = await supabase
-      .from("user_roles")
-      .select("role")
-      .eq("user_id", user.id)
-      .eq("role", "admin")
-      .single();
+    try {
+      const { data, error } = await supabase
+        .from("user_roles")
+        .select("role")
+        .eq("user_id", user.id)
+        .eq("role", "admin")
+        .single();
 
-    console.log("Dashboard - Admin check result:", { data, error });
+      console.log("Admin check result:", { data, error });
 
-    if (data && !error) {
-      console.log("Dashboard - User IS admin, showing Users menu");
-      setIsAdmin(true);
-    } else {
-      console.log("Dashboard - User is NOT admin");
+      if (data && !error) {
+        console.log("✅ User IS ADMIN - Showing Users menu");
+        setIsAdmin(true);
+      } else {
+        console.log("❌ User is NOT admin");
+        setIsAdmin(false);
+      }
+    } catch (error) {
+      console.error("Error checking admin:", error);
+      setIsAdmin(false);
     }
   };
 

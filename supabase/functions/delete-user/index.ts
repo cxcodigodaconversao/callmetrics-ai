@@ -3,19 +3,26 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
 serve(async (req) => {
+  console.log("=== DELETE USER FUNCTION STARTED ===");
+  
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
   }
 
   try {
+    // Initialize admin client
+    const supabaseUrl = Deno.env.get("SUPABASE_URL");
+    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+    
+    console.log("Initializing Supabase admin client...");
+    
     const supabaseAdmin = createClient(
-      Deno.env.get("SUPABASE_URL") ?? "",
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
+      supabaseUrl ?? "",
+      supabaseServiceKey ?? "",
       {
         auth: {
           autoRefreshToken: false,
@@ -24,18 +31,27 @@ serve(async (req) => {
       }
     );
 
-    // Verify the requester is an admin
-    const authHeader = req.headers.get("Authorization")!;
-    const token = authHeader.replace("Bearer ", "");
-    const { data: { user }, error: userError } = await supabaseAdmin.auth.getUser(
-      token
-    );
-
-    if (userError || !user) {
-      throw new Error("Unauthorized");
+    // Verify the requester is authenticated
+    const authHeader = req.headers.get("Authorization");
+    if (!authHeader) {
+      console.error("No authorization header");
+      throw new Error("Unauthorized - No auth header");
     }
 
-    // Check if user has admin role
+    const token = authHeader.replace("Bearer ", "");
+    console.log("Verifying user token...");
+    
+    const { data: { user }, error: userError } = await supabaseAdmin.auth.getUser(token);
+
+    if (userError || !user) {
+      console.error("User verification failed:", userError);
+      throw new Error("Unauthorized - Invalid token");
+    }
+
+    console.log("User verified:", user.email);
+
+    // Check if user is admin
+    console.log("Checking admin status for user:", user.id);
     const { data: roleData, error: roleError } = await supabaseAdmin
       .from("user_roles")
       .select("role")
@@ -44,18 +60,31 @@ serve(async (req) => {
       .single();
 
     if (roleError || !roleData) {
-      throw new Error("Insufficient permissions");
+      console.error("Admin check failed:", roleError);
+      throw new Error("Insufficient permissions - User is not admin");
     }
+
+    console.log("Admin verified, proceeding with user deletion");
 
     // Get request body
     const { userId } = await req.json();
+    console.log("Deleting user:", userId);
+
+    // Don't allow deleting yourself
+    if (userId === user.id) {
+      throw new Error("Cannot delete your own user account");
+    }
 
     // Delete the user (cascade will handle profiles and roles)
-    const { error: deleteError } = await supabaseAdmin.auth.admin.deleteUser(
-      userId
-    );
+    const { error: deleteError } = await supabaseAdmin.auth.admin.deleteUser(userId);
 
-    if (deleteError) throw deleteError;
+    if (deleteError) {
+      console.error("User deletion failed:", deleteError);
+      throw deleteError;
+    }
+
+    console.log("User deleted successfully");
+    console.log("=== USER DELETION COMPLETED ===");
 
     return new Response(
       JSON.stringify({ success: true }),
@@ -65,6 +94,8 @@ serve(async (req) => {
       }
     );
   } catch (error) {
+    console.error("=== ERROR IN DELETE USER ===");
+    console.error(error);
     const errorMessage = error instanceof Error ? error.message : "Unknown error occurred";
     return new Response(
       JSON.stringify({ error: errorMessage }),

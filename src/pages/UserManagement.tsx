@@ -52,39 +52,30 @@ const UserManagement = () => {
   const checkAdminStatus = async () => {
     if (!user) return;
 
-    console.log("=== CHECKING ADMIN STATUS ===");
-    console.log("User ID:", user.id);
-    console.log("User Email:", user.email);
+    // APENAS este email específico pode acessar
+    const ADMIN_EMAIL = "cxcodigodaconversao@gmail.com";
+    const isAllowedAdmin = user.email === ADMIN_EMAIL;
+    
+    console.log("=== USER MANAGEMENT ACCESS CHECK ===");
+    console.log("User email:", user.email);
+    console.log("Expected admin:", ADMIN_EMAIL);
+    console.log("Access allowed:", isAllowedAdmin);
 
-    try {
-      const { data, error } = await supabase
-        .from("user_roles")
-        .select("role")
-        .eq("user_id", user.id)
-        .eq("role", "admin")
-        .single();
-
-      console.log("Admin check result:", { data, error });
-
-      if (data && !error) {
-        console.log("✅ USER IS ADMIN - Granting access");
-        setIsAdmin(true);
-        fetchUsers();
-      } else {
-        console.log("❌ USER IS NOT ADMIN - Denying access");
-        toast({
-          title: "Acesso Negado",
-          description: "Você não tem permissão para acessar esta página.",
-          variant: "destructive",
-        });
-        setTimeout(() => navigate("/dashboard"), 2000);
-      }
-    } catch (error) {
-      console.error("Error checking admin status:", error);
-      navigate("/dashboard");
-    } finally {
-      setInitializing(false);
+    if (isAllowedAdmin) {
+      console.log("✅ ACCESS GRANTED");
+      setIsAdmin(true);
+      fetchUsers();
+    } else {
+      console.log("❌ ACCESS DENIED");
+      toast({
+        title: "Acesso Negado",
+        description: "Apenas o administrador principal pode acessar esta página.",
+        variant: "destructive",
+      });
+      setTimeout(() => navigate("/dashboard"), 2000);
     }
+    
+    setInitializing(false);
   };
 
   const fetchUsers = async () => {

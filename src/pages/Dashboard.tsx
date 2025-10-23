@@ -65,31 +65,15 @@ const Dashboard = () => {
   const checkAdminStatus = async () => {
     if (!user) return;
 
-    console.log("=== DASHBOARD ADMIN CHECK ===");
-    console.log("User ID:", user.id);
-    console.log("User Email:", user.email);
-
-    try {
-      const { data, error } = await supabase
-        .from("user_roles")
-        .select("role")
-        .eq("user_id", user.id)
-        .eq("role", "admin")
-        .single();
-
-      console.log("Admin check result:", { data, error });
-
-      if (data && !error) {
-        console.log("✅ User IS ADMIN - Showing Users menu");
-        setIsAdmin(true);
-      } else {
-        console.log("❌ User is NOT admin");
-        setIsAdmin(false);
-      }
-    } catch (error) {
-      console.error("Error checking admin:", error);
-      setIsAdmin(false);
-    }
+    // APENAS este email específico pode acessar gerenciamento de usuários
+    const ADMIN_EMAIL = "cxcodigodaconversao@gmail.com";
+    const isAllowedAdmin = user.email === ADMIN_EMAIL;
+    
+    console.log("=== ADMIN CHECK ===");
+    console.log("User email:", user.email);
+    console.log("Is allowed admin:", isAllowedAdmin);
+    
+    setIsAdmin(isAllowedAdmin);
   };
 
   const fetchVideos = async () => {

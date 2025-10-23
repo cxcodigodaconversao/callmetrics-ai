@@ -1,10 +1,19 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { z } from "https://deno.land/x/zod@v3.22.4/mod.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
+
+// Validation schema
+const createUserSchema = z.object({
+  email: z.string().trim().email().max(255),
+  password: z.string().min(6).max(100),
+  name: z.string().trim().min(1).max(100),
+  role: z.enum(["user", "admin"]).default("user"),
+});
 
 serve(async (req) => {
   console.log("=== CREATE USER FUNCTION STARTED ===");
@@ -66,16 +75,28 @@ serve(async (req) => {
 
     console.log("Admin verified, proceeding with user creation");
 
-    // Get request body
-    const { email, password, name, role } = await req.json();
-    console.log("Creating user:", { email, name, role });
+    // Get and validate request body
+    const requestBody = await req.json();
+    
+    let validated;
+    try {
+      validated = createUserSchema.parse(requestBody);
+    } catch (validationError) {
+      console.error("Validation error:", validationError);
+      if (validationError instanceof z.ZodError) {
+        throw new Error(`Validation failed: ${validationError.errors[0].message}`);
+      }
+      throw new Error("Invalid input data");
+    }
+    
+    console.log("Creating user:", { email: validated.email, name: validated.name, role: validated.role });
 
     // Create the user
     const { data: newUser, error: createError } = await supabaseAdmin.auth.admin.createUser({
-      email,
-      password,
+      email: validated.email,
+      password: validated.password,
       email_confirm: true,
-      user_metadata: { name },
+      user_metadata: { name: validated.name },
     });
 
     if (createError) {
@@ -91,8 +112,8 @@ serve(async (req) => {
       .from("profiles")
       .insert({
         id: newUser.user.id,
-        email,
-        name,
+        email: validated.email,
+        name: validated.name,
       });
 
     if (profileError) {
@@ -103,12 +124,12 @@ serve(async (req) => {
     console.log("Profile created successfully");
 
     // Assign role
-    console.log("Assigning role:", role || "user");
+    console.log("Assigning role:", validated.role);
     const { error: roleInsertError } = await supabaseAdmin
       .from("user_roles")
       .insert({
         user_id: newUser.user.id,
-        role: role || "user",
+        role: validated.role,
       });
 
     if (roleInsertError) {
@@ -125,7 +146,7 @@ serve(async (req) => {
         user: {
           id: newUser.user.id,
           email: newUser.user.email,
-          name: name
+          name: validated.name
         }
       }),
       {

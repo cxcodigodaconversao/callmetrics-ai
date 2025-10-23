@@ -26,6 +26,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
+import { registerSchema } from "@/lib/validations/auth";
 
 interface UserData {
   id: string;
@@ -128,20 +129,21 @@ const AdminUsers = () => {
 
   const handleCreateUser = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    if (!newUserEmail || !newUserPassword || !newUserName) {
-      toast.error("Preencha todos os campos");
-      return;
-    }
-
     setCreatingUser(true);
 
     try {
+      // Validate input using schema
+      const validated = registerSchema.parse({
+        email: newUserEmail,
+        password: newUserPassword,
+        name: newUserName,
+      });
+
       const { data, error } = await supabase.functions.invoke("create-user", {
         body: {
-          email: newUserEmail,
-          password: newUserPassword,
-          name: newUserName,
+          email: validated.email,
+          password: validated.password,
+          name: validated.name,
           role: "user",
         },
       });
@@ -155,8 +157,13 @@ const AdminUsers = () => {
       setNewUserName("");
       fetchUsers();
     } catch (error: any) {
-      console.error("Error creating user:", error);
-      toast.error(error.message || "Erro ao criar usuário");
+      if (error.errors) {
+        // Zod validation errors
+        toast.error(error.errors[0]?.message || "Verifique os campos e tente novamente.");
+      } else {
+        console.error("Error creating user:", error);
+        toast.error(error.message || "Erro ao criar usuário");
+      }
     } finally {
       setCreatingUser(false);
     }

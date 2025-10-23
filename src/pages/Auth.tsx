@@ -7,7 +7,7 @@ import { Brain, Loader2 } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
-import { loginSchema } from "@/lib/validations/auth";
+import { loginSchema, registerSchema } from "@/lib/validations/auth";
 import { supabase } from "@/integrations/supabase/client";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
@@ -100,15 +100,12 @@ const Auth = () => {
     setSignupLoading(true);
 
     try {
-      // Validate password length
-      if (signupPassword.length < 6) {
-        toast({
-          title: "Senha muito curta",
-          description: "A senha deve ter no mínimo 6 caracteres.",
-          variant: "destructive",
-        });
-        return;
-      }
+      // Validate input using schema
+      const validated = registerSchema.parse({
+        email: signupEmail,
+        password: signupPassword,
+        name: signupName,
+      });
 
       // Create user via edge function (admin only)
       const { data: sessionData } = await supabase.auth.getSession();
@@ -125,9 +122,9 @@ const Auth = () => {
 
       const { data, error } = await supabase.functions.invoke("create-user", {
         body: { 
-          email: signupEmail, 
-          password: signupPassword, 
-          name: signupName,
+          email: validated.email, 
+          password: validated.password, 
+          name: validated.name,
           role: "user"
         },
         headers: {
@@ -139,7 +136,7 @@ const Auth = () => {
 
       toast({
         title: "Usuário criado com sucesso!",
-        description: `${signupName} foi adicionado ao sistema.`,
+        description: `${validated.name} foi adicionado ao sistema.`,
       });
 
       // Clear form
@@ -147,11 +144,20 @@ const Auth = () => {
       setSignupEmail("");
       setSignupPassword("");
     } catch (error: any) {
-      toast({
-        title: "Erro ao criar usuário",
-        description: error.message || "Ocorreu um erro ao criar o usuário.",
-        variant: "destructive",
-      });
+      if (error.errors) {
+        // Zod validation errors
+        toast({
+          title: "Erro de validação",
+          description: error.errors[0]?.message || "Verifique os campos e tente novamente.",
+          variant: "destructive",
+        });
+      } else {
+        toast({
+          title: "Erro ao criar usuário",
+          description: error.message || "Ocorreu um erro ao criar o usuário.",
+          variant: "destructive",
+        });
+      }
     } finally {
       setSignupLoading(false);
     }

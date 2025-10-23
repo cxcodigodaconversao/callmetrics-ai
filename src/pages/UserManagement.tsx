@@ -49,30 +49,28 @@ const UserManagement = () => {
     checkAdminStatus();
   }, [user, navigate]);
 
-  const checkAdminStatus = async () => {
+  const checkAdminStatus = () => {
     if (!user) return;
 
-    // APENAS este email específico pode acessar
-    const ADMIN_EMAIL = "cxcodigodaconversao@gmail.com";
-    const isAllowedAdmin = user.email === ADMIN_EMAIL;
+    // APENAS ESTE EMAIL pode acessar gerenciamento de usuários
+    const isMasterAdmin = user.email === "cxcodigodaconversao@gmail.com";
     
-    console.log("=== USER MANAGEMENT ACCESS CHECK ===");
-    console.log("User email:", user.email);
-    console.log("Expected admin:", ADMIN_EMAIL);
-    console.log("Access allowed:", isAllowedAdmin);
+    console.log("=== VERIFICAÇÃO DE ACESSO ===");
+    console.log("Email do usuário:", user.email);
+    console.log("É admin master:", isMasterAdmin);
 
-    if (isAllowedAdmin) {
-      console.log("✅ ACCESS GRANTED");
+    if (isMasterAdmin) {
+      console.log("✅ ACESSO PERMITIDO");
       setIsAdmin(true);
       fetchUsers();
     } else {
-      console.log("❌ ACCESS DENIED");
+      console.log("❌ ACESSO NEGADO");
       toast({
         title: "Acesso Negado",
-        description: "Apenas o administrador principal pode acessar esta página.",
+        description: "Apenas cxcodigodaconversao@gmail.com pode acessar esta página.",
         variant: "destructive",
       });
-      setTimeout(() => navigate("/dashboard"), 2000);
+      setTimeout(() => navigate("/dashboard"), 1500);
     }
     
     setInitializing(false);

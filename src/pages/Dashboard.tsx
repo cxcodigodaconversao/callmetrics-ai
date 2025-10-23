@@ -28,15 +28,12 @@ const Dashboard = () => {
   const { user, signOut, loading } = useAuth();
   const [videos, setVideos] = useState<any[]>([]);
   const [loadingVideos, setLoadingVideos] = useState(true);
-  const [isAdmin, setIsAdmin] = useState(false);
 
-  // Redirect to auth if not logged in
   useEffect(() => {
     if (!loading && !user) {
       navigate("/auth");
     } else if (user) {
       fetchVideos();
-      checkAdminStatus();
       
       // Subscribe to real-time updates
       const channel = supabase
@@ -61,20 +58,6 @@ const Dashboard = () => {
       };
     }
   }, [user, loading, navigate]);
-
-  const checkAdminStatus = async () => {
-    if (!user) return;
-
-    // APENAS este email específico pode acessar gerenciamento de usuários
-    const ADMIN_EMAIL = "cxcodigodaconversao@gmail.com";
-    const isAllowedAdmin = user.email === ADMIN_EMAIL;
-    
-    console.log("=== ADMIN CHECK ===");
-    console.log("User email:", user.email);
-    console.log("Is allowed admin:", isAllowedAdmin);
-    
-    setIsAdmin(isAllowedAdmin);
-  };
 
   const fetchVideos = async () => {
     try {
@@ -165,11 +148,14 @@ const Dashboard = () => {
     return null;
   }
   
+  // Menu de navegação - Usuários APENAS para o admin master
+  const isMasterAdmin = user?.email === "cxcodigodaconversao@gmail.com";
+  
   const navItems = [
     { icon: <LayoutDashboard className="w-5 h-5" />, label: "Dashboard", path: "/dashboard" },
     { icon: <Upload className="w-5 h-5" />, label: "Nova Análise", path: "/dashboard/upload" },
     { icon: <FileText className="w-5 h-5" />, label: "Minhas Análises", path: "/dashboard/analyses" },
-    ...(isAdmin ? [{ icon: <Users className="w-5 h-5" />, label: "Usuários", path: "/dashboard/users" }] : []),
+    ...(isMasterAdmin ? [{ icon: <Users className="w-5 h-5" />, label: "Usuários", path: "/dashboard/users" }] : []),
     { icon: <Settings className="w-5 h-5" />, label: "Configurações", path: "/dashboard/settings" },
   ];
 

@@ -13,7 +13,8 @@ import {
   Clock,
   Target,
   Plus,
-  Play
+  Play,
+  Trash2
 } from "lucide-react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
@@ -108,6 +109,27 @@ const Dashboard = () => {
     } catch (error: any) {
       console.error('Full error:', error);
       toast.error(`Erro ao processar vídeo: ${error.message || 'Erro desconhecido'}`, { duration: 8000 });
+    }
+  };
+
+  const handleDeleteVideo = async (videoId: string) => {
+    if (!confirm('Tem certeza que deseja excluir este vídeo? Esta ação não pode ser desfeita.')) {
+      return;
+    }
+
+    try {
+      const { error } = await supabase
+        .from('videos')
+        .delete()
+        .eq('id', videoId);
+
+      if (error) throw error;
+
+      toast.success('Vídeo excluído com sucesso!');
+      fetchVideos();
+    } catch (error: any) {
+      console.error('Error deleting video:', error);
+      toast.error('Erro ao excluir vídeo');
     }
   };
 
@@ -271,36 +293,82 @@ const Dashboard = () => {
                     <div className="flex items-center gap-4">
                       {getStatusBadge(video.status)}
                       {video.status === 'pending' && (
-                        <Button 
-                          size="sm" 
-                          onClick={() => handleProcessVideo(video.id)}
-                          className="btn-primary"
-                        >
-                          <Play className="w-4 h-4 mr-2" />
-                          Processar
-                        </Button>
+                        <>
+                          <Button 
+                            size="sm" 
+                            onClick={() => handleProcessVideo(video.id)}
+                            className="btn-primary"
+                          >
+                            <Play className="w-4 h-4 mr-2" />
+                            Processar
+                          </Button>
+                          <Button 
+                            size="sm" 
+                            variant="destructive"
+                            onClick={() => handleDeleteVideo(video.id)}
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                        </>
                       )}
                       {video.status === 'processing' && (
-                        <Button 
-                          size="sm" 
-                          disabled
-                          variant="secondary"
-                        >
-                          <Brain className="w-4 h-4 mr-2 animate-pulse" />
-                          Analisando...
-                        </Button>
+                        <>
+                          <Button 
+                            size="sm" 
+                            disabled
+                            variant="secondary"
+                          >
+                            <Brain className="w-4 h-4 mr-2 animate-pulse" />
+                            Analisando...
+                          </Button>
+                          <Button 
+                            size="sm" 
+                            variant="outline"
+                            onClick={() => handleDeleteVideo(video.id)}
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                        </>
                       )}
                       {video.status === 'completed' && (
-                        <Link to="/dashboard/analyses">
-                          <Button size="sm" variant="outline" className="btn-outline">
-                            Ver Análise
+                        <>
+                          <Link to="/dashboard/analyses">
+                            <Button size="sm" variant="outline" className="btn-outline">
+                              Ver Análise
+                            </Button>
+                          </Link>
+                          <Button 
+                            size="sm" 
+                            variant="outline"
+                            onClick={() => handleDeleteVideo(video.id)}
+                          >
+                            <Trash2 className="w-4 h-4" />
                           </Button>
-                        </Link>
+                        </>
                       )}
-                      {video.status === 'failed' && video.error_message && (
-                        <span className="text-xs text-destructive max-w-xs truncate">
-                          {video.error_message}
-                        </span>
+                      {video.status === 'failed' && (
+                        <>
+                          {video.error_message && (
+                            <span className="text-xs text-destructive max-w-xs truncate" title={video.error_message}>
+                              {video.error_message}
+                            </span>
+                          )}
+                          <Button 
+                            size="sm" 
+                            variant="outline"
+                            onClick={() => handleProcessVideo(video.id)}
+                          >
+                            <Play className="w-4 h-4 mr-2" />
+                            Tentar Novamente
+                          </Button>
+                          <Button 
+                            size="sm" 
+                            variant="destructive"
+                            onClick={() => handleDeleteVideo(video.id)}
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                        </>
                       )}
                     </div>
                   </div>

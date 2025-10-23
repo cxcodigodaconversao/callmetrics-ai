@@ -1,6 +1,7 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { 
   LayoutDashboard, 
   Upload, 
@@ -15,18 +16,41 @@ import {
 } from "lucide-react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 
 const Dashboard = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const { user, signOut, loading } = useAuth();
+  const [videos, setVideos] = useState<any[]>([]);
+  const [loadingVideos, setLoadingVideos] = useState(true);
 
   // Redirect to auth if not logged in
   useEffect(() => {
     if (!loading && !user) {
       navigate("/auth");
+    } else if (user) {
+      fetchVideos();
     }
   }, [user, loading, navigate]);
+
+  const fetchVideos = async () => {
+    try {
+      const { data, error } = await supabase
+        .from("videos")
+        .select("*")
+        .order("created_at", { ascending: false })
+        .limit(5);
+
+      if (error) throw error;
+      setVideos(data || []);
+    } catch (error: any) {
+      toast.error("Erro ao carregar vídeos");
+    } finally {
+      setLoadingVideos(false);
+    }
+  };
 
   if (loading) {
     return (
@@ -51,17 +75,24 @@ const Dashboard = () => {
   ];
 
   const stats = [
-    { label: "Total de Análises", value: "24", icon: <FileText className="w-6 h-6" />, change: "+12%" },
-    { label: "Pontuação Média", value: "8.2", icon: <Target className="w-6 h-6" />, change: "+0.8" },
-    { label: "Taxa de Conversão", value: "68%", icon: <TrendingUp className="w-6 h-6" />, change: "+5%" },
-    { label: "Tempo Médio", value: "18min", icon: <Clock className="w-6 h-6" />, change: "-2min" },
+    { label: "Total de Vídeos", value: videos.length.toString(), icon: <FileText className="w-6 h-6" /> },
+    { label: "Em Processamento", value: videos.filter(v => v.status === 'pending' || v.status === 'processing').length.toString(), icon: <Clock className="w-6 h-6" /> },
+    { label: "Completos", value: videos.filter(v => v.status === 'completed').length.toString(), icon: <Target className="w-6 h-6" /> },
+    { label: "Com Erro", value: videos.filter(v => v.status === 'failed').length.toString(), icon: <TrendingUp className="w-6 h-6" /> },
   ];
 
-  const recentAnalyses = [
-    { id: 1, title: "Ligação - Cliente ABC Corp", score: 8.5, date: "2025-01-20", status: "Concluída" },
-    { id: 2, title: "Demo - Prospect XYZ Ltd", score: 7.2, date: "2025-01-19", status: "Concluída" },
-    { id: 3, title: "Follow-up - Empresa 123", score: 9.1, date: "2025-01-18", status: "Concluída" },
-  ];
+  const getStatusBadge = (status: string) => {
+    const statusConfig: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline" }> = {
+      completed: { label: "Completo", variant: "default" },
+      processing: { label: "Processando", variant: "secondary" },
+      pending: { label: "Pendente", variant: "outline" },
+      queued: { label: "Na fila", variant: "outline" },
+      failed: { label: "Falhou", variant: "destructive" },
+    };
+    
+    const config = statusConfig[status] || statusConfig.pending;
+    return <Badge variant={config.variant}>{config.label}</Badge>;
+  };
 
   return (
     <div className="flex min-h-screen w-full">
@@ -123,9 +154,6 @@ const Dashboard = () => {
                   <div>
                     <p className="stat-label">{stat.label}</p>
                     <p className="stat-value">{stat.value}</p>
-                    <p className="text-sm text-success mt-2 font-semibold">
-                      {stat.change}
-                    </p>
                   </div>
                   <div className="text-primary">
                     {stat.icon}
@@ -135,44 +163,59 @@ const Dashboard = () => {
             ))}
           </div>
 
-          {/* Recent Analyses */}
+          {/* Recent Videos */}
           <Card className="p-6">
             <div className="flex justify-between items-center mb-6">
-              <h2 className="text-2xl font-bold">Análises Recentes</h2>
+              <h2 className="text-2xl font-bold">Vídeos Recentes</h2>
               <Link to="/dashboard/analyses">
                 <Button variant="outline" className="btn-outline">
-                  Ver Todas
+                  Ver Todos
                 </Button>
               </Link>
             </div>
 
-            <div className="space-y-4">
-              {recentAnalyses.map((analysis) => (
-                <div
-                  key={analysis.id}
-                  className="flex items-center justify-between p-4 bg-secondary rounded-lg border border-border hover:border-primary transition-colors"
-                >
-                  <div className="flex-1">
-                    <h3 className="font-semibold text-lg">{analysis.title}</h3>
-                    <p className="text-sm text-muted-foreground">{analysis.date}</p>
-                  </div>
-                  <div className="flex items-center gap-6">
-                    <div className="text-center">
-                      <p className="text-sm text-muted-foreground">Pontuação</p>
-                      <p className="text-2xl font-bold text-primary">{analysis.score}</p>
+            {loadingVideos ? (
+              <div className="text-center py-8">
+                <Brain className="w-8 h-8 animate-pulse text-primary mx-auto mb-2" />
+                <p className="text-muted-foreground">Carregando...</p>
+              </div>
+            ) : videos.length === 0 ? (
+              <div className="text-center py-8">
+                <FileText className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+                <p className="text-muted-foreground mb-4">Nenhum vídeo enviado ainda</p>
+                <Link to="/dashboard/upload">
+                  <Button>Enviar Primeiro Vídeo</Button>
+                </Link>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {videos.map((video) => (
+                  <div
+                    key={video.id}
+                    className="flex items-center justify-between p-4 bg-secondary rounded-lg border border-border hover:border-primary transition-colors"
+                  >
+                    <div className="flex-1">
+                      <h3 className="font-semibold text-lg">
+                        {video.title || `Vídeo ${video.mode}`}
+                      </h3>
+                      <p className="text-sm text-muted-foreground">
+                        {new Date(video.created_at).toLocaleString("pt-BR")}
+                      </p>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <span className="px-3 py-1 bg-success/20 text-success rounded-full text-sm font-semibold">
-                        {analysis.status}
-                      </span>
-                      <Button size="sm" variant="outline" className="btn-outline">
-                        Ver Detalhes
-                      </Button>
+                    <div className="flex items-center gap-4">
+                      {getStatusBadge(video.status)}
+                      {video.status === 'completed' && (
+                        <Link to="/dashboard/analyses">
+                          <Button size="sm" variant="outline" className="btn-outline">
+                            Ver Análise
+                          </Button>
+                        </Link>
+                      )}
                     </div>
                   </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            )}
           </Card>
         </div>
       </main>

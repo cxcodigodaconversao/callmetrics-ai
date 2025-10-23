@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Upload as UploadIcon, Youtube, FileVideo, ArrowLeft, Brain } from "lucide-react";
+import { Upload as UploadIcon, Youtube, FileVideo, ArrowLeft, Brain, Cloud } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 
@@ -13,6 +13,7 @@ const Upload = () => {
   const { user, loading } = useAuth();
 
   const [youtubeUrl, setYoutubeUrl] = useState("");
+  const [driveUrl, setDriveUrl] = useState("");
   const [dragActive, setDragActive] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
 
@@ -70,6 +71,12 @@ const Upload = () => {
     // TODO: Implement YouTube analysis
   };
 
+  const handleDriveSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    console.log("Google Drive URL:", driveUrl);
+    // TODO: Implement Google Drive analysis
+  };
+
   const handleFileSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     console.log("File:", selectedFile);
@@ -93,10 +100,14 @@ const Upload = () => {
 
         <Card className="p-8">
           <Tabs defaultValue="youtube" className="w-full">
-            <TabsList className="grid w-full grid-cols-2 mb-8">
+            <TabsList className="grid w-full grid-cols-3 mb-8">
               <TabsTrigger value="youtube" className="flex items-center gap-2">
                 <Youtube className="w-4 h-4" />
                 YouTube
+              </TabsTrigger>
+              <TabsTrigger value="drive" className="flex items-center gap-2">
+                <Cloud className="w-4 h-4" />
+                Google Drive
               </TabsTrigger>
               <TabsTrigger value="upload" className="flex items-center gap-2">
                 <UploadIcon className="w-4 h-4" />
@@ -145,6 +156,55 @@ const Upload = () => {
                 <Button type="submit" className="w-full btn-primary text-lg py-6">
                   <Youtube className="w-5 h-5 mr-2" />
                   Analisar Vídeo do YouTube
+                </Button>
+              </form>
+            </TabsContent>
+
+            <TabsContent value="drive">
+              <form onSubmit={handleDriveSubmit} className="space-y-6">
+                <div className="space-y-2">
+                  <Label htmlFor="drive-url" className="text-lg">
+                    URL do Google Drive
+                  </Label>
+                  <Input
+                    id="drive-url"
+                    type="url"
+                    placeholder="https://drive.google.com/file/d/..."
+                    value={driveUrl}
+                    onChange={(e) => setDriveUrl(e.target.value)}
+                    className="input-field text-lg"
+                    required
+                  />
+                  <p className="text-sm text-muted-foreground">
+                    Cole o link completo do vídeo do Google Drive
+                  </p>
+                </div>
+
+                <div className="bg-secondary border border-border rounded-lg p-6">
+                  <h3 className="font-semibold mb-3 text-primary">Estimativa de Custo</h3>
+                  <div className="space-y-2 text-sm">
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Acesso ao Drive:</span>
+                      <span className="font-semibold">$0.25</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Transcrição (estimado):</span>
+                      <span className="font-semibold">$0.50</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Análise com IA:</span>
+                      <span className="font-semibold">$1.00</span>
+                    </div>
+                    <div className="border-t border-border pt-2 mt-2 flex justify-between">
+                      <span className="font-semibold">Total Estimado:</span>
+                      <span className="font-bold text-primary text-lg">$1.75</span>
+                    </div>
+                  </div>
+                </div>
+
+                <Button type="submit" className="w-full btn-primary text-lg py-6">
+                  <Cloud className="w-5 h-5 mr-2" />
+                  Analisar Vídeo do Google Drive
                 </Button>
               </form>
             </TabsContent>

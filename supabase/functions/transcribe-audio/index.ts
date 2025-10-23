@@ -93,6 +93,8 @@ Deno.serve(async (req) => {
 
     // Call Whisper API
     console.log('Calling Whisper API...');
+    console.log('File details - size:', audioBlob.size, 'type:', audioBlob.type);
+    
     const whisperResponse = await fetch('https://api.openai.com/v1/audio/transcriptions', {
       method: 'POST',
       headers: {
@@ -101,9 +103,12 @@ Deno.serve(async (req) => {
       body: formData,
     });
 
+    console.log('Whisper API responded with status:', whisperResponse.status);
+    
     if (!whisperResponse.ok) {
       const errorText = await whisperResponse.text();
-      console.error('Whisper API error:', errorText);
+      console.error('Whisper API error status:', whisperResponse.status);
+      console.error('Whisper API error body:', errorText);
       
       let errorMessage = 'Erro na API Whisper';
       try {
@@ -113,7 +118,7 @@ Deno.serve(async (req) => {
         errorMessage = errorText || 'Erro desconhecido na transcrição';
       }
       
-      throw new Error(`Whisper API error: ${errorMessage}`);
+      throw new Error(`Whisper API error (${whisperResponse.status}): ${errorMessage}`);
     }
 
     const whisperData = await whisperResponse.json();

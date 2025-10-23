@@ -7,6 +7,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Upload as UploadIcon, Youtube, FileVideo, ArrowLeft, Brain, Cloud } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 
 const Upload = () => {
   const navigate = useNavigate();
@@ -16,6 +18,7 @@ const Upload = () => {
   const [driveUrl, setDriveUrl] = useState("");
   const [dragActive, setDragActive] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [isProcessing, setIsProcessing] = useState(false);
 
   // Redirect to auth if not logged in
   useEffect(() => {
@@ -65,22 +68,102 @@ const Upload = () => {
     }
   };
 
-  const handleYoutubeSubmit = (e: React.FormEvent) => {
+  const handleYoutubeSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    console.log("YouTube URL:", youtubeUrl);
-    // TODO: Implement YouTube analysis
+    if (!user) return;
+
+    setIsProcessing(true);
+    try {
+      const { data, error } = await supabase
+        .from("videos")
+        .insert({
+          user_id: user.id,
+          mode: "youtube",
+          source_url: youtubeUrl,
+          status: "pending"
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      toast.success("Vídeo do YouTube adicionado para análise!");
+      navigate("/dashboard");
+    } catch (error) {
+      console.error("Error submitting YouTube video:", error);
+      toast.error("Erro ao processar vídeo do YouTube");
+    } finally {
+      setIsProcessing(false);
+    }
   };
 
-  const handleDriveSubmit = (e: React.FormEvent) => {
+  const handleDriveSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    console.log("Google Drive URL:", driveUrl);
-    // TODO: Implement Google Drive analysis
+    if (!user) return;
+
+    setIsProcessing(true);
+    try {
+      const { data, error } = await supabase
+        .from("videos")
+        .insert({
+          user_id: user.id,
+          mode: "drive",
+          source_url: driveUrl,
+          status: "pending"
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      toast.success("Vídeo do Google Drive adicionado para análise!");
+      navigate("/dashboard");
+    } catch (error) {
+      console.error("Error submitting Drive video:", error);
+      toast.error("Erro ao processar vídeo do Google Drive");
+    } finally {
+      setIsProcessing(false);
+    }
   };
 
-  const handleFileSubmit = (e: React.FormEvent) => {
+  const handleFileSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    console.log("File:", selectedFile);
-    // TODO: Implement file upload
+    if (!user || !selectedFile) return;
+
+    setIsProcessing(true);
+    try {
+      // Upload file to storage
+      const fileExt = selectedFile.name.split('.').pop();
+      const fileName = `${user.id}/${Date.now()}.${fileExt}`;
+      
+      const { error: uploadError } = await supabase.storage
+        .from("uploads")
+        .upload(fileName, selectedFile);
+
+      if (uploadError) throw uploadError;
+
+      // Create video record
+      const { data, error } = await supabase
+        .from("videos")
+        .insert({
+          user_id: user.id,
+          mode: "upload",
+          source_url: fileName,
+          status: "pending"
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      toast.success("Vídeo enviado para análise!");
+      navigate("/dashboard");
+    } catch (error) {
+      console.error("Error uploading file:", error);
+      toast.error("Erro ao enviar arquivo");
+    } finally {
+      setIsProcessing(false);
+    }
   };
 
   return (
@@ -153,9 +236,9 @@ const Upload = () => {
                   </div>
                 </div>
 
-                <Button type="submit" className="w-full btn-primary text-lg py-6">
+                <Button type="submit" className="w-full btn-primary text-lg py-6" disabled={isProcessing}>
                   <Youtube className="w-5 h-5 mr-2" />
-                  Analisar Vídeo do YouTube
+                  {isProcessing ? "Processando..." : "Analisar Vídeo do YouTube"}
                 </Button>
               </form>
             </TabsContent>
@@ -202,9 +285,9 @@ const Upload = () => {
                   </div>
                 </div>
 
-                <Button type="submit" className="w-full btn-primary text-lg py-6">
+                <Button type="submit" className="w-full btn-primary text-lg py-6" disabled={isProcessing}>
                   <Cloud className="w-5 h-5 mr-2" />
-                  Analisar Vídeo do Google Drive
+                  {isProcessing ? "Processando..." : "Analisar Vídeo do Google Drive"}
                 </Button>
               </form>
             </TabsContent>
@@ -294,9 +377,9 @@ const Upload = () => {
                       </div>
                     </div>
 
-                    <Button type="submit" className="w-full btn-primary text-lg py-6">
+                    <Button type="submit" className="w-full btn-primary text-lg py-6" disabled={isProcessing}>
                       <UploadIcon className="w-5 h-5 mr-2" />
-                      Fazer Upload e Analisar
+                      {isProcessing ? "Processando..." : "Fazer Upload e Analisar"}
                     </Button>
                   </>
                 )}

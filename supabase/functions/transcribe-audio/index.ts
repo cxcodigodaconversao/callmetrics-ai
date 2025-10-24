@@ -25,113 +25,86 @@ Deno.serve(async (req) => {
       throw new Error('OPENAI_API_KEY not configured');
     }
 
-    // Stream the audio file directly without loading into memory
-    console.log('Streaming audio file directly to Whisper...');
-    
-    const audioResponse = await fetch(audioUrl);
-    if (!audioResponse.ok) {
-      throw new Error(`Failed to access audio file: ${audioResponse.status} ${audioResponse.statusText}`);
+    // Get file size first without downloading
+    console.log('Checking file size...');
+    const headResponse = await fetch(audioUrl, { method: 'HEAD' });
+    if (!headResponse.ok) {
+      throw new Error(`Failed to access audio file: ${headResponse.status}`);
     }
 
-    // Check content type from headers
-    const contentType = audioResponse.headers.get('content-type') || '';
-    const contentLength = audioResponse.headers.get('content-length');
+    const contentType = headResponse.headers.get('content-type') || 'video/mp4';
+    const contentLength = headResponse.headers.get('content-length');
     
-    console.log(`Content-Type: ${contentType}, Content-Length: ${contentLength} bytes`);
+    if (!contentLength) {
+      throw new Error('Could not determine file size');
+    }
+
+    const fileSizeInMB = parseInt(contentLength) / (1024 * 1024);
+    console.log(`File size: ${fileSizeInMB.toFixed(2)}MB`);
 
     // Validate it's not an HTML error page
     if (contentType.includes('text/html')) {
       throw new Error('Não foi possível acessar o arquivo. Para vídeos do Google Drive: 1) Certifique-se que o compartilhamento está como "Qualquer pessoa com o link", 2) Ou baixe o vídeo e faça upload direto.');
     }
 
-    // Check file size - allow up to 500MB
-    const fileSizeInMB = contentLength ? parseInt(contentLength) / (1024 * 1024) : 0;
     if (fileSizeInMB > 500) {
       throw new Error(`Arquivo muito grande (${fileSizeInMB.toFixed(1)}MB). Tamanho máximo: 500MB.`);
     }
 
-    console.log(`File size: ${fileSizeInMB.toFixed(2)}MB - processing file...`);
+    // Whisper API limit is 25MB, so we process in chunks of 20MB to be safe
+    const chunkSizeBytes = 20 * 1024 * 1024; // 20MB chunks
+    const totalSize = parseInt(contentLength);
+    const numChunks = Math.ceil(totalSize / chunkSizeBytes);
 
-    // Get the file as a blob for Whisper API
-    if (!audioResponse.body) {
-      throw new Error('No response body available');
-    }
+    console.log(`Processing file in ${numChunks} chunks of ~20MB each`);
 
-    // Read the stream into a blob for Whisper API
-    const reader = audioResponse.body.getReader();
-    const chunks: Uint8Array[] = [];
-    let receivedLength = 0;
-    
-    while (true) {
-      const { done, value } = await reader.read();
-      
-      if (done) break;
-      
-      chunks.push(value);
-      receivedLength += value.length;
-    }
-    
-    console.log(`Successfully streamed ${receivedLength} bytes (${(receivedLength / (1024 * 1024)).toFixed(2)}MB)`);
-    
-    // Combine chunks into a single blob
-    const audioBlob = new Blob(chunks as BlobPart[], { type: contentType || 'video/mp4' });
-    const maxChunkSize = 24 * 1024 * 1024; // 24MB to stay safely under 25MB limit
-    
     let fullTranscription = '';
     let totalDuration = 0;
-    
-    // If file is larger than 24MB, process in chunks
-    if (audioBlob.size > maxChunkSize) {
-      console.log(`File size ${(audioBlob.size / (1024 * 1024)).toFixed(2)}MB exceeds single request limit. Processing in chunks...`);
+
+    // Initialize Supabase client
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    const supabase = createClient(supabaseUrl, supabaseKey);
+
+    // Process each chunk with range requests
+    for (let i = 0; i < numChunks; i++) {
+      const start = i * chunkSizeBytes;
+      const end = Math.min(start + chunkSizeBytes - 1, totalSize - 1);
       
-      const numChunks = Math.ceil(audioBlob.size / maxChunkSize);
-      console.log(`Splitting into ${numChunks} chunks`);
+      console.log(`Downloading chunk ${i + 1}/${numChunks} (bytes ${start}-${end})...`);
       
-      for (let i = 0; i < numChunks; i++) {
-        const start = i * maxChunkSize;
-        const end = Math.min((i + 1) * maxChunkSize, audioBlob.size);
-        const chunkBlob = audioBlob.slice(start, end, audioBlob.type);
-        
-        console.log(`Processing chunk ${i + 1}/${numChunks} (${(chunkBlob.size / (1024 * 1024)).toFixed(2)}MB)`);
-        
-        const formData = new FormData();
-        formData.append('file', chunkBlob, `audio_chunk_${i}.mp4`);
-        formData.append('model', 'whisper-1');
-        formData.append('language', 'pt');
-        formData.append('response_format', 'verbose_json');
-        
-        const whisperResponse = await fetch('https://api.openai.com/v1/audio/transcriptions', {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${openAIKey}`,
-          },
-          body: formData,
-        });
-        
-        if (!whisperResponse.ok) {
-          const errorText = await whisperResponse.text();
-          console.error(`Whisper API error on chunk ${i + 1}:`, errorText);
-          throw new Error(`Erro ao transcrever parte ${i + 1}/${numChunks} do arquivo`);
+      // Download ONLY this chunk using Range header
+      const chunkResponse = await fetch(audioUrl, {
+        headers: {
+          'Range': `bytes=${start}-${end}`
         }
-        
-        const whisperData = await whisperResponse.json();
-        fullTranscription += (i > 0 ? ' ' : '') + whisperData.text;
-        totalDuration += whisperData.duration || 0;
-        
-        console.log(`Chunk ${i + 1} transcribed: ${whisperData.text?.length || 0} characters`);
+      });
+
+      if (!chunkResponse.ok && chunkResponse.status !== 206) {
+        throw new Error(`Failed to download chunk ${i + 1}: ${chunkResponse.status}`);
       }
+
+      // Get the chunk as blob - only this piece is in memory
+      const chunkBlob = await chunkResponse.blob();
+      const chunkSizeMB = chunkBlob.size / (1024 * 1024);
       
-      console.log(`All chunks processed. Total transcription length: ${fullTranscription.length} characters`);
-    } else {
-      // File is small enough for single request
-      console.log('File size within single request limit. Processing directly...');
-      
+      console.log(`Chunk ${i + 1} downloaded: ${chunkSizeMB.toFixed(2)}MB. Transcribing...`);
+
+      // If chunk is still too large for Whisper, skip with warning
+      if (chunkBlob.size > 25 * 1024 * 1024) {
+        console.warn(`Chunk ${i + 1} exceeds 25MB, skipping...`);
+        fullTranscription += ` [Parte ${i + 1} não transcrita - muito grande] `;
+        continue;
+      }
+
+      // Prepare form data for Whisper API
       const formData = new FormData();
-      formData.append('file', audioBlob, 'audio.mp4');
+      formData.append('file', chunkBlob, `audio_chunk_${i}.mp4`);
       formData.append('model', 'whisper-1');
       formData.append('language', 'pt');
       formData.append('response_format', 'verbose_json');
-      
+
+      // Call Whisper API for this chunk
       const whisperResponse = await fetch('https://api.openai.com/v1/audio/transcriptions', {
         method: 'POST',
         headers: {
@@ -139,36 +112,29 @@ Deno.serve(async (req) => {
         },
         body: formData,
       });
-      
-      console.log('Whisper API responded with status:', whisperResponse.status);
-      
+
       if (!whisperResponse.ok) {
         const errorText = await whisperResponse.text();
-        console.error('Whisper API error status:', whisperResponse.status);
-        console.error('Whisper API error body:', errorText);
+        console.error(`Whisper API error on chunk ${i + 1}:`, errorText);
         
-        let errorMessage = 'Erro na API Whisper';
-        try {
-          const errorJson = JSON.parse(errorText);
-          errorMessage = errorJson.error?.message || errorText;
-        } catch {
-          errorMessage = errorText || 'Erro desconhecido na transcrição';
-        }
-        
-        throw new Error(`Whisper API error (${whisperResponse.status}): ${errorMessage}`);
+        // Continue with other chunks even if one fails
+        fullTranscription += ` [Erro na parte ${i + 1}] `;
+        continue;
       }
-      
+
       const whisperData = await whisperResponse.json();
-      fullTranscription = whisperData.text;
-      totalDuration = whisperData.duration || 0;
+      fullTranscription += (i > 0 ? ' ' : '') + whisperData.text;
+      totalDuration += whisperData.duration || 0;
       
-      console.log('Transcription received, length:', fullTranscription.length);
+      console.log(`Chunk ${i + 1}/${numChunks} transcribed: ${whisperData.text?.length || 0} characters`);
+      
+      // Small delay between chunks to avoid rate limits
+      if (i < numChunks - 1) {
+        await new Promise(resolve => setTimeout(resolve, 1000));
+      }
     }
 
-    // Initialize Supabase client
-    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-    const supabase = createClient(supabaseUrl, supabaseKey);
+    console.log(`Transcription complete. Total length: ${fullTranscription.length} characters`);
 
     // Save transcription to database
     const { data: transcriptionData, error: transcriptionError } = await supabase

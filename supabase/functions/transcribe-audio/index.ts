@@ -44,15 +44,22 @@ Deno.serve(async (req) => {
       throw new Error('Não foi possível acessar o arquivo. Para vídeos do Google Drive: 1) Certifique-se que o compartilhamento está como "Qualquer pessoa com o link", 2) Ou baixe o vídeo e faça upload direto.');
     }
 
+    // Check file size - Whisper API has a 25MB limit
+    const fileSizeInMB = contentLength ? parseInt(contentLength) / (1024 * 1024) : 0;
+    if (fileSizeInMB > 25) {
+      throw new Error(`Arquivo muito grande (${fileSizeInMB.toFixed(1)}MB). A API Whisper tem limite de 25MB. Por favor, comprima o vídeo antes de fazer upload ou use um vídeo mais curto.`);
+    }
+
+    console.log(`File size: ${fileSizeInMB.toFixed(2)}MB - within Whisper API limits`);
+
     // Get the file as a blob for Whisper API
     if (!audioResponse.body) {
       throw new Error('No response body available');
     }
 
     // Read the stream into a blob for Whisper API
-    // Note: We still need to create a blob for FormData, but we do it more efficiently
     const reader = audioResponse.body.getReader();
-    const chunks: BlobPart[] = [];
+    const chunks: Uint8Array[] = [];
     let receivedLength = 0;
     
     while (true) {
@@ -62,14 +69,9 @@ Deno.serve(async (req) => {
       
       chunks.push(value);
       receivedLength += value.length;
-      
-      // Safety check: prevent excessive memory usage (max ~150MB)
-      if (receivedLength > 150 * 1024 * 1024) {
-        throw new Error('Arquivo muito grande (limite: 150MB). Para arquivos maiores, considere comprimir o vídeo antes do upload.');
-      }
     }
     
-    console.log(`Successfully streamed ${receivedLength} bytes`);
+    console.log(`Successfully streamed ${receivedLength} bytes (${(receivedLength / (1024 * 1024)).toFixed(2)}MB)`);
     
     // Combine chunks into a single blob
     const audioBlob = new Blob(chunks as BlobPart[], { type: contentType || 'video/mp4' });

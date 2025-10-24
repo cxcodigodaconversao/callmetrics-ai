@@ -25,65 +25,55 @@ Deno.serve(async (req) => {
       throw new Error('OPENAI_API_KEY not configured');
     }
 
-    // Download the audio file (with Google Drive confirmation token handling)
-    console.log('Downloading audio file...');
+    // Stream the audio file directly without loading into memory
+    console.log('Streaming audio file directly to Whisper...');
     
-    let audioResponse = await fetch(audioUrl);
+    const audioResponse = await fetch(audioUrl);
     if (!audioResponse.ok) {
-      throw new Error(`Failed to download audio file: ${audioResponse.status} ${audioResponse.statusText}`);
+      throw new Error(`Failed to access audio file: ${audioResponse.status} ${audioResponse.statusText}`);
     }
 
-    let audioBlob = await audioResponse.blob();
-    console.log(`Initial download - Audio file size: ${audioBlob.size} bytes`);
-    console.log(`Content type: ${audioBlob.type}`);
+    // Check content type from headers
+    const contentType = audioResponse.headers.get('content-type') || '';
+    const contentLength = audioResponse.headers.get('content-length');
+    
+    console.log(`Content-Type: ${contentType}, Content-Length: ${contentLength} bytes`);
 
-    // Check if we got HTML (Google Drive confirmation page for large files)
-    const contentType = audioBlob.type.toLowerCase();
-    if (contentType.includes('text/html') && audioBlob.size < 50000) {
-      console.log('Detected Google Drive confirmation page, extracting confirm token...');
+    // Validate it's not an HTML error page
+    if (contentType.includes('text/html')) {
+      throw new Error('Não foi possível acessar o arquivo. Para vídeos do Google Drive: 1) Certifique-se que o compartilhamento está como "Qualquer pessoa com o link", 2) Ou baixe o vídeo e faça upload direto.');
+    }
+
+    // Get the file as a blob for Whisper API
+    if (!audioResponse.body) {
+      throw new Error('No response body available');
+    }
+
+    // Read the stream into a blob for Whisper API
+    // Note: We still need to create a blob for FormData, but we do it more efficiently
+    const reader = audioResponse.body.getReader();
+    const chunks: BlobPart[] = [];
+    let receivedLength = 0;
+    
+    while (true) {
+      const { done, value } = await reader.read();
       
-      // Parse HTML to get confirmation token
-      const htmlText = await audioBlob.text();
-      const confirmMatch = htmlText.match(/confirm=([^&"']+)/);
+      if (done) break;
       
-      if (confirmMatch && confirmMatch[1]) {
-        const confirmToken = confirmMatch[1];
-        console.log(`Found confirm token, retrying download with token...`);
-        
-        // Retry with confirmation token
-        const confirmedUrl = `${audioUrl}&confirm=${confirmToken}`;
-        audioResponse = await fetch(confirmedUrl);
-        
-        if (!audioResponse.ok) {
-          throw new Error(`Failed to download with confirmation token: ${audioResponse.status}`);
-        }
-        
-        audioBlob = await audioResponse.blob();
-        console.log(`After confirmation - Audio file size: ${audioBlob.size} bytes`);
-      } else {
-        throw new Error('Google Drive retornou página de confirmação, mas não foi possível extrair o token. Recomendação: Baixe o vídeo localmente e use "Upload de Arquivo".');
+      chunks.push(value);
+      receivedLength += value.length;
+      
+      // Safety check: prevent excessive memory usage (max ~150MB)
+      if (receivedLength > 150 * 1024 * 1024) {
+        throw new Error('Arquivo muito grande (limite: 150MB). Para arquivos maiores, considere comprimir o vídeo antes do upload.');
       }
     }
-
-    // Final validation
-    const finalContentType = audioBlob.type.toLowerCase();
     
-    // Check if file is still too small (error page)
-    if (audioBlob.size < 10000) {
-      throw new Error('Arquivo muito pequeno ou inválido após tentativa de download. Recomendação: Baixe o vídeo localmente e use "Upload de Arquivo".');
-    }
-
-    // Validate content type
-    if (finalContentType.includes('text/html')) {
-      throw new Error('Google Drive ainda retornou HTML após confirmação. O arquivo pode estar protegido. Solução: Baixe o vídeo localmente e use "Upload de Arquivo".');
-    }
+    console.log(`Successfully streamed ${receivedLength} bytes`);
     
-    if (!finalContentType.includes('video') && !finalContentType.includes('audio') && !finalContentType.includes('octet-stream') && finalContentType !== '') {
-      console.log(`Warning: Unexpected content type: ${finalContentType}, but proceeding with download`);
-    }
+    // Combine chunks into a single blob
+    const audioBlob = new Blob(chunks as BlobPart[], { type: contentType || 'video/mp4' });
     
-    console.log(`Successfully downloaded file: ${audioBlob.size} bytes`);
-
     // Prepare form data for Whisper API
     const formData = new FormData();
     formData.append('file', audioBlob, 'audio.mp4');

@@ -98,24 +98,6 @@ const Index = () => {
         </div>
       </section>
 
-      {/* CTA Section */}
-      <section className="py-20">
-        <div className="container mx-auto px-4">
-          <Card className="max-w-4xl mx-auto p-12 text-center border-2 border-primary/20 hover:border-primary/40 transition-colors">
-            <h2 className="text-4xl lg:text-5xl font-bold mb-6">
-              Pronto para Começar?
-            </h2>
-            <p className="text-xl text-muted-foreground mb-8 max-w-2xl mx-auto">
-              Junte-se a centenas de profissionais que já estão melhorando suas vendas com IA
-            </p>
-            <Link to="/auth">
-              <Button size="lg" className="btn-primary text-lg px-12 py-6">
-                Criar Conta Grátis
-              </Button>
-            </Link>
-          </Card>
-        </div>
-      </section>
 
       {/* Footer */}
       <footer className="bg-card border-t border-border py-12">

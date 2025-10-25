@@ -100,12 +100,12 @@ Deno.serve(async (req) => {
       try {
         console.log(`Attempt ${attempt}/${maxRetries}...`);
         
-        // Set timeout for the request (3 minutes - more reasonable)
+        // Set timeout for the request (8 minutes for larger files)
         const controller = new AbortController();
         const timeoutId = setTimeout(() => {
-          console.error(`Timeout after 3 minutes on attempt ${attempt}`);
+          console.error(`Timeout after 8 minutes on attempt ${attempt}`);
           controller.abort();
-        }, 3 * 60 * 1000);
+        }, 8 * 60 * 1000);
         
         console.log('Making request to OpenAI Whisper API...');
         whisperResponse = await fetch('https://api.openai.com/v1/audio/transcriptions', {
@@ -166,15 +166,15 @@ Deno.serve(async (req) => {
         console.error(`Error type: ${error.name}`);
         
         if (error.name === 'AbortError') {
-          lastError = 'Timeout: A transcrição demorou mais de 3 minutos.';
+          lastError = 'Timeout: A transcrição demorou mais de 8 minutos.';
           console.error(lastError);
           
           if (attempt < maxRetries) {
             console.log('Retrying after timeout...');
-            await new Promise(resolve => setTimeout(resolve, 2000));
+            await new Promise(resolve => setTimeout(resolve, 5000));
             continue;
           } else {
-            throw new Error('Transcrição demorou muito (timeout após 3 tentativas). A API da OpenAI pode estar sobrecarregada. Tente novamente em alguns minutos ou use um arquivo menor.');
+            throw new Error('Transcrição demorou muito (timeout após 3 tentativas de 8 minutos cada). O arquivo pode ser muito grande ou a API da OpenAI está lenta. Tente comprimir o áudio ou use um arquivo menor.');
           }
         }
         
@@ -251,7 +251,7 @@ Deno.serve(async (req) => {
     } else if (errorMessage.includes('503') || errorMessage.includes('Service Unavailable')) {
       errorMessage = 'Erro 503: Serviço temporariamente indisponível. Tente novamente em alguns minutos.';
     } else if (errorMessage.includes('timeout') || errorMessage.includes('AbortError')) {
-      errorMessage = 'Timeout: A transcrição demorou muito. Tente com um arquivo menor.';
+      errorMessage = 'Timeout: A transcrição demorou muito. Seu arquivo pode ser grande demais. Tente comprimir o áudio para menos de 10MB.';
     }
     
     console.error('Final error message:', errorMessage);

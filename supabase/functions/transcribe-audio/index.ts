@@ -202,8 +202,25 @@ Deno.serve(async (req) => {
 
   } catch (error: any) {
     console.error('Error in transcribe-audio:', error);
+    
+    // Extract a clean error message
+    let errorMessage = error.message || 'Erro desconhecido na transcrição';
+    
+    // Clean up OpenAI API errors
+    if (errorMessage.includes('<!DOCTYPE html>')) {
+      errorMessage = 'A API da OpenAI está temporariamente indisponível. Tente novamente em alguns minutos.';
+    } else if (errorMessage.includes('502') || errorMessage.includes('Bad gateway')) {
+      errorMessage = 'Erro 502: A API da OpenAI está com problemas. Tente novamente em alguns minutos.';
+    } else if (errorMessage.includes('503') || errorMessage.includes('Service Unavailable')) {
+      errorMessage = 'Erro 503: Serviço temporariamente indisponível. Tente novamente em alguns minutos.';
+    } else if (errorMessage.includes('timeout') || errorMessage.includes('AbortError')) {
+      errorMessage = 'Timeout: A transcrição demorou muito. Tente com um arquivo menor.';
+    }
+    
+    console.error('Final error message:', errorMessage);
+    
     return new Response(
-      JSON.stringify({ error: error.message }),
+      JSON.stringify({ error: errorMessage }),
       {
         status: 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },

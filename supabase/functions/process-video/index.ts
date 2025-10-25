@@ -141,24 +141,45 @@ Deno.serve(async (req) => {
   } catch (error: any) {
     console.error('Error processing video:', error);
     
-    // Update video status to failed if videoId exists
-    const { videoId } = await req.json().catch(() => ({}));
+    // Extract clean error message
+    let errorMessage = error.message || 'Erro desconhecido no processamento';
+    
+    // Try to get videoId from the original request
+    let videoId;
+    try {
+      const body = await req.clone().json();
+      videoId = body.videoId;
+    } catch (e) {
+      console.error('Could not parse videoId from request');
+    }
+    
+    // ALWAYS update video status to failed when there's an error
     if (videoId) {
       const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
       const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
       const supabase = createClient(supabaseUrl, supabaseKey);
       
-      await supabase
+      console.log(`Updating video ${videoId} status to failed with error: ${errorMessage}`);
+      
+      const { error: updateError } = await supabase
         .from('videos')
         .update({ 
           status: 'failed',
-          error_message: error.message 
+          error_message: errorMessage 
         })
         .eq('id', videoId);
+      
+      if (updateError) {
+        console.error('Failed to update video status:', updateError);
+      } else {
+        console.log('Video status successfully updated to failed');
+      }
+    } else {
+      console.error('No videoId available to update status');
     }
 
     return new Response(
-      JSON.stringify({ error: error.message }),
+      JSON.stringify({ error: errorMessage }),
       { 
         status: 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' } 

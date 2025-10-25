@@ -10,8 +10,11 @@ Deno.serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
+  let videoId: string | undefined;
+  
   try {
-    const { videoId } = await req.json();
+    const body = await req.json();
+    videoId = body.videoId;
     
     if (!videoId) {
       throw new Error('videoId is required');
@@ -144,15 +147,6 @@ Deno.serve(async (req) => {
     // Extract clean error message
     let errorMessage = error.message || 'Erro desconhecido no processamento';
     
-    // Try to get videoId from the original request
-    let videoId;
-    try {
-      const body = await req.clone().json();
-      videoId = body.videoId;
-    } catch (e) {
-      console.error('Could not parse videoId from request');
-    }
-    
     // ALWAYS update video status to failed when there's an error
     if (videoId) {
       const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
@@ -175,7 +169,7 @@ Deno.serve(async (req) => {
         console.log('Video status successfully updated to failed');
       }
     } else {
-      console.error('No videoId available to update status');
+      console.error('CRITICAL: No videoId available to update status. This should never happen!');
     }
 
     return new Response(

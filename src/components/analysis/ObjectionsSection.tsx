@@ -6,6 +6,7 @@ import { useState } from "react";
 interface ObjectionsSectionProps {
   analysis: {
     score_objecoes: number;
+    insights_json?: any;
   };
 }
 
@@ -18,44 +19,48 @@ export function ObjectionsSection({ analysis }: ObjectionsSectionProps) {
     );
   };
 
-  // Mock data - in real implementation, this would come from insights_json
-  const objections = [
-    {
-      type: "price",
-      icon: "💰",
-      title: "Objeção de Preço",
-      timestamp: "10:45",
-      clientSaid: "Está muito caro, não tenho budget para isso",
-      sellerResponded: "Mas o valor é bem competitivo no mercado",
-      rating: 2,
-      evaluation: "Você defendeu o preço em vez de explorar valor",
-      howToHandle: [
-        '1️⃣ Empatia: "Entendo, orçamento é sempre um ponto importante..."',
-        '2️⃣ Reframe: "Deixa eu te mostrar o ROI que nossos clientes tiveram..."',
-        '3️⃣ Prova: "A empresa X economizou R$ 50k/mês"',
-        '4️⃣ Close alternativo: "Temos um plano starter?"',
-      ],
-    },
-    {
-      type: "timing",
-      icon: "⏰",
-      title: "Objeção de Timing",
-      timestamp: "14:20",
-      clientSaid: "Agora não é um bom momento, vamos deixar para o próximo trimestre",
-      sellerResponded: "Ok, posso te ligar daqui 3 meses",
-      rating: 1,
-      evaluation: "Aceitou a objeção passivamente sem explorar a urgência",
-      howToHandle: [
-        '1️⃣ Reconhecer: "Entendo a preocupação com timing..."',
-        '2️⃣ Explorar: "O que especificamente faria o próximo trimestre ser melhor?"',
-        '3️⃣ Custo: "Quanto está custando esperar 3 meses?"',
-        '4️⃣ Alternativa: "E se começássemos com um piloto agora?"',
-      ],
-    },
-  ];
+  const rawObjections = analysis?.insights_json?.objecoes || [];
+  
+  const getObjectionIcon = (type: string) => {
+    const icons: Record<string, string> = {
+      price: "💰",
+      timing: "⏰",
+      authority: "👔",
+      need: "🤔",
+      competition: "🏆",
+    };
+    return icons[type] || "💬";
+  };
+
+  const getObjectionTitle = (type: string) => {
+    const titles: Record<string, string> = {
+      price: "Objeção de Preço",
+      timing: "Objeção de Timing",
+      authority: "Objeção de Autoridade",
+      need: "Objeção de Necessidade",
+      competition: "Objeção sobre Concorrência",
+    };
+    return titles[type] || "Objeção Identificada";
+  };
+
+  const objections = rawObjections.map((obj: any) => ({
+    type: obj.type,
+    icon: getObjectionIcon(obj.type),
+    title: getObjectionTitle(obj.type),
+    timestamp: obj.timestamp,
+    clientSaid: obj.cliente_disse,
+    sellerResponded: obj.vendedor_respondeu,
+    rating: obj.rating,
+    evaluation: obj.avaliacao,
+    howToHandle: obj.como_deveria ? obj.como_deveria.split('\n').filter((s: string) => s.trim()) : [],
+  }));
+
+  if (objections.length === 0) {
+    return null;
+  }
 
   const totalObjections = objections.length;
-  const successfullyHandled = 0;
+  const successfullyHandled = objections.filter((o: any) => o.rating >= 7).length;
   const successRate = totalObjections > 0 ? (successfullyHandled / totalObjections) * 100 : 0;
 
   return (

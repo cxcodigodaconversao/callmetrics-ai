@@ -8,7 +8,7 @@ const corsHeaders = {
 
 const ANALYSIS_PROMPT = `Você é um especialista em análise de vendas usando a metodologia SPIN Selling.
 
-Analise a transcrição da ligação de vendas abaixo e forneça scores de 0 a 100 para cada critério:
+Analise a transcrição da ligação de vendas abaixo e forneça uma análise DETALHADA E FIDEDIGNA baseada APENAS no que realmente aconteceu na conversa.
 
 **CRITÉRIOS DE AVALIAÇÃO:**
 
@@ -25,7 +25,11 @@ Analise a transcrição da ligação de vendas abaixo e forneça scores de 0 a 1
 **IMPORTANTE:**
 - Retorne APENAS um objeto JSON válido
 - Cada score deve ser um número inteiro de 0 a 100
-- Forneça insights específicos baseados na transcrição
+- Use APENAS informações que realmente existem na transcrição
+- Para timestamps, identifique momentos reais da conversa
+- Para citações, use frases reais ditas pelos participantes
+- Se não houver objeções, retorne array vazio
+- Se não houver momentos positivos/negativos claros, retorne arrays vazios
 
 **FORMATO DE RESPOSTA (JSON):**
 {
@@ -42,9 +46,31 @@ Analise a transcrição da ligação de vendas abaixo e forneça scores de 0 a 1
     "global": 0-100
   },
   "insights": {
-    "pontos_fortes": ["lista de pontos fortes"],
-    "pontos_fracos": ["lista de pontos fracos"],
-    "recomendacoes": ["lista de recomendações"]
+    "pontos_fortes": ["descrição detalhada baseada em fatos reais"],
+    "pontos_fracos": ["descrição detalhada baseada em fatos reais"],
+    "recomendacoes": ["recomendações específicas baseadas nos pontos fracos"],
+    "timeline": [
+      {
+        "timestamp": "MM:SS real da transcrição",
+        "type": "positive" ou "negative",
+        "title": "título descritivo",
+        "quote": "citação exata da transcrição",
+        "speaker": "vendedor" ou "cliente",
+        "why": "explicação do porquê foi bom ou ruim",
+        "fix": "como corrigir (apenas para negativos)"
+      }
+    ],
+    "objecoes": [
+      {
+        "type": "price|timing|authority|need|competition",
+        "timestamp": "MM:SS real",
+        "cliente_disse": "citação exata do cliente",
+        "vendedor_respondeu": "citação exata do vendedor",
+        "rating": 1-10,
+        "avaliacao": "análise da resposta do vendedor",
+        "como_deveria": "como deveria ter tratado"
+      }
+    ]
   }
 }`;
 

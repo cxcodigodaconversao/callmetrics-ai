@@ -14,52 +14,22 @@ interface StrongPointsProps {
 }
 
 export function StrongPoints({ analysis }: StrongPointsProps) {
+  const pontosFortes = analysis?.insights_json?.pontos_fortes || [];
+  
   const getStrongPoints = () => {
     const points: Array<{
       title: string;
-      score: number;
+      score?: number;
       description: string;
-      timestamp?: string;
-      quote?: string;
     }> = [];
 
-    if ((analysis.score_conexao || 0) >= 70) {
+    // Add points from AI insights
+    pontosFortes.forEach((ponto: string, index: number) => {
       points.push({
-        title: "Conexão Excelente",
-        score: analysis.score_conexao || 0,
-        description:
-          "Você estabeleceu rapport logo no início, criando um clima confortável e deixando o cliente mais receptivo. Continue investindo nessa habilidade.",
-        timestamp: "00:02:15",
-        quote: "Demonstrou interesse genuíno e criou conexão emocional antes de falar de negócios",
+        title: `Ponto Forte ${index + 1}`,
+        description: ponto,
       });
-    }
-
-    if ((analysis.score_spin_s || 0) >= 70) {
-      points.push({
-        title: "Qualificação Efetiva (SPIN-S)",
-        score: analysis.score_spin_s || 0,
-        description:
-          "Você fez perguntas de situação apropriadas para entender o contexto do cliente. Isso demonstra profissionalismo e prepara o terreno para identificar problemas.",
-      });
-    }
-
-    if ((analysis.score_apresentacao || 0) >= 70) {
-      points.push({
-        title: "Apresentação Clara",
-        score: analysis.score_apresentacao || 0,
-        description:
-          "Sua apresentação foi estruturada e compreensível, conectando a solução às necessidades do cliente de forma clara.",
-      });
-    }
-
-    if ((analysis.score_fechamento || 0) >= 70) {
-      points.push({
-        title: "Fechamento Assertivo",
-        score: analysis.score_fechamento || 0,
-        description:
-          "Você foi direto ao pedir a venda e definir próximos passos claros, demonstrando confiança na solução oferecida.",
-      });
-    }
+    });
 
     return points;
   };
@@ -97,24 +67,13 @@ export function StrongPoints({ analysis }: StrongPointsProps) {
               <div className="flex-1">
                 <div className="flex items-center gap-3 mb-2">
                   <h3 className="font-bold text-lg">{point.title}</h3>
-                  <Badge variant="secondary" className="bg-green-500/10 text-green-700">
-                    {point.score}/100
-                  </Badge>
+                  {point.score && (
+                    <Badge variant="secondary" className="bg-green-500/10 text-green-700">
+                      {point.score}/100
+                    </Badge>
+                  )}
                 </div>
-                <p className="text-muted-foreground mb-3">{point.description}</p>
-                {point.timestamp && (
-                  <div className="space-y-2">
-                    <div className="flex items-center gap-2 text-sm">
-                      <span className="font-semibold">📍 Momento-chave:</span>
-                      <span className="text-primary">{point.timestamp}</span>
-                    </div>
-                    {point.quote && (
-                      <div className="p-3 bg-muted rounded-md">
-                        <p className="text-sm italic">💬 {point.quote}</p>
-                      </div>
-                    )}
-                  </div>
-                )}
+                <p className="text-muted-foreground">{point.description}</p>
               </div>
             </div>
           </div>

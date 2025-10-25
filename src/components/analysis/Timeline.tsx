@@ -7,24 +7,11 @@ interface TimelineProps {
 }
 
 export function Timeline({ analysis }: TimelineProps) {
-  // Mock data - in real implementation, this would come from insights_json
-  const moments = [
-    {
-      timestamp: "00:02:15",
-      type: "positive",
-      title: "Rapport Estabelecido",
-      quote: "João, como está a família? Vi que você postou sobre o aniversário...",
-      why: "Demonstrou interesse genuíno, criou conexão emocional antes de falar de negócios",
-    },
-    {
-      timestamp: "05:30",
-      type: "negative",
-      title: "Pulou Qualificação",
-      quote: "Nosso produto é perfeito pra você!",
-      why: "Apresentou solução SEM entender o problema",
-      fix: 'Antes de apresentar, pergunte: "Me conta mais sobre seus desafios com [tema]"',
-    },
-  ];
+  const moments = analysis?.insights_json?.timeline || [];
+
+  if (moments.length === 0) {
+    return null;
+  }
 
   return (
     <Card className="p-6">
@@ -84,7 +71,7 @@ export function Timeline({ analysis }: TimelineProps) {
                     <span className="text-sm">💬</span>
                     <div className="flex-1">
                       <span className="text-sm font-medium">
-                        {moment.type === "positive" ? "Vendedor:" : "Vendedor:"}
+                        {moment.speaker || "Vendedor"}:
                       </span>
                       <p className="text-sm mt-1 italic">"{moment.quote}"</p>
                     </div>

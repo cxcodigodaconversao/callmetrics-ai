@@ -20,12 +20,12 @@ Deno.serve(async (req) => {
 
     console.log(`Transcribing audio for video: ${videoId}`);
 
-    const openAIKey = Deno.env.get('OPENAI_API_KEY');
-    if (!openAIKey) {
-      throw new Error('OPENAI_API_KEY not configured');
+    const assemblyAIKey = Deno.env.get('ASSEMBLYAI_API_KEY');
+    if (!assemblyAIKey) {
+      throw new Error('ASSEMBLYAI_API_KEY not configured');
     }
 
-    // Get file size first without downloading
+    // Check file size
     console.log('Checking file size...');
     const headResponse = await fetch(audioUrl, { method: 'HEAD' });
     if (!headResponse.ok) {
@@ -47,162 +47,70 @@ Deno.serve(async (req) => {
       throw new Error('Não foi possível acessar o arquivo. Para vídeos do Google Drive: 1) Certifique-se que o compartilhamento está como "Qualquer pessoa com o link", 2) Ou baixe o vídeo e faça upload direto.');
     }
 
-    if (fileSizeInMB > 25) {
-      throw new Error(
-        `Arquivo muito grande (${fileSizeInMB.toFixed(1)}MB). ` +
-        `O limite é 25MB. ` +
-        `Comprima seu vídeo em https://www.freeconvert.com/video-compressor ` +
-        `ou extraia apenas o áudio em formato MP3.`
-      );
-    }
-
-    console.log(`Downloading full file (${fileSizeInMB.toFixed(2)}MB)...`);
-
-    // Download the complete file
-    const fileResponse = await fetch(audioUrl);
-    if (!fileResponse.ok) {
-      throw new Error(`Failed to download file: ${fileResponse.status}`);
-    }
-
-    const fileBlob = await fileResponse.blob();
-    console.log(`File downloaded. Size: ${(fileBlob.size / (1024 * 1024)).toFixed(2)}MB. Transcribing...`);
-
-    // Detect file extension from content-type or URL
-    let fileExtension = 'mp4'; // default
-    if (contentType.includes('quicktime') || audioUrl.includes('.MOV')) {
-      fileExtension = 'mov';
-    } else if (contentType.includes('webm')) {
-      fileExtension = 'webm';
-    } else if (contentType.includes('mpeg')) {
-      fileExtension = 'mp3';
-    }
-
-    // Prepare form data for Whisper API
-    const formData = new FormData();
-    formData.append('file', fileBlob, `audio.${fileExtension}`);
-    formData.append('model', 'whisper-1');
-    formData.append('language', 'pt');
-    formData.append('response_format', 'verbose_json');
-
     // Initialize Supabase client
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    // Call Whisper API with retry logic
-    console.log('Sending to Whisper API...');
-    
-    let whisperResponse;
-    let lastError;
-    const maxRetries = 3;
-    
-    for (let attempt = 1; attempt <= maxRetries; attempt++) {
-      try {
-        console.log(`Attempt ${attempt}/${maxRetries}...`);
-        
-        // Set timeout for the request (8 minutes for larger files)
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => {
-          console.error(`Timeout after 8 minutes on attempt ${attempt}`);
-          controller.abort();
-        }, 8 * 60 * 1000);
-        
-        console.log('Making request to OpenAI Whisper API...');
-        whisperResponse = await fetch('https://api.openai.com/v1/audio/transcriptions', {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${openAIKey}`,
-          },
-          body: formData,
-          signal: controller.signal,
-        });
-        
-        clearTimeout(timeoutId);
-        console.log(`Whisper API response status: ${whisperResponse.status}`);
-        
-        if (whisperResponse.ok) {
-          console.log('Transcription successful!');
-          break; // Success, exit retry loop
-        }
-        
-        // Handle specific error codes
-        const status = whisperResponse.status;
-        const errorText = await whisperResponse.text();
-        console.error(`Whisper API error (${status}):`, errorText);
-        
-        if (status === 502 || status === 503 || status === 504) {
-          // Temporary server errors - retry
-          lastError = `API temporariamente indisponível (${status}). Tentando novamente...`;
-          console.error(`Attempt ${attempt} failed:`, lastError);
-          
-          if (attempt < maxRetries) {
-            const waitTime = Math.pow(2, attempt) * 1000; // Exponential backoff: 2s, 4s, 8s
-            console.log(`Waiting ${waitTime/1000}s before retry...`);
-            await new Promise(resolve => setTimeout(resolve, waitTime));
-            continue;
-          }
-        } else if (status === 401) {
-          // Authentication error - don't retry
-          throw new Error('Erro de autenticação: Verifique se a chave da API OpenAI está configurada corretamente.');
-        } else if (status === 429) {
-          // Rate limit - retry with longer wait
-          lastError = 'Limite de requisições atingido. Aguardando...';
-          console.error(`Attempt ${attempt} failed:`, lastError);
-          
-          if (attempt < maxRetries) {
-            const waitTime = Math.pow(3, attempt) * 1000; // Longer backoff: 3s, 9s, 27s
-            console.log(`Waiting ${waitTime/1000}s before retry...`);
-            await new Promise(resolve => setTimeout(resolve, waitTime));
-            continue;
-          }
-        } else {
-          // Other errors - don't retry
-          throw new Error(`Erro na API Whisper (${status}): ${errorText}`);
-        }
-        
-      } catch (error: any) {
-        lastError = error.message;
-        console.error(`Attempt ${attempt} failed:`, error);
-        console.error(`Error type: ${error.name}`);
-        
-        if (error.name === 'AbortError') {
-          lastError = 'Timeout: A transcrição demorou mais de 8 minutos.';
-          console.error(lastError);
-          
-          if (attempt < maxRetries) {
-            console.log('Retrying after timeout...');
-            await new Promise(resolve => setTimeout(resolve, 5000));
-            continue;
-          } else {
-            throw new Error('Transcrição demorou muito (timeout após 3 tentativas de 8 minutos cada). O arquivo pode ser muito grande ou a API da OpenAI está lenta. Tente comprimir o áudio ou use um arquivo menor.');
-          }
-        }
-        
-        // Network errors - retry
-        if (attempt < maxRetries && (
-          error.message.includes('fetch failed') ||
-          error.message.includes('network') ||
-          error.message.includes('502') || 
-          error.message.includes('503') || 
-          error.message.includes('504')
-        )) {
-          const waitTime = Math.pow(2, attempt) * 1000;
-          console.log(`Network error, waiting ${waitTime/1000}s before retry...`);
-          await new Promise(resolve => setTimeout(resolve, waitTime));
-          continue;
-        }
-        
-        throw error;
-      }
-    }
-    
-    if (!whisperResponse || !whisperResponse.ok) {
-      throw new Error(`Falha após ${maxRetries} tentativas. Último erro: ${lastError}. A API da OpenAI pode estar com problemas temporários. Tente novamente em alguns minutos.`);
+    // Step 1: Create transcription job with AssemblyAI
+    console.log('Creating AssemblyAI transcription job...');
+    const createResponse = await fetch('https://api.assemblyai.com/v2/transcript', {
+      method: 'POST',
+      headers: {
+        'Authorization': assemblyAIKey,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        audio_url: audioUrl,
+        language_code: 'pt',
+      }),
+    });
+
+    if (!createResponse.ok) {
+      const errorText = await createResponse.text();
+      throw new Error(`AssemblyAI error: ${errorText}`);
     }
 
-    const whisperData = await whisperResponse.json();
-    const fullTranscription = whisperData.text || '';
-    const totalDuration = whisperData.duration || 0;
+    const { id: transcriptId } = await createResponse.json();
+    console.log(`Transcription job created: ${transcriptId}`);
+
+    // Step 2: Poll for completion
+    console.log('Polling for transcription completion...');
+    let transcript;
+    let attempts = 0;
+    const maxAttempts = 120; // 10 minutes max (5s intervals)
+
+    while (attempts < maxAttempts) {
+      const pollResponse = await fetch(`https://api.assemblyai.com/v2/transcript/${transcriptId}`, {
+        headers: {
+          'Authorization': assemblyAIKey,
+        },
+      });
+
+      if (!pollResponse.ok) {
+        throw new Error(`Failed to poll transcription status: ${pollResponse.status}`);
+      }
+
+      transcript = await pollResponse.json();
+      console.log(`Status: ${transcript.status} (attempt ${attempts + 1}/${maxAttempts})`);
+
+      if (transcript.status === 'completed') {
+        break;
+      } else if (transcript.status === 'error') {
+        throw new Error(`Transcription failed: ${transcript.error}`);
+      }
+
+      // Wait 5 seconds before next poll
+      await new Promise(resolve => setTimeout(resolve, 5000));
+      attempts++;
+    }
+
+    if (transcript.status !== 'completed') {
+      throw new Error('Transcription timeout: demorou mais de 10 minutos');
+    }
+
+    const fullTranscription = transcript.text || '';
+    const totalDuration = Math.round((transcript.audio_duration || 0));
     
     console.log(`Transcription complete. Length: ${fullTranscription.length} characters, Duration: ${totalDuration}s`);
 
@@ -212,9 +120,9 @@ Deno.serve(async (req) => {
       .insert({
         video_id: videoId,
         text: fullTranscription,
-        provider: 'openai-whisper',
+        provider: 'assemblyai',
         language: 'pt-BR',
-        duration_sec: Math.round(totalDuration),
+        duration_sec: totalDuration,
         words_count: fullTranscription.split(' ').length,
       })
       .select()
@@ -240,19 +148,7 @@ Deno.serve(async (req) => {
   } catch (error: any) {
     console.error('Error in transcribe-audio:', error);
     
-    // Extract a clean error message
     let errorMessage = error.message || 'Erro desconhecido na transcrição';
-    
-    // Clean up OpenAI API errors
-    if (errorMessage.includes('<!DOCTYPE html>')) {
-      errorMessage = 'A API da OpenAI está temporariamente indisponível. Tente novamente em alguns minutos.';
-    } else if (errorMessage.includes('502') || errorMessage.includes('Bad gateway')) {
-      errorMessage = 'Erro 502: A API da OpenAI está com problemas. Tente novamente em alguns minutos.';
-    } else if (errorMessage.includes('503') || errorMessage.includes('Service Unavailable')) {
-      errorMessage = 'Erro 503: Serviço temporariamente indisponível. Tente novamente em alguns minutos.';
-    } else if (errorMessage.includes('timeout') || errorMessage.includes('AbortError')) {
-      errorMessage = 'Timeout: A transcrição demorou muito. Seu arquivo pode ser grande demais. Tente comprimir o áudio para menos de 10MB.';
-    }
     
     console.error('Final error message:', errorMessage);
     

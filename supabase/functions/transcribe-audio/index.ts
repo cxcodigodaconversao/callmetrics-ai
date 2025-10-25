@@ -100,10 +100,14 @@ Deno.serve(async (req) => {
       try {
         console.log(`Attempt ${attempt}/${maxRetries}...`);
         
-        // Set timeout for the request (5 minutes)
+        // Set timeout for the request (3 minutes - more reasonable)
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 5 * 60 * 1000);
+        const timeoutId = setTimeout(() => {
+          console.error(`Timeout after 3 minutes on attempt ${attempt}`);
+          controller.abort();
+        }, 3 * 60 * 1000);
         
+        console.log('Making request to OpenAI Whisper API...');
         whisperResponse = await fetch('https://api.openai.com/v1/audio/transcriptions', {
           method: 'POST',
           headers: {
@@ -114,6 +118,7 @@ Deno.serve(async (req) => {
         });
         
         clearTimeout(timeoutId);
+        console.log(`Whisper API response status: ${whisperResponse.status}`);
         
         if (whisperResponse.ok) {
           console.log('Transcription successful!');
@@ -123,6 +128,7 @@ Deno.serve(async (req) => {
         // Handle specific error codes
         const status = whisperResponse.status;
         const errorText = await whisperResponse.text();
+        console.error(`Whisper API error (${status}):`, errorText);
         
         if (status === 502 || status === 503 || status === 504) {
           // Temporary server errors - retry
@@ -135,22 +141,53 @@ Deno.serve(async (req) => {
             await new Promise(resolve => setTimeout(resolve, waitTime));
             continue;
           }
+        } else if (status === 401) {
+          // Authentication error - don't retry
+          throw new Error('Erro de autenticação: Verifique se a chave da API OpenAI está configurada corretamente.');
+        } else if (status === 429) {
+          // Rate limit - retry with longer wait
+          lastError = 'Limite de requisições atingido. Aguardando...';
+          console.error(`Attempt ${attempt} failed:`, lastError);
+          
+          if (attempt < maxRetries) {
+            const waitTime = Math.pow(3, attempt) * 1000; // Longer backoff: 3s, 9s, 27s
+            console.log(`Waiting ${waitTime/1000}s before retry...`);
+            await new Promise(resolve => setTimeout(resolve, waitTime));
+            continue;
+          }
         } else {
           // Other errors - don't retry
-          throw new Error(`Whisper API error (${status}): ${errorText}`);
+          throw new Error(`Erro na API Whisper (${status}): ${errorText}`);
         }
         
       } catch (error: any) {
         lastError = error.message;
-        console.error(`Attempt ${attempt} failed:`, error.message);
+        console.error(`Attempt ${attempt} failed:`, error);
+        console.error(`Error type: ${error.name}`);
         
         if (error.name === 'AbortError') {
-          throw new Error('Transcrição demorou muito (timeout após 5 minutos). Tente um arquivo menor.');
+          lastError = 'Timeout: A transcrição demorou mais de 3 minutos.';
+          console.error(lastError);
+          
+          if (attempt < maxRetries) {
+            console.log('Retrying after timeout...');
+            await new Promise(resolve => setTimeout(resolve, 2000));
+            continue;
+          } else {
+            throw new Error('Transcrição demorou muito (timeout após 3 tentativas). A API da OpenAI pode estar sobrecarregada. Tente novamente em alguns minutos ou use um arquivo menor.');
+          }
         }
         
-        if (attempt < maxRetries && (error.message.includes('502') || error.message.includes('503') || error.message.includes('504'))) {
+        // Network errors - retry
+        if (attempt < maxRetries && (
+          error.message.includes('fetch failed') ||
+          error.message.includes('network') ||
+          error.message.includes('502') || 
+          error.message.includes('503') || 
+          error.message.includes('504')
+        )) {
           const waitTime = Math.pow(2, attempt) * 1000;
-          console.log(`Waiting ${waitTime/1000}s before retry...`);
+          console.log(`Network error, waiting ${waitTime/1000}s before retry...`);
           await new Promise(resolve => setTimeout(resolve, waitTime));
           continue;
         }

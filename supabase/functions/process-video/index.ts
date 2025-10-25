@@ -107,25 +107,48 @@ Deno.serve(async (req) => {
       body: { audioUrl, videoId }
     });
 
+    console.log('Transcription response received:', {
+      hasError: !!transcribeResponse.error,
+      hasData: !!transcribeResponse.data,
+      errorType: transcribeResponse.error?.name,
+      errorMessage: transcribeResponse.error?.message
+    });
+
     if (transcribeResponse.error) {
       // Extract error message from response
       let errorMsg = 'Erro na transcrição';
-      if (transcribeResponse.error.message) {
-        errorMsg = transcribeResponse.error.message;
-      } else if (transcribeResponse.error.context?.body) {
+      
+      // Try to get error from context body first (most detailed)
+      if (transcribeResponse.error.context?.body) {
         try {
           const errorBody = JSON.parse(transcribeResponse.error.context.body);
           errorMsg = errorBody.error || errorMsg;
+          console.error('Transcription error from body:', errorMsg);
         } catch (e) {
           console.error('Failed to parse error body:', e);
         }
       }
+      
+      // Fallback to error message
+      if (transcribeResponse.error.message && errorMsg === 'Erro na transcrição') {
+        errorMsg = transcribeResponse.error.message;
+        console.error('Transcription error from message:', errorMsg);
+      }
+      
+      // If still generic, add more context
+      if (errorMsg === 'Erro na transcrição' || errorMsg.includes('Edge Function returned a non-2xx status code')) {
+        errorMsg = 'Erro na transcrição: A API da OpenAI pode estar temporariamente indisponível ou a chave API não está configurada. Tente novamente em alguns minutos.';
+      }
+      
       throw new Error(errorMsg);
     }
 
     if (!transcribeResponse.data || !transcribeResponse.data.transcription) {
+      console.error('Invalid transcription response:', transcribeResponse.data);
       throw new Error('Transcrição retornou dados inválidos');
     }
+    
+    console.log('Transcription successful, length:', transcribeResponse.data.transcription.length);
 
     const { transcription, transcriptionId } = transcribeResponse.data;
     console.log(`Transcription completed: ${transcriptionId}`);

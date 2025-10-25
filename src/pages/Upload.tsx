@@ -60,10 +60,18 @@ const Upload = () => {
     
     if (e.dataTransfer.files && e.dataTransfer.files[0]) {
       const file = e.dataTransfer.files[0];
-      const maxSize = 500 * 1024 * 1024; // 500MB
+      const maxSize = 25 * 1024 * 1024; // 25MB - limite da API Whisper
       
       if (file.size > maxSize) {
-        toast.error(`Arquivo muito grande! Tamanho máximo: 500MB. Seu arquivo: ${(file.size / (1024 * 1024)).toFixed(2)}MB`);
+        const fileSizeMB = (file.size / (1024 * 1024)).toFixed(2);
+        toast.error(
+          `Arquivo muito grande! O limite é 25MB (seu arquivo: ${fileSizeMB}MB).\n\n` +
+          `Para comprimir seu vídeo:\n` +
+          `• Use https://www.freeconvert.com/video-compressor\n` +
+          `• Ou extraia apenas o áudio em MP3\n` +
+          `• Configure qualidade menor ou resolução reduzida`,
+          { duration: 10000 }
+        );
         return;
       }
       
@@ -74,10 +82,18 @@ const Upload = () => {
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
-      const maxSize = 500 * 1024 * 1024; // 500MB
+      const maxSize = 25 * 1024 * 1024; // 25MB - limite da API Whisper
       
       if (file.size > maxSize) {
-        toast.error(`Arquivo muito grande! Tamanho máximo: 500MB. Seu arquivo: ${(file.size / (1024 * 1024)).toFixed(2)}MB`);
+        const fileSizeMB = (file.size / (1024 * 1024)).toFixed(2);
+        toast.error(
+          `Arquivo muito grande! O limite é 25MB (seu arquivo: ${fileSizeMB}MB).\n\n` +
+          `Para comprimir seu vídeo:\n` +
+          `• Use https://www.freeconvert.com/video-compressor\n` +
+          `• Ou extraia apenas o áudio em MP3\n` +
+          `• Configure qualidade menor ou resolução reduzida`,
+          { duration: 10000 }
+        );
         return;
       }
       
@@ -423,7 +439,10 @@ const Upload = () => {
                         />
                       </div>
                       <p className="text-sm text-muted-foreground">
-                        Formatos suportados: MP4, MOV, AVI (máx. 500MB)
+                        <strong>Limite: 25MB</strong> - Formatos: MP4, MOV, AVI, MP3
+                      </p>
+                      <p className="text-xs text-amber-600 mt-2">
+                        ⚠️ Arquivos maiores? Comprima em <a href="https://www.freeconvert.com/video-compressor" target="_blank" rel="noopener noreferrer" className="underline hover:text-amber-700">FreeConvert</a> ou extraia o áudio
                       </p>
                     </div>
                   )}

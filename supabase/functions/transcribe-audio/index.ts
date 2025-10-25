@@ -47,16 +47,13 @@ Deno.serve(async (req) => {
       throw new Error('Não foi possível acessar o arquivo. Para vídeos do Google Drive: 1) Certifique-se que o compartilhamento está como "Qualquer pessoa com o link", 2) Ou baixe o vídeo e faça upload direto.');
     }
 
-    if (fileSizeInMB > 500) {
-      throw new Error(`Arquivo muito grande (${fileSizeInMB.toFixed(1)}MB). Tamanho máximo: 500MB.`);
-    }
-
-    // Whisper accepts videos up to 25MB - download full file if under limit
-    const totalSize = parseInt(contentLength);
-    const maxWhisperSize = 25 * 1024 * 1024; // 25MB limit
-    
-    if (totalSize > maxWhisperSize) {
-      throw new Error(`Arquivo muito grande (${fileSizeInMB.toFixed(1)}MB). O limite da API Whisper é 25MB. Por favor, comprima o vídeo ou extraia apenas o áudio antes de fazer upload.`);
+    if (fileSizeInMB > 25) {
+      throw new Error(
+        `Arquivo muito grande (${fileSizeInMB.toFixed(1)}MB). ` +
+        `O limite é 25MB. ` +
+        `Comprima seu vídeo em https://www.freeconvert.com/video-compressor ` +
+        `ou extraia apenas o áudio em formato MP3.`
+      );
     }
 
     console.log(`Downloading full file (${fileSizeInMB.toFixed(2)}MB)...`);

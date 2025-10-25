@@ -53,8 +53,12 @@ Deno.serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
+  let videoId: string | undefined;
+
   try {
-    const { transcription, videoId, transcriptionId } = await req.json();
+    const body = await req.json();
+    const { transcription, transcriptionId } = body;
+    videoId = body.videoId;
 
     if (!transcription || !videoId) {
       throw new Error('transcription and videoId are required');
@@ -150,8 +154,37 @@ Deno.serve(async (req) => {
 
   } catch (error: any) {
     console.error('Error in analyze-transcription:', error);
+    
+    // Extract clean error message
+    let errorMessage = error.message || 'Erro desconhecido na análise';
+    
+    // ALWAYS update video status to failed when there's an error
+    if (videoId) {
+      const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+      const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+      const supabase = createClient(supabaseUrl, supabaseKey);
+      
+      console.log(`Updating video ${videoId} status to failed with error: ${errorMessage}`);
+      
+      const { error: updateError } = await supabase
+        .from('videos')
+        .update({ 
+          status: 'failed',
+          error_message: errorMessage 
+        })
+        .eq('id', videoId);
+      
+      if (updateError) {
+        console.error('Failed to update video status:', updateError);
+      } else {
+        console.log('Video status successfully updated to failed');
+      }
+    } else {
+      console.error('CRITICAL: No videoId available to update status in analyze-transcription');
+    }
+    
     return new Response(
-      JSON.stringify({ error: error.message }),
+      JSON.stringify({ error: errorMessage }),
       {
         status: 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },

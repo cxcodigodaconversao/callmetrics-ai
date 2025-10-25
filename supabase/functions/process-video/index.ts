@@ -108,7 +108,23 @@ Deno.serve(async (req) => {
     });
 
     if (transcribeResponse.error) {
-      throw new Error(`Transcription failed: ${transcribeResponse.error.message}`);
+      // Extract error message from response
+      let errorMsg = 'Erro na transcrição';
+      if (transcribeResponse.error.message) {
+        errorMsg = transcribeResponse.error.message;
+      } else if (transcribeResponse.error.context?.body) {
+        try {
+          const errorBody = JSON.parse(transcribeResponse.error.context.body);
+          errorMsg = errorBody.error || errorMsg;
+        } catch (e) {
+          console.error('Failed to parse error body:', e);
+        }
+      }
+      throw new Error(errorMsg);
+    }
+
+    if (!transcribeResponse.data || !transcribeResponse.data.transcription) {
+      throw new Error('Transcrição retornou dados inválidos');
     }
 
     const { transcription, transcriptionId } = transcribeResponse.data;
@@ -121,7 +137,23 @@ Deno.serve(async (req) => {
     });
 
     if (analyzeResponse.error) {
-      throw new Error(`Analysis failed: ${analyzeResponse.error.message}`);
+      // Extract error message from response
+      let errorMsg = 'Erro na análise';
+      if (analyzeResponse.error.message) {
+        errorMsg = analyzeResponse.error.message;
+      } else if (analyzeResponse.error.context?.body) {
+        try {
+          const errorBody = JSON.parse(analyzeResponse.error.context.body);
+          errorMsg = errorBody.error || errorMsg;
+        } catch (e) {
+          console.error('Failed to parse error body:', e);
+        }
+      }
+      throw new Error(errorMsg);
+    }
+
+    if (!analyzeResponse.data || !analyzeResponse.data.success) {
+      throw new Error('Análise retornou dados inválidos');
     }
 
     console.log(`Analysis completed for video: ${videoId}`);

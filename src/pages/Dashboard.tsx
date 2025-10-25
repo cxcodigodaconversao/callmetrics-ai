@@ -89,17 +89,30 @@ const Dashboard = () => {
 
       if (error) {
         console.error('Error details:', error);
-        console.error('Full error object:', JSON.stringify(error, null, 2));
         
         // Extract meaningful error message
         let errorMessage = 'Erro ao processar vídeo';
-        if (error.message) {
+        
+        // Try to get error from context body
+        if (error.context?.body) {
+          try {
+            const errorBody = JSON.parse(error.context.body);
+            errorMessage = errorBody.error || errorMessage;
+          } catch (e) {
+            console.error('Failed to parse error body');
+          }
+        } else if (error.message) {
           errorMessage = error.message;
-        } else if (typeof error === 'object') {
-          errorMessage = JSON.stringify(error);
         }
         
-        toast.error(errorMessage, { duration: 8000 });
+        toast.error(errorMessage, { duration: 10000 });
+        fetchVideos(); // Refresh to show failed status
+        return;
+      }
+
+      if (!data || !data.success) {
+        toast.error('Processamento retornou resultado inválido', { duration: 8000 });
+        fetchVideos();
         return;
       }
 
@@ -107,7 +120,8 @@ const Dashboard = () => {
       fetchVideos(); // Refresh the list
     } catch (error: any) {
       console.error('Full error:', error);
-      toast.error(`Erro ao processar vídeo: ${error.message || 'Erro desconhecido'}`, { duration: 8000 });
+      toast.error(`Erro ao processar vídeo: ${error.message || 'Erro desconhecido'}`, { duration: 10000 });
+      fetchVideos();
     }
   };
 

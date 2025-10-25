@@ -89,20 +89,78 @@ Deno.serve(async (req) => {
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    // Call Whisper API
+    // Call Whisper API with retry logic
     console.log('Sending to Whisper API...');
-    const whisperResponse = await fetch('https://api.openai.com/v1/audio/transcriptions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${openAIKey}`,
-      },
-      body: formData,
-    });
-
-    if (!whisperResponse.ok) {
-      const errorText = await whisperResponse.text();
-      console.error('Whisper API error:', errorText);
-      throw new Error(`Whisper transcription failed: ${errorText}`);
+    
+    let whisperResponse;
+    let lastError;
+    const maxRetries = 3;
+    
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        console.log(`Attempt ${attempt}/${maxRetries}...`);
+        
+        // Set timeout for the request (5 minutes)
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 5 * 60 * 1000);
+        
+        whisperResponse = await fetch('https://api.openai.com/v1/audio/transcriptions', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${openAIKey}`,
+          },
+          body: formData,
+          signal: controller.signal,
+        });
+        
+        clearTimeout(timeoutId);
+        
+        if (whisperResponse.ok) {
+          console.log('Transcription successful!');
+          break; // Success, exit retry loop
+        }
+        
+        // Handle specific error codes
+        const status = whisperResponse.status;
+        const errorText = await whisperResponse.text();
+        
+        if (status === 502 || status === 503 || status === 504) {
+          // Temporary server errors - retry
+          lastError = `API temporariamente indisponível (${status}). Tentando novamente...`;
+          console.error(`Attempt ${attempt} failed:`, lastError);
+          
+          if (attempt < maxRetries) {
+            const waitTime = Math.pow(2, attempt) * 1000; // Exponential backoff: 2s, 4s, 8s
+            console.log(`Waiting ${waitTime/1000}s before retry...`);
+            await new Promise(resolve => setTimeout(resolve, waitTime));
+            continue;
+          }
+        } else {
+          // Other errors - don't retry
+          throw new Error(`Whisper API error (${status}): ${errorText}`);
+        }
+        
+      } catch (error: any) {
+        lastError = error.message;
+        console.error(`Attempt ${attempt} failed:`, error.message);
+        
+        if (error.name === 'AbortError') {
+          throw new Error('Transcrição demorou muito (timeout após 5 minutos). Tente um arquivo menor.');
+        }
+        
+        if (attempt < maxRetries && (error.message.includes('502') || error.message.includes('503') || error.message.includes('504'))) {
+          const waitTime = Math.pow(2, attempt) * 1000;
+          console.log(`Waiting ${waitTime/1000}s before retry...`);
+          await new Promise(resolve => setTimeout(resolve, waitTime));
+          continue;
+        }
+        
+        throw error;
+      }
+    }
+    
+    if (!whisperResponse || !whisperResponse.ok) {
+      throw new Error(`Falha após ${maxRetries} tentativas. Último erro: ${lastError}. A API da OpenAI pode estar com problemas temporários. Tente novamente em alguns minutos.`);
     }
 
     const whisperData = await whisperResponse.json();

@@ -31,7 +31,7 @@ const App = () => (
           <Route path="/dashboard/upload" element={<Upload />} />
           <Route path="/dashboard/analyses" element={<Analyses />} />
           <Route path="/dashboard/analyses/:id" element={<AnalysisDetail />} />
-          <Route path="/dashboard/disc-radar" element={<DISCRadar />} />
+          <Route path="/dashboard/disc-radar" element={<RadarConversao />} />
           <Route path="/dashboard/settings" element={<Settings />} />
           <Route path="/admin" element={<AdminDashboard />} />
           <Route path="/admin/users" element={<AdminUsers />} />

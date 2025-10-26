@@ -1,0 +1,514 @@
+/* Reset básico */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+/* Configurações globais */
+html, body {
+  height: 100%;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+body {
+  background-color: #0c121c;
+  color: white;
+  min-height: 100vh;
+  line-height: 1.6;
+}
+
+#root {
+  min-height: 100vh;
+}
+
+/* Scrollbar personalizada */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #1a2332;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #d2bc8f;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #e6d0a3;
+}
+
+/* Firefox scrollbar */
+html {
+  scrollbar-width: thin;
+  scrollbar-color: #d2bc8f #1a2332;
+}
+
+/* Seleção de texto */
+::selection {
+  background: rgba(210, 188, 143, 0.3);
+  color: white;
+}
+
+/* Títulos e Destaques */
+h1, h2, h3 {
+  color: #d2bc8f;
+}
+
+/* Parágrafos */
+p {
+  line-height: 1.6;
+  margin-bottom: 1rem;
+}
+
+strong {
+  color: #d2bc8f;
+}
+
+em {
+  color: #ccc;
+  font-style: italic;
+}
+
+/* Listas */
+ul {
+  padding-left: 1.5rem;
+}
+
+li {
+  margin-bottom: 0.5rem;
+  line-height: 1.4;
+}
+
+/* Botões */
+button {
+  background: #d2bc8f;
+  color: #0c121c;
+  border: none;
+  padding: 0.75rem 1.5rem;
+  border-radius: 8px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  white-space: nowrap;
+  font-size: 0.9rem;
+  font-family: inherit;
+}
+
+button:hover {
+  background: #e6d0a3;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(210, 188, 143, 0.3);
+}
+
+button:active {
+  transform: translateY(0);
+}
+
+/* Botões de abas específicos */
+.tab-buttons {
+  display: flex;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+  flex-wrap: wrap;
+}
+
+.tab-button {
+  padding: 0.75rem 1rem;
+  font-size: 0.9rem;
+  border-radius: 8px;
+  transition: all 0.3s ease;
+  min-width: 140px;
+  text-align: center;
+}
+
+.tab-button.active {
+  background: #d2bc8f;
+  color: #0c121c;
+}
+
+.tab-button.inactive {
+  background: #666;
+  color: white;
+}
+
+.tab-button:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(210, 188, 143, 0.2);
+}
+
+/* Inputs */
+input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  margin-right: 0.75rem;
+  accent-color: #d2bc8f;
+  cursor: pointer;
+}
+
+label {
+  display: flex;
+  align-items: center;
+  padding: 0.5rem;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+  user-select: none;
+}
+
+label:hover {
+  background-color: rgba(210, 188, 143, 0.1);
+}
+
+/* Cards e Seções */
+.card {
+  background: #1a2332;
+  border: 1px solid #333;
+  border-radius: 10px;
+  padding: 1.5rem;
+  margin-bottom: 1.5rem;
+  transition: all 0.3s ease;
+}
+
+.card:hover {
+  border-color: #555;
+}
+
+.section {
+  background: #2a3441;
+  border: 1px solid #444;
+  border-radius: 8px;
+  padding: 1.5rem;
+  margin-bottom: 1rem;
+}
+
+.subsection {
+  background: #1a2332;
+  border: 1px solid #444;
+  border-radius: 8px;
+  padding: 1rem;
+  margin-bottom: 1rem;
+}
+
+/* Seções expandíveis */
+.expandable-header {
+  cursor: pointer;
+  display: flex;
+  justify-content: space-between;
+  alignItems: center;
+  color: #d2bc8f;
+  font-weight: bold;
+  margin-bottom: 0.5rem;
+  transition: color 0.2s ease;
+}
+
+.expandable-header:hover {
+  color: #e6d0a3;
+}
+
+.expandable-content {
+  margin-top: 1rem;
+  padding: 1rem;
+  background: #2a3441;
+  border-radius: 8px;
+  animation: fadeIn 0.3s ease-out;
+}
+
+/* Conteúdo específico do Social Selling */
+.social-selling-item {
+  background: #1a2332;
+  border-left: 4px solid #d2bc8f;
+  padding: 1rem;
+  margin: 0.75rem 0;
+  border-radius: 0 8px 8px 0;
+  font-size: 1rem;
+  line-height: 1.5;
+}
+
+.social-selling-script {
+  background: #1a2332;
+  border-left: 4px solid #d2bc8f;
+  padding: 1rem;
+  margin: 0.75rem 0;
+  border-radius: 0 8px 8px 0;
+}
+
+.script-situation {
+  color: #d2bc8f;
+  font-weight: bold;
+  margin-bottom: 0.5rem;
+}
+
+/* Objeções */
+.objection {
+  background: #2a3441;
+  border: 1px solid #444;
+  border-radius: 8px;
+  padding: 1rem;
+  margin-bottom: 1rem;
+  transition: all 0.3s ease;
+}
+
+.objection:hover {
+  border-color: #555;
+}
+
+.objection-title {
+  color: #ff6b6b;
+  font-weight: bold;
+  margin-bottom: 0.5rem;
+  cursor: pointer;
+  transition: color 0.2s ease;
+}
+
+.objection-title:hover {
+  color: #ff8a8a;
+}
+
+.objection-question {
+  background: #1a2332;
+  border-left: 4px solid #4dabf7;
+  padding: 0.75rem;
+  margin: 0.5rem 0;
+  border-radius: 0 6px 6px 0;
+}
+
+.objection-response {
+  background: #1a2332;
+  border-left: 4px solid #51cf66;
+  padding: 0.75rem;
+  margin: 0.5rem 0;
+  border-radius: 0 6px 6px 0;
+}
+
+.question-label {
+  color: #4dabf7;
+  font-weight: bold;
+  font-size: 0.9rem;
+  margin-bottom: 0.25rem;
+}
+
+.response-label {
+  color: #51cf66;
+  font-weight: bold;
+  font-size: 0.9rem;
+  margin-bottom: 0.25rem;
+}
+
+/* Perfis específicos */
+.profile-d {
+  border-left: 4px solid #ff6b6b;
+}
+
+.profile-i {
+  border-left: 4px solid #ffd43b;
+}
+
+.profile-s {
+  border-left: 4px solid #51cf66;
+}
+
+.profile-c {
+  border-left: 4px solid #339af0;
+}
+
+/* Estados */
+.empty-state {
+  text-align: center;
+  padding: 3rem;
+  color: #888;
+  background: #1a2332;
+  border-radius: 10px;
+  border: 2px dashed #444;
+}
+
+.empty-state h2 {
+  color: #d2bc8f;
+  margin-bottom: 1rem;
+}
+
+/* Focus states para acessibilidade */
+button:focus,
+input:focus,
+.expandable-header:focus {
+  outline: 2px solid #d2bc8f;
+  outline-offset: 2px;
+}
+
+/* Responsividade */
+@media (max-width: 768px) {
+  .tab-buttons {
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+  
+  .tab-button {
+    min-width: auto;
+    padding: 0.6rem 1rem;
+    font-size: 0.85rem;
+  }
+  
+  button {
+    padding: 0.6rem 1rem;
+    font-size: 0.85rem;
+  }
+  
+  .card {
+    padding: 1rem;
+  }
+  
+  .section {
+    padding: 1rem;
+  }
+  
+  .subsection {
+    padding: 0.75rem;
+  }
+}
+
+@media (max-width: 480px) {
+  body {
+    font-size: 0.9rem;
+  }
+  
+  .tab-button {
+    padding: 0.5rem 0.8rem;
+    font-size: 0.8rem;
+  }
+  
+  button {
+    padding: 0.5rem 0.8rem;
+    font-size: 0.8rem;
+  }
+  
+  .card {
+    padding: 0.75rem;
+  }
+  
+  h1, h2 {
+    font-size: 1.5rem;
+  }
+  
+  h3 {
+    font-size: 1.2rem;
+  }
+}
+
+/* Animações */
+@keyframes fadeIn {
+  from { 
+    opacity: 0; 
+    transform: translateY(10px); 
+  }
+  to { 
+    opacity: 1; 
+    transform: translateY(0); 
+  }
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateX(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.card, .section, .objection {
+  animation: fadeIn 0.3s ease-out;
+}
+
+.objection-question, .objection-response, .social-selling-item {
+  animation: slideIn 0.3s ease-out;
+}
+
+/* Estados de interação */
+.expandable-header {
+  position: relative;
+}
+
+.expandable-header::after {
+  content: '';
+  position: absolute;
+  bottom: -2px;
+  left: 0;
+  width: 0;
+  height: 2px;
+  background: currentColor;
+  transition: width 0.3s ease;
+}
+
+.expandable-header:hover::after {
+  width: 100%;
+}
+
+/* Loading states */
+.loading {
+  opacity: 0.6;
+  pointer-events: none;
+}
+
+/* Print styles */
+@media print {
+  body {
+    background: white;
+    color: black;
+  }
+  
+  .card, .section, .subsection {
+    border: 1px solid #ccc;
+    background: white;
+  }
+  
+  button {
+    display: none;
+  }
+  
+  .tab-buttons {
+    display: none;
+  }
+}
+
+/* Melhorias visuais específicas */
+.grid-markers {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 0.5rem;
+  margin-top: 1rem;
+}
+
+.tip-box {
+  margin-top: 1.5rem;
+  padding: 1rem;
+  background: #1a2332;
+  border-radius: 8px;
+  border: 1px solid #333;
+}
+
+.tip-box strong {
+  color: #51cf66;
+}
+
+.highlight-box {
+  background: #1a2332;
+  padding: 1rem;
+  border-radius: 6px;
+  margin-bottom: 1rem;
+}
+
+/* Icones e emojis */
+.icon {
+  margin-right: 0.5rem;
+  font-size: 1.1em;
+}
+
+/* Transições suaves para todos os elementos interativos */
+* {
+  transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease;
+}

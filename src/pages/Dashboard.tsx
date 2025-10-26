@@ -165,7 +165,7 @@ const Dashboard = () => {
     { icon: <LayoutDashboard className="w-5 h-5" />, label: "Dashboard", path: "/dashboard" },
     { icon: <Upload className="w-5 h-5" />, label: "Nova Análise", path: "/dashboard/upload" },
     { icon: <FileText className="w-5 h-5" />, label: "Minhas Análises", path: "/dashboard/analyses" },
-    { icon: <Target className="w-5 h-5" />, label: "Radar DISC", path: "/dashboard/disc-radar" },
+    { icon: <Target className="w-5 h-5" />, label: "Radar da Conversão", path: "/dashboard/disc-radar" },
     { icon: <Settings className="w-5 h-5" />, label: "Configurações", path: "/dashboard/settings" },
   ];
 

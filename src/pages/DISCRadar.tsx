@@ -103,16 +103,15 @@ export default function DISCRadar() {
       {/* Main Content */}
       <main className="flex-1 p-8 bg-background">
         <div className="max-w-7xl mx-auto">
-          {/* Header */}
-          <div className="mb-8">
-            <div className="flex items-center gap-3 mb-2">
-              <Target className="w-10 h-10 text-primary" />
-              <h1 className="text-4xl font-bold">Radar Comportamental DISC</h1>
-            </div>
-            <p className="text-muted-foreground text-lg">
-              Identifique o perfil do seu cliente e adapte sua abordagem para maximizar conversão
-            </p>
-          </div>
+      <div className="mb-8">
+        <div className="flex items-center gap-3 mb-2">
+          <Target className="w-10 h-10 text-primary" />
+          <h1 className="text-4xl font-bold">Radar da Conversão</h1>
+        </div>
+        <p className="text-muted-foreground text-lg">
+          Sistema completo de análise comportamental para maximizar conversão em calls 1:1
+        </p>
+      </div>
 
           {/* Profile Summary Card */}
           {dominantProfile && (
@@ -152,12 +151,11 @@ export default function DISCRadar() {
             </Card>
           )}
 
-          {/* Main Tabs */}
           <Tabs defaultValue="radar" className="space-y-6">
-            <TabsList className="grid w-full grid-cols-4">
+            <TabsList className="grid w-full grid-cols-5">
               <TabsTrigger value="radar" className="gap-2">
                 <Target className="w-4 h-4" />
-                Radar & Indicadores
+                Radar
               </TabsTrigger>
               <TabsTrigger value="objections" className="gap-2">
                 <MessageSquare className="w-4 h-4" />
@@ -167,9 +165,13 @@ export default function DISCRadar() {
                 <Lightbulb className="w-4 h-4" />
                 Scripts SPIN
               </TabsTrigger>
+              <TabsTrigger value="perguntas" className="gap-2">
+                <TrendingUp className="w-4 h-4" />
+                Perguntas Abertas
+              </TabsTrigger>
               <TabsTrigger value="profiles" className="gap-2">
                 <BookOpen className="w-4 h-4" />
-                Perfis Completos
+                Perfis
               </TabsTrigger>
             </TabsList>
 
@@ -191,7 +193,28 @@ export default function DISCRadar() {
               <SPINScripts selectedProfile={dominantProfile} />
             </TabsContent>
 
-            {/* Tab 4: Complete Profiles */}
+            {/* Tab 4: Perguntas Abertas & Social Selling */}
+            <TabsContent value="perguntas">
+              {dominantProfile ? (
+                <Card className="p-6">
+                  <h2 className="text-2xl font-bold mb-4">Perguntas Abertas Estratégicas - {discProfiles[dominantProfile].name}</h2>
+                  <p className="text-muted-foreground mb-4">
+                    {discProfiles[dominantProfile].perguntas_abertas?.objetivo}
+                  </p>
+                  <ul className="space-y-2">
+                    {discProfiles[dominantProfile].perguntas_abertas?.perguntas.map((pergunta, idx) => (
+                      <li key={idx} className="text-sm">• {pergunta}</li>
+                    ))}
+                  </ul>
+                </Card>
+              ) : (
+                <Card className="p-6 text-center text-muted-foreground">
+                  Marque indicadores na aba Radar para ver perguntas personalizadas
+                </Card>
+              )}
+            </TabsContent>
+
+            {/* Tab 5: Complete Profiles */}
             <TabsContent value="profiles" className="space-y-6">
               {Object.values(discProfiles).map((profile) => (
                 <Card key={profile.id} className="p-6">

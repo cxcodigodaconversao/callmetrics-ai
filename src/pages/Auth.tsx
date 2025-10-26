@@ -166,7 +166,7 @@ const Auth = () => {
         <div className="text-center mb-8">
           <Link to="/" className="inline-flex items-center gap-2 mb-6">
             <Brain className="w-10 h-10 text-primary" />
-            <span className="text-2xl font-bold text-primary">Call Analyzer</span>
+            <span className="text-2xl font-bold text-primary">CX Código da Conversão</span>
           </Link>
         </div>
 

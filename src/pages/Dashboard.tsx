@@ -203,7 +203,7 @@ const Dashboard = () => {
         <div className="p-6 border-b border-border">
           <div className="flex items-center gap-2">
             <Brain className="w-8 h-8 text-primary" />
-            <span className="text-xl font-bold text-primary">Call Analyzer</span>
+            <span className="text-xl font-bold text-primary">CX - Código da Conversão</span>
           </div>
         </div>
 

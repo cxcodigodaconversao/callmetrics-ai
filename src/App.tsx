@@ -10,7 +10,7 @@ import Upload from "./pages/Upload";
 import Analyses from "./pages/Analyses";
 import AnalysisDetail from "./pages/AnalysisDetail";
 import Settings from "./pages/Settings";
-import DISCRadar from "./pages/DISCRadar";
+import RadarConversao from "./pages/RadarConversao";
 import NotFound from "./pages/NotFound";
 import AdminDashboard from "./pages/admin/AdminDashboard";
 import AdminUsers from "./pages/admin/AdminUsers";

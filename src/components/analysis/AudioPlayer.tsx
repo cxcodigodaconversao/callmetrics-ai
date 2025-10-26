@@ -16,7 +16,7 @@ export function AudioPlayer({ open, onOpenChange, videoUrl, timestamp, title }: 
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
   const [error, setError] = useState<string>("");
-  const audioRef = useRef<HTMLAudioElement>(null);
+  const videoRef = useRef<HTMLVideoElement>(null);
 
   // Convert timestamp (MM:SS or HH:MM:SS) to seconds
   const timestampToSeconds = (ts: string): number => {
@@ -30,40 +30,40 @@ export function AudioPlayer({ open, onOpenChange, videoUrl, timestamp, title }: 
   };
 
   useEffect(() => {
-    if (open && audioRef.current) {
+    if (open && videoRef.current) {
       setError("");
       const startTime = timestampToSeconds(timestamp);
-      audioRef.current.currentTime = startTime;
-      audioRef.current.play()
+      videoRef.current.currentTime = startTime;
+      videoRef.current.play()
         .then(() => setIsPlaying(true))
         .catch((err) => {
-          console.error("Erro ao reproduzir áudio:", err);
-          setError("Não foi possível reproduzir o áudio. Verifique se o arquivo existe.");
+          console.error("Erro ao reproduzir vídeo:", err);
+          setError("Não foi possível reproduzir o vídeo. Verifique se o arquivo existe.");
           setIsPlaying(false);
         });
     }
   }, [open, timestamp]);
 
   const togglePlay = () => {
-    if (audioRef.current) {
+    if (videoRef.current) {
       if (isPlaying) {
-        audioRef.current.pause();
+        videoRef.current.pause();
       } else {
-        audioRef.current.play();
+        videoRef.current.play();
       }
       setIsPlaying(!isPlaying);
     }
   };
 
   const handleTimeUpdate = () => {
-    if (audioRef.current) {
-      setCurrentTime(audioRef.current.currentTime);
+    if (videoRef.current) {
+      setCurrentTime(videoRef.current.currentTime);
     }
   };
 
   const handleLoadedMetadata = () => {
-    if (audioRef.current) {
-      setDuration(audioRef.current.duration);
+    if (videoRef.current) {
+      setDuration(videoRef.current.duration);
     }
   };
 
@@ -94,13 +94,13 @@ export function AudioPlayer({ open, onOpenChange, videoUrl, timestamp, title }: 
           </div>
 
           <video
-            ref={audioRef as any}
+            ref={videoRef}
             src={videoUrl}
             onTimeUpdate={handleTimeUpdate}
             onLoadedMetadata={handleLoadedMetadata}
             onError={(e) => {
               console.error("Erro no elemento de vídeo:", e);
-              setError("Erro ao carregar o áudio do vídeo.");
+              setError("Erro ao carregar o vídeo. Verifique se o URL está correto.");
             }}
             preload="metadata"
             style={{ display: "none" }}

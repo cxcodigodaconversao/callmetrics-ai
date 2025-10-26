@@ -1,539 +1,1118 @@
 import { useState } from "react";
-import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
-import { ChevronRight } from "lucide-react";
 
 const markers = [
-  { id: "m1", label: "Fala rápida e direta", profile: "D" },
-  { id: "m2", label: "Fala técnica e analítica", profile: "C" },
-  { id: "m3", label: "Tom de voz suave e estável", profile: "S" },
-  { id: "m4", label: "Sorriso, contato visual constante", profile: "I" },
-  { id: "m5", label: "Fala animada e com histórias", profile: "I" },
-  { id: "m6", label: "Tom de voz firme e decidido", profile: "D" },
-  { id: "m7", label: "Tom de voz neutro e racional", profile: "C" },
-  { id: "m8", label: "Expressão calma, receptiva", profile: "S" },
-  { id: "m9", label: "Fala pausada e cuidadosa", profile: "S" },
-  { id: "m10", label: "Tom de voz expressivo e emocional", profile: "I" },
-  { id: "m11", label: "Olhar direto e assertivo", profile: "D" },
-  { id: "m12", label: "Expressão séria, analítica", profile: "C" },
+  { label: "Fala rápida e direta", profile: "D" },
+  { label: "Fala animada e com histórias", profile: "I" },
+  { label: "Fala pausada e cuidadosa", profile: "S" },
+  { label: "Fala técnica e analítica", profile: "C" },
+  { label: "Tom de voz firme e decidido", profile: "D" },
+  { label: "Tom de voz expressivo e emocional", profile: "I" },
+  { label: "Tom de voz suave e estável", profile: "S" },
+  { label: "Tom de voz neutro e racional", profile: "C" },
+  { label: "Olhar direto e assertivo", profile: "D" },
+  { label: "Sorriso, contato visual constante", profile: "I" },
+  { label: "Expressão calma, receptiva", profile: "S" },
+  { label: "Expressão séria, analítica", profile: "C" }
 ];
 
 const suggestions = {
   D: {
-    label: "🔴 Perfil Dominante",
-    color: "border-red-500",
-    bgColor: "bg-red-500",
+    label: "🟥 Perfil Dominante",
     approach: "🎯 Seja direto, foque em resultado e ROI",
     trigger: "🔥 Resultados tangíveis, liderança, ganho de tempo",
+    perguntas_abertas: {
+      titulo: "Perguntas Abertas Estratégicas",
+      objetivo: "fazer a pessoa falar sobre resultados, desafios e metas sem enrolação",
+      caracteristicas: "Direto, Focado, Competitivo",
+      perguntas: [
+        "Qual foi a conquista mais importante que você teve nos últimos meses?",
+        "Se pudesse eliminar um obstáculo do seu negócio hoje, qual seria?",
+        "O que precisa acontecer para você considerar que esse ano foi excelente?",
+        "Qual o próximo grande objetivo que você quer bater — e por quê?",
+        "Onde você acha que está perdendo mais tempo ou dinheiro no momento?"
+      ]
+    },
+    social_selling: {
+      titulo: "Estratégia de Social Selling",
+      objetivo: "conquistar perfis dominantes através de autoridade, resultados comprovados e abordagem direta",
+      caracteristicas: "Foco em ROI, eficiência e liderança",
+      estrategia_aproximacao: {
+        titulo: "🎯 ESTRATÉGIA DE APROXIMAÇÃO",
+        descricao: "Demonstre autoridade e resultados concretos desde o primeiro contato",
+        tacticas: [
+          "Compartilhe cases de sucesso com números específicos",
+          "Comente em posts deles com insights valiosos (não elogios vazios)",
+          "Envie conteúdo sobre otimização e eficiência",
+          "Use dados e estatísticas nas interações",
+          "Seja breve e objetivo em todas as comunicações"
+        ]
+      },
+      conteudo_engajamento: {
+        titulo: "📊 CONTEÚDO PARA ENGAJAMENTO",
+        descricao: "Tipos de posts que atraem e engajam perfis dominantes",
+        tipos: [
+          "Posts com resultados numéricos (ROI, crescimento, economia de tempo)",
+          "Comparativos de antes vs depois com métricas",
+          "Estratégias de otimização e automação",
+          "Cases de liderança e tomada de decisão",
+          "Conteúdos sobre tendências de mercado com análises objetivas"
+        ]
+      },
+      scripts_dm: {
+        titulo: "💬 SCRIPTS PARA MENSAGEM DIRETA",
+        descricao: "Abordagem direta e focada em resultados",
+        scripts: [
+          {
+            situacao: "1. Primeiro contato (Conexão e pergunta abertura estratégica)",
+            script: "Oi [Nome], tudo bem? Estava aqui analisando alguns perfis de empresários de resultados, e vi o seu. Percebi que você é [área de atuação] há [tempo], focado em performance. É isso mesmo?"
+          },
+          {
+            situacao: "2. Mapeamento com dores fortes",
+            script: "Está conseguindo escalar seus resultados sem depender 100% do seu tempo pessoal, ou ainda está muito operacional no dia a dia?"
+          },
+          {
+            situacao: "3. Mapeamento qualificatório",
+            script: "Hoje, qual seu faturamento mensal? E qual meta você quer bater nos próximos 90 dias? Quanto você está disposto a investir para acelerar esse processo de crescimento?"
+          },
+          {
+            situacao: "4. Direcionamento (Características que levam para a call)",
+            script: "Perfeito, pelo que você falou, na [Nome da Empresa], desenvolvemos um sistema que já ajudou [número] empresários como você a dobrar resultados em 90 dias. É um diagnóstico de 30 minutos, sem enrolação, focado em ROI. Mapeamos exatamente onde está o gargalo e você sai com um plano de ação claro. Faz sentido pra você?"
+          },
+          {
+            situacao: "5. Marcação de call",
+            script: "Tenho horário terça às 15h ou quarta às 10h, qual funciona melhor? Fechado! Vou te enviar o link agora. É pontual, 30 minutos exatos para maximizar seu tempo. Obrigado!"
+          }
+        ]
+      },
+      timing_frequencia: {
+        titulo: "⏰ TIMING E FREQUÊNCIA",
+        descricao: "Quando e com que frequência abordar",
+        diretrizes: [
+          "Responda rapidamente (perfis D valorizam agilidade)",
+          "Poste conteúdos de manhã cedo (6h-8h) ou final do dia (18h-20h)",
+          "Mantenha frequência alta mas sempre com valor",
+          "Evite finais de semana (focam no trabalho durante a semana)",
+          "Use calls para ação claras e diretas em todos os posts"
+        ]
+      },
+      gatilhos_psicologicos: {
+        titulo: "🧠 GATILHOS PSICOLÓGICOS",
+        descricao: "Elementos que ativam o interesse de perfis dominantes",
+        gatilhos: [
+          "Escassez: 'Apenas para 5 empresários'",
+          "Autoridade: 'Método usado por líderes do setor'",
+          "Resultado: 'ROI comprovado de 300%'",
+          "Urgência: 'Oportunidade limitada até sexta'",
+          "Exclusividade: 'Estratégia não divulgada publicamente'"
+        ]
+      }
+    },
+    script: {
+      objetivo: {
+        caracteristicas: "Pessoa prática, impaciente e direta.",
+        busca: "resultado, ganho de tempo, autoridade e impacto direto",
+        evita: "conversa fiada, detalhes excessivos e falta de foco",
+        foco: "Isso me dá resultado? Quanto eu ganho? Em quanto tempo?"
+      },
+      abertura: {
+        titulo: "ABERTURA RÁPIDA (CONEXÃO)",
+        script: "Oi [Nome], tudo certo? Vamos direto ao ponto: essa conversa é pra identificar se o que temos aqui pode gerar retorno pra você. Fechado?",
+        gatilhos: "Controle, autoridade, ROI"
+      },
+      spin: {
+        situacao: {
+          titulo: "PERGUNTAS DE SITUAÇÃO (SPIN: S)",
+          objetivo: "entender rapidamente o cenário atual com foco em números e alavancas de resultado",
+          perguntas: [
+            "Hoje, qual canal ou estratégia mais te traz faturamento?",
+            "Quanto você fatura por mês atualmente com isso?",
+            "Você quer crescer quanto nos próximos 90 dias?"
+          ],
+          gatilhos: "Clareza, foco, metas, ROI"
+        },
+        problema: {
+          titulo: "PERGUNTAS DE PROBLEMA (SPIN: P)",
+          objetivo: "expor os obstáculos que impedem performance máxima",
+          perguntas: [
+            "O que exatamente está te travando de bater esse número?",
+            "Já tentou resolver isso como antes? O que não funcionou?",
+            "E o que mais te incomoda em relação a isso hoje?"
+          ],
+          gatilhos: "Urgência, dor clara, frustração, desafio"
+        },
+        implicacao: {
+          titulo: "PERGUNTAS DE IMPLICAÇÃO (SPIN: I)",
+          objetivo: "mostrar as consequências da inação com foco em perda de dinheiro, tempo ou autoridade",
+          perguntas: [
+            "Se isso continuar assim, quanto você estima que perde por mês?",
+            "Já parou pra calcular o impacto disso no seu resultado final?",
+            "O que você deixaria de conquistar se seguir nesse ritmo?"
+          ],
+          gatilhos: "Custo da inação, urgência, ROI negativo"
+        },
+        necessidade: {
+          titulo: "PERGUNTAS DE NECESSIDADE DE SOLUÇÃO (SPIN: N)",
+          objetivo: "ativar o desejo de solução eficaz e direta",
+          perguntas: [
+            "Se eu te mostrasse uma estratégia com ROI em 30 dias, que elimina esses travamentos, faria sentido pra você?",
+            "Qual o cenário ideal pra você nos próximos 60 dias? Se a gente traçar um plano objetivo, te interessa executar com foco?"
+          ],
+          gatilhos: "Ganho rápido, execução, clareza de solução"
+        }
+      },
+      apresentacao: {
+        titulo: "APRESENTAÇÃO DO MÉTODO",
+        script: "Olhando o que você compartilhou, o método que a gente trabalha tem foco exatamente nisso: acelerar resultado, com estrutura direta. O que mais tem dado retorno pra perfis como o seu é [exemplo de caso real com ROI].",
+        gatilhos: "Prova, autoridade, resultado financeiro"
+      },
+      chamada: {
+        titulo: "CHAMADA PRA AÇÃO",
+        script: "Quer seguir nessa linha e ver o plano de ação mais direto pra você bater essa meta em até 30 dias?"
+      },
+      encaminhamento: {
+        titulo: "ENCAMINHAMENTO (FECHAMENTO PARCIAL)",
+        script: "Se fizer sentido, já te coloco no radar do time pra próxima fase. Posso te passar os próximos passos agora?"
+      }
+    },
     objections: [
       {
-        title: "Já tentei de tudo e nada funciona",
-        cliente: "Já testei várias soluções e nenhuma entregou o que prometia. Por que a sua seria diferente?",
-        errado: "Entendo sua frustração, mas nossa solução é realmente diferente...",
-        certo: "Resultados são inegociáveis. Vou ser direto: nosso ROI médio é X% em Y meses. Posso mostrar 3 casos de clientes que tiveram resultados mensuráveis. 5 minutos?",
-        explicacao: "Dominantes valorizam fatos e resultados. Evite empatia excessiva e vá direto aos números e casos concretos."
+        title: "❌ Já tentei de tudo e nada funciona",
+        question: "O que exatamente você tentou e que te fez perder tempo sem retorno?",
+        response: "Você é alguém que já sabe o que não funciona. Agora precisa de algo que funcione — simples assim. Aqui, a diferença está na execução com método. Posso te mostrar resultados concretos de quem também já estava no limite e virou o jogo em semanas."
       },
       {
-        title: "Mas será que isso serve pra mim?",
-        cliente: "Parece interessante, mas não sei se funciona para o meu tipo de negócio.",
-        errado: "Sim, com certeza funciona! Temos muitos clientes satisfeitos...",
-        certo: "Justo. Qual seu principal desafio hoje? [ouvir] Temos 12 clientes no seu setor que aumentaram X% em Y meses. Te mando o case study agora?",
-        explicacao: "Dominantes querem prova social específica do setor deles, não promessas genéricas."
+        title: "❌ Mas será que isso serve pra mim?",
+        question: "O que exatamente faria você ter certeza de que isso funciona pra você?",
+        response: "Se você quer evolução real e resultado com clareza, sim, serve pra você. O método se adapta a quem executa com foco. Posso te mostrar casos de quem chegou aqui com o mesmo perfil que o seu — e dobrou o resultado com precisão."
       },
       {
-        title: "Quanto tempo leva pra dar resultado?",
-        cliente: "Não tenho tempo a perder com soluções que demoram meses para funcionar.",
-        errado: "Cada caso é único, mas geralmente em alguns meses você vê resultados...",
-        certo: "Primeiros resultados em 30 dias. ROI completo em 90 dias. Timeline agressivo é justamente nosso diferencial para líderes como você.",
-        explicacao: "Dominantes são impacientes. Dê prazos específicos e mostre que entende a urgência deles."
+        title: "❌ Quanto tempo leva pra dar resultado?",
+        question: "Em quanto tempo você espera ver um retorno visível? Isso te ajudaria a decidir?",
+        response: "Se você aplica com consistência, os primeiros resultados vêm em 30 dias — reais, mensuráveis. Já vi casos que dobraram faturamento em 21 dias. Posso te mostrar. Mas não é fórmula mágica — é execução com método."
       },
       {
-        title: "Eu não tenho dinheiro",
-        cliente: "O investimento é alto e no momento não tenho esse orçamento disponível.",
-        errado: "Podemos parcelar ou fazer um desconto especial para você...",
-        certo: "Quanto você está perdendo por mês sem isso? Se a perda é maior que o investimento, o custo real é não começar. Vamos calcular seu ROI?",
-        explicacao: "Dominantes pensam em ROI. Reframe: o problema não é o custo, é o custo de NÃO agir."
+        title: "❌ Eu não tenho dinheiro",
+        question: "Se esse investimento voltasse pra você em dobro, faria sentido agora?",
+        response: "A pergunta certa não é quanto custa — mas quanto você já perdeu por não resolver isso. O que você decide aqui vira retorno, não é gasto. Te mostro como clientes no seu perfil recuperaram o investimento em semanas."
       },
       {
-        title: "Não tenho tempo pra isso agora",
-        cliente: "Estou muito ocupado agora, talvez mais para frente eu retome.",
-        errado: "Sem problemas, posso te chamar daqui a uns meses...",
-        certo: "Exatamente por isso que você precisa. Quanto tempo você perde por semana com [problema]? Nossa solução economiza X horas/semana. Vale 15 min hoje?",
-        explicacao: "Dominantes valorizam eficiência. Mostre que você vai economizar tempo deles, não gastar."
+        title: "❌ Não tenho tempo pra isso agora",
+        question: "O que está te tomando mais tempo hoje — e que já deveria estar resolvido?",
+        response: "Exatamente por estar sem tempo é que você precisa resolver isso agora. Esse método te devolve tempo — não exige mais. Posso te mostrar como ele elimina tarefas inúteis e foca no que gera retorno direto."
+      },
+      {
+        title: "❌ Preciso conversar com meu parceiro(a) antes",
+        question: "O que exatamente seu parceiro(a) precisa entender pra te apoiar nessa decisão?",
+        response: "Claro. Se quiser, posso te ajudar com os argumentos estratégicos pra essa conversa. Isso impacta os dois — e você vai estar levando clareza, resultado e direção."
+      },
+      {
+        title: "❌ Não sei se eu vou conseguir",
+        question: "Você já superou desafios antes. O que torna esse diferente pra você duvidar da sua capacidade?",
+        response: "Você já passou por coisas muito maiores. Aqui, você só precisa executar com direção. E essa direção eu te dou. Posso te mostrar o plano, os dados e os checkpoints que garantem o resultado — se você fizer, funciona."
+      },
+      {
+        title: "❌ E se eu começar e não der certo?",
+        question: "O que você costuma fazer quando algo sai diferente do esperado — você ajusta ou abandona?",
+        response: "Se você fizer, dá certo. O único erro real é parar. Aqui, você não segue sozinho — tem acompanhamento pra corrigir rota e ir até o fim. Posso te mostrar casos em que o ajuste foi o diferencial pro resultado."
+      },
+      {
+        title: "❌ Você me garante que vai funcionar?",
+        question: "Se eu te mostrasse casos de pessoas que aplicaram com intensidade e venceram, isso bastaria como prova?",
+        response: "Se você aplicar, funciona. Quem executa colhe. E eu te acompanho pra garantir que você tenha o plano, o ritmo e os ajustes certos. Posso te mostrar casos reais — mas a diferença está na execução."
       }
-    ],
-    script: {
-      abertura: "Oi [Nome], vi que você é [cargo] na [empresa]. Vou ser direto: ajudamos empresas como a sua a [resultado específico] em [prazo]. Vale 10 minutos?",
-      spin: [
-        "S: Qual o principal desafio de vendas/operação hoje?",
-        "P: Quanto isso está custando por mês em perda/ineficiência?",
-        "I: Se isso continuar, qual impacto em 6 meses?",
-        "N: Como seria se você resolvesse isso em 30 dias?"
-      ],
-      apresentacao: "Três pontos que importam: 1) ROI médio de X% em Y meses, 2) Setup em Z dias, 3) Suporte direto comigo. Próximo passo?",
-      cta: "Vamos começar agora ou prefere segunda? Agenda aberta para [data1] ou [data2].",
-      fechamento: "Se fizer sentido, começamos agora. Se não, sem problema. Decisão?"
-    },
-    perguntas_abertas: [
-      "Qual o principal gargalo do seu time hoje?",
-      "Quanto você está deixando de faturar com [problema]?",
-      "Se você pudesse mudar uma coisa hoje, qual seria?",
-      "Qual o custo de não resolver isso nos próximos 3 meses?"
-    ],
-    social_selling: {
-      conteudo: "Case studies, ROI calculators, comparativos, listas de estratégias comprovadas",
-      scripts: [
-        "Aumentamos o faturamento da [Empresa] em X% em Y meses. [Link do case]",
-        "ROI real: clientes no seu setor cresceram X% em Y meses. Quer ver como?"
-      ],
-      timing: "Seja direto. Responda rápido. Não enrole.",
-      gatilho: "Competição, resultados mensuráveis, exclusividade, urgência"
-    }
+    ]
   },
   I: {
-    label: "🟡 Perfil Influente",
-    color: "border-yellow-500",
-    bgColor: "bg-yellow-500",
-    approach: "💖 Conecte com emoção e energia positiva",
+    label: "🟨 Perfil Influente",
+    approach: "🎯 Conecte com emoção e energia positiva",
     trigger: "🔥 Pertencimento, apoio, entusiasmo, reconhecimento",
+    perguntas_abertas: {
+      titulo: "Perguntas Abertas Estratégicas",
+      objetivo: "fazer a pessoa falar sobre conexões, emoções e relacionamentos",
+      caracteristicas: "Entusiasta, Comunicativo, Otimista",
+      perguntas: [
+        "Como você descreveria seu ambiente de trabalho ideal?",
+        "Quais pessoas ou equipes mais te inspiram no seu dia a dia?",
+        "O que te motiva a continuar crescendo profissionalmente?",
+        "Como você celebra suas conquistas e as da sua equipe?",
+        "Quais desafios você enfrenta ao tentar engajar seu time?"
+      ]
+    },
+    social_selling: {
+      titulo: "Estratégia de Social Selling",
+      objetivo: "conquistar perfis influentes com empatia, histórias e reconhecimento",
+      caracteristicas: "Foco em conexão, emoção e engajamento",
+      estrategia_aproximacao: {
+        titulo: "🎯 ESTRATÉGIA DE APROXIMAÇÃO",
+        descricao: "Use histórias, elogios sinceros e crie conexão emocional",
+        tacticas: [
+          "Compartilhe histórias inspiradoras e cases de sucesso",
+          "Comente com empatia e reconhecimento nas redes sociais",
+          "Envie mensagens personalizadas e calorosas",
+          "Use vídeos e conteúdos visuais para engajar",
+          "Seja positivo e encorajador em todas as interações"
+        ]
+      },
+      conteudo_engajamento: {
+        titulo: "📊 CONTEÚDO PARA ENGAJAMENTO",
+        descricao: "Tipos de posts que atraem e engajam perfis influentes",
+        tipos: [
+          "Histórias de superação e sucesso",
+          "Depoimentos e cases de clientes",
+          "Posts motivacionais e inspiradores",
+          "Conteúdos que destacam pessoas e equipes",
+          "Eventos e encontros para networking"
+        ]
+      },
+      scripts_dm: {
+        titulo: "💬 SCRIPTS PARA MENSAGEM DIRETA",
+        descricao: "Abordagem calorosa e focada em conexão",
+        scripts: [
+          {
+            situacao: "1. Primeiro contato (Conexão e elogio)",
+            script: "Oi [Nome], adorei seu post sobre [tema]. Me identifiquei muito com sua visão e queria trocar umas ideias com você!"
+          },
+          {
+            situacao: "2. Mapeamento com dores emocionais",
+            script: "Como você tem lidado com os desafios de engajar sua equipe e manter o entusiasmo?"
+          },
+          {
+            situacao: "3. Mapeamento qualificatório",
+            script: "Quais são suas maiores metas para os próximos meses e como você mede o sucesso do seu time?"
+          },
+          {
+            situacao: "4. Direcionamento (Características que levam para a call)",
+            script: "Tenho uma abordagem que tem ajudado líderes como você a aumentar o engajamento e resultados com mais leveza. Que tal uma conversa rápida para eu te mostrar?"
+          },
+          {
+            situacao: "5. Marcação de call",
+            script: "Tenho horários terça às 15h ou quarta às 10h, qual funciona melhor para você? Vai ser uma conversa leve e produtiva!"
+          }
+        ]
+      },
+      timing_frequencia: {
+        titulo: "⏰ TIMING E FREQUÊNCIA",
+        descricao: "Quando e com que frequência abordar",
+        diretrizes: [
+          "Interaja nos horários de maior engajamento (manhã e fim de tarde)",
+          "Use mensagens personalizadas e não invasivas",
+          "Mantenha contato frequente, mas respeite o espaço",
+          "Aposte em datas comemorativas e eventos",
+          "Use convites para eventos e webinars"
+        ]
+      },
+      gatilhos_psicologicos: {
+        titulo: "🧠 GATILHOS PSICOLÓGICOS",
+        descricao: "Elementos que ativam o interesse de perfis influentes",
+        gatilhos: [
+          "Pertencimento: 'Junte-se a uma comunidade exclusiva'",
+          "Reconhecimento: 'Seja destaque no seu setor'",
+          "Entusiasmo: 'Participe de algo inovador e divertido'",
+          "Apoio: 'Conte com uma rede de suporte'",
+          "Exclusividade: 'Convite especial para líderes influentes'"
+        ]
+      }
+    },
+    script: {
+      objetivo: {
+        caracteristicas: "Pessoa sociável, entusiasta e comunicativa.",
+        busca: "conexão, reconhecimento, entusiasmo e apoio",
+        evita: "críticas duras, rejeição e isolamento",
+        foco: "Como posso me conectar e ser reconhecido?"
+      },
+      abertura: {
+        titulo: "ABERTURA CALOROSA (CONEXÃO)",
+        script: "Oi [Nome], adorei seu conteúdo recente! Queria muito trocar umas ideias e aprender mais com você. Pode ser?",
+        gatilhos: "Empatia, conexão, entusiasmo"
+      },
+      spin: {
+        situacao: {
+          titulo: "PERGUNTAS DE SITUAÇÃO (SPIN: S)",
+          objetivo: "entender o ambiente e relações atuais",
+          perguntas: [
+            "Como está o clima na sua equipe atualmente?",
+            "Quais canais você usa para engajar seu público?",
+            "Como você mede o sucesso das suas ações de comunicação?"
+          ],
+          gatilhos: "Conexão, empatia, engajamento"
+        },
+        problema: {
+          titulo: "PERGUNTAS DE PROBLEMA (SPIN: P)",
+          objetivo: "identificar desafios emocionais e de relacionamento",
+          perguntas: [
+            "Quais dificuldades você enfrenta para manter o time motivado?",
+            "Já sentiu que sua mensagem não está chegando como gostaria?",
+            "O que mais te frustra na comunicação com seus clientes?"
+          ],
+          gatilhos: "Empatia, apoio, reconhecimento"
+        },
+        implicacao: {
+          titulo: "PERGUNTAS DE IMPLICAÇÃO (SPIN: I)",
+          objetivo: "mostrar consequências da falta de engajamento",
+          perguntas: [
+            "Como a falta de engajamento tem impactado seus resultados?",
+            "O que acontece quando a equipe não está alinhada?",
+            "Quais oportunidades você acha que está perdendo?"
+          ],
+          gatilhos: "Urgência, impacto emocional, perda"
+        },
+        necessidade: {
+          titulo: "PERGUNTAS DE NECESSIDADE DE SOLUÇÃO (SPIN: N)",
+          objetivo: "ativar desejo por soluções de conexão e engajamento",
+          perguntas: [
+            "Se você pudesse aumentar o engajamento em 30%, como isso mudaria seu trabalho?",
+            "Que tipo de suporte você gostaria para melhorar a comunicação?"
+          ],
+          gatilhos: "Desejo, apoio, melhoria"
+        }
+      },
+      apresentacao: {
+        titulo: "APRESENTAÇÃO DO MÉTODO",
+        script: "Nosso método foca em criar conexões reais e engajamento genuíno, usando histórias e reconhecimento. Já ajudamos muitos líderes a transformar seus times e resultados.",
+        gatilhos: "Empatia, prova social, emoção"
+      },
+      chamada: {
+        titulo: "CHAMADA PRA AÇÃO",
+        script: "Quer conversar para descobrir como engajar seu time e clientes com mais leveza e resultados?"
+      },
+      encaminhamento: {
+        titulo: "ENCAMINHAMENTO (FECHAMENTO PARCIAL)",
+        script: "Se fizer sentido, podemos agendar uma conversa rápida para eu te mostrar o plano. Que tal?"
+      }
+    },
     objections: [
       {
-        title: "Já tentei de tudo e nada funciona",
-        cliente: "Já comprei vários cursos e nenhum me ajudou de verdade...",
-        errado: "Mas o nosso é diferente, confia!",
-        certo: "Imagino como você se sente... Mas olha, tenho uma história: [Nome] estava exatamente assim e hoje ela [resultado incrível]. Quer saber como?",
-        explicacao: "Influentes se conectam por emoção e histórias. Use storytelling e empatia genuína."
+        title: "❌ Não sou bom em vendas",
+        question: "O que te faz pensar que vendas não é seu ponto forte?",
+        response: "Vendas é sobre conexão e empatia, não só técnica. Nosso método ajuda você a usar seu jeito natural para criar relacionamentos que geram resultados."
       },
       {
-        title: "Mas será que isso serve pra mim?",
-        cliente: "Parece legal, mas será que funciona para alguém como eu?",
-        errado: "Claro que sim, funciona para todo mundo!",
-        certo: "Olha, já ajudamos mais de 500 pessoas como você! Inclusive, [Nome] começou do zero e hoje [resultado]. Você não está sozinha nisso!",
-        explicacao: "Influentes querem se sentir parte de algo. Mostre comunidade e histórias de identificação."
+        title: "❌ Tenho medo de ser rejeitado",
+        question: "O que você sente quando pensa em ser rejeitado?",
+        response: "Rejeição é parte do processo, mas com a abordagem certa, você vai se sentir mais confiante e preparado para lidar com isso e seguir em frente."
       },
       {
-        title: "Quanto tempo leva pra dar resultado?",
-        cliente: "Tenho medo de começar e não conseguir acompanhar...",
-        errado: "É super rápido, você consegue!",
-        certo: "Você não vai estar sozinha! Temos uma comunidade incrível que te apoia todo dia. A [Nome] começou igual você e em 2 meses já estava [resultado]!",
-        explicacao: "Influentes temem abandono. Reforce comunidade, suporte e que ela vai fazer parte de algo especial."
+        title: "❌ Não tenho tempo para isso",
+        question: "Como você organiza seu tempo atualmente para suas prioridades?",
+        response: "Nosso método é focado em eficiência e usar seu tempo de forma inteligente para gerar mais resultados com menos esforço."
       },
       {
-        title: "Eu não tenho dinheiro",
-        cliente: "Queria muito, mas está muito caro para mim agora...",
-        errado: "Posso fazer um desconto especial.",
-        certo: "Te entendo demais! Olha, o que mais ouço é: 'Deveria ter começado antes!' Vamos achar um jeito? Temos parcelamento e posso te ajudar com um plano personalizado. Bora?",
-        explicacao: "Influentes querem sentir que você se importa. Mostre flexibilidade e apoio genuíno."
-      },
-      {
-        title: "Não tenho tempo pra isso agora",
-        cliente: "Estou muito ocupada, talvez mais para frente...",
-        errado: "Quando você tiver tempo, me chama!",
-        certo: "Imagino! Mas olha, a [Nome] também estava mega ocupada e sabe o que ela disse? 'Se eu soubesse que era tão mais leve com apoio, teria começado antes!' Que tal começar junto com ela?",
-        explicacao: "Influentes respondem a FOMO e pertencimento. Mostre que ela está perdendo conexão e crescimento."
+        title: "❌ Prefiro que me indiquem",
+        question: "Como você tem buscado indicações até agora?",
+        response: "Indicações são ótimas, mas com uma estratégia ativa, você pode ampliar muito seu alcance e resultados."
       }
-    ],
-    script: {
-      abertura: "Oi [Nome]! 😊 Adorei seu perfil! Vi que você [algo pessoal]. Estou ajudando pessoas como você a [resultado] e pensei em você na hora! Vamos bater um papo?",
-      spin: [
-        "S: Como você está se sentindo em relação a [área]?",
-        "P: O que mais te incomoda nisso hoje?",
-        "I: Como isso afeta seu dia a dia e suas relações?",
-        "N: Como você se veria daqui 3 meses com isso resolvido?"
-      ],
-      apresentacao: "Olha, o que eu mais amo aqui é: 1) Nossa comunidade é INCRÍVEL, todo mundo se ajuda, 2) Você vai ter suporte direto comigo, 3) Já vi tantas transformações lindas! Quer fazer parte?",
-      cta: "Bora começar? Tenho vagas para [data1] ou [data2]. Qual combina mais com você? 💛",
-      fechamento: "Vai ser incrível ter você com a gente! Qualquer dúvida, estou aqui. Bora?"
-    },
-    perguntas_abertas: [
-      "Como você está se sentindo em relação a [área]?",
-      "O que te deixa mais animado(a) quando pensa em [resultado]?",
-      "Como seria sua vida ideal daqui 6 meses?",
-      "O que te impede de começar algo novo?"
-    ],
-    social_selling: {
-      conteudo: "Stories pessoais, transformações, comunidade, bastidores, depoimentos em vídeo",
-      scripts: [
-        "Gente, olha a história da [Nome]!! [história emocionante] Estou chorando! ❤️",
-        "Quem mais se identifica? Comenta aqui! 👇"
-      ],
-      timing: "Seja caloroso, responsivo e acolhedor. Use emojis e energia.",
-      gatilho: "Pertencimento, reconhecimento, medo de ficar de fora (FOMO), inspiração"
-    }
+    ]
   },
   S: {
-    label: "🟢 Perfil Estável",
-    color: "border-green-500",
-    bgColor: "bg-green-500",
-    approach: "🤝 Acolha, ofereça passo a passo e segurança",
+    label: "🟩 Perfil Estável",
+    approach: "🎯 Acolha, ofereça passo a passo e segurança",
     trigger: "🔥 Segurança, suporte, constância, processo claro",
+    perguntas_abertas: {
+      titulo: "Perguntas Abertas Estratégicas",
+      objetivo: "fazer a pessoa falar sobre estabilidade, rotina e segurança",
+      caracteristicas: "Paciente, Leal, Calmo",
+      perguntas: [
+        "Como você costuma organizar seu dia a dia para manter a produtividade?",
+        "Quais processos você considera essenciais para o sucesso do seu negócio?",
+        "O que te traz mais segurança nas decisões que você toma?",
+        "Como você lida com mudanças e imprevistos?",
+        "Quais são suas maiores preocupações para o futuro próximo?"
+      ]
+    },
+    social_selling: {
+      titulo: "Estratégia de Social Selling",
+      objetivo: "conquistar perfis estáveis com confiança, suporte e clareza",
+      caracteristicas: "Foco em segurança, passo a passo e relacionamento",
+      estrategia_aproximacao: {
+        titulo: "🎯 ESTRATÉGIA DE APROXIMAÇÃO",
+        descricao: "Mostre suporte, processos claros e benefícios de longo prazo",
+        tacticas: [
+          "Compartilhe conteúdos que reforcem segurança e estabilidade",
+          "Ofereça suporte e acompanhamento constante",
+          "Use depoimentos que mostrem confiança e resultados consistentes",
+          "Seja paciente e respeite o tempo do cliente",
+          "Apresente processos claros e estruturados"
+        ]
+      },
+      conteudo_engajamento: {
+        titulo: "📊 CONTEÚDO PARA ENGAJAMENTO",
+        descricao: "Tipos de posts que atraem e engajam perfis estáveis",
+        tipos: [
+          "Guias passo a passo e tutoriais",
+          "Depoimentos de clientes satisfeitos",
+          "Conteúdos sobre organização e planejamento",
+          "Posts que reforçam confiança e segurança",
+          "Informações sobre processos e metodologias"
+        ]
+      },
+      scripts_dm: {
+        titulo: "💬 SCRIPTS PARA MENSAGEM DIRETA",
+        descricao: "Abordagem calma e focada em suporte",
+        scripts: [
+          {
+            situacao: "1. Primeiro contato (Acolhimento)",
+            script: "Oi [Nome], vi que você valoriza processos claros e segurança. Gostaria de compartilhar algo que pode ajudar no seu dia a dia."
+          },
+          {
+            situacao: "2. Mapeamento com dores de estabilidade",
+            script: "Quais são os maiores desafios que você enfrenta para manter a constância nos resultados?"
+          },
+          {
+            situacao: "3. Mapeamento qualificatório",
+            script: "Como você costuma planejar suas ações para garantir segurança e previsibilidade?"
+          },
+          {
+            situacao: "4. Direcionamento (Características que levam para a call)",
+            script: "Tenho um método estruturado que tem ajudado pessoas como você a ganhar mais segurança e resultados consistentes. Que tal conversarmos?"
+          },
+          {
+            situacao: "5. Marcação de call",
+            script: "Tenho horários terça às 15h ou quarta às 10h, qual fica melhor para você? Vai ser uma conversa tranquila e produtiva."
+          }
+        ]
+      },
+      timing_frequencia: {
+        titulo: "⏰ TIMING E FREQUÊNCIA",
+        descricao: "Quando e com que frequência abordar",
+        diretrizes: [
+          "Aborde em horários calmos e previsíveis",
+          "Mantenha contato regular e consistente",
+          "Use mensagens que transmitam segurança",
+          "Evite pressa e pressão",
+          "Ofereça suporte contínuo"
+        ]
+      },
+      gatilhos_psicologicos: {
+        titulo: "🧠 GATILHOS PSICOLÓGICOS",
+        descricao: "Elementos que ativam o interesse de perfis estáveis",
+        gatilhos: [
+          "Segurança: 'Processo testado e aprovado'",
+          "Confiança: 'Suporte dedicado e constante'",
+          "Previsibilidade: 'Resultados consistentes ao longo do tempo'",
+          "Tranquilidade: 'Sem surpresas ou riscos'",
+          "Comunidade: 'Faça parte de um grupo de apoio'"
+        ]
+      }
+    },
+    script: {
+      objetivo: {
+        caracteristicas: "Pessoa calma, leal e paciente.",
+        busca: "segurança, estabilidade, suporte e previsibilidade",
+        evita: "pressa, mudanças bruscas e riscos",
+        foco: "Como posso garantir resultados seguros e constantes?"
+      },
+      abertura: {
+        titulo: "ABERTURA ACOLHEDORA",
+        script: "Oi [Nome], tudo bem? Quero compartilhar uma abordagem que pode trazer mais segurança e estabilidade para seu negócio. Posso?",
+        gatilhos: "Acolhimento, segurança, suporte"
+      },
+      spin: {
+        situacao: {
+          titulo: "PERGUNTAS DE SITUAÇÃO (SPIN: S)",
+          objetivo: "entender a rotina e processos atuais",
+          perguntas: [
+            "Como você organiza suas tarefas diárias?",
+            "Quais processos você já tem implementados?",
+            "Como você mede a estabilidade dos seus resultados?"
+          ],
+          gatilhos: "Segurança, rotina, previsibilidade"
+        },
+        problema: {
+          titulo: "PERGUNTAS DE PROBLEMA (SPIN: P)",
+          objetivo: "identificar dificuldades em manter estabilidade",
+          perguntas: [
+            "Quais imprevistos mais atrapalham seu trabalho?",
+            "Já sentiu falta de suporte em momentos críticos?",
+            "O que te preocupa em relação à continuidade do negócio?"
+          ],
+          gatilhos: "Preocupação, insegurança, necessidade de suporte"
+        },
+        implicacao: {
+          titulo: "PERGUNTAS DE IMPLICAÇÃO (SPIN: I)",
+          objetivo: "mostrar consequências da instabilidade",
+          perguntas: [
+            "Como a falta de estabilidade tem afetado seus resultados?",
+            "O que acontece quando processos falham?",
+            "Quais riscos você corre sem um suporte adequado?"
+          ],
+          gatilhos: "Risco, perda, insegurança"
+        },
+        necessidade: {
+          titulo: "PERGUNTAS DE NECESSIDADE DE SOLUÇÃO (SPIN: N)",
+          objetivo: "ativar desejo por segurança e suporte",
+          perguntas: [
+            "Se você tivesse um processo claro e suporte constante, como isso mudaria seu dia a dia?",
+            "Que tipo de ajuda você gostaria de receber para garantir estabilidade?"
+          ],
+          gatilhos: "Desejo, segurança, apoio"
+        }
+      },
+      apresentacao: {
+        titulo: "APRESENTAÇÃO DO MÉTODO",
+        script: "Nosso método oferece processos claros, suporte dedicado e acompanhamento para garantir que você tenha estabilidade e segurança nos resultados.",
+        gatilhos: "Confiança, suporte, previsibilidade"
+      },
+      chamada: {
+        titulo: "CHAMADA PRA AÇÃO",
+        script: "Quer conversar para descobrir como garantir mais segurança e constância no seu negócio?"
+      },
+      encaminhamento: {
+        titulo: "ENCAMINHAMENTO (FECHAMENTO PARCIAL)",
+        script: "Se fizer sentido, podemos agendar uma conversa para eu te mostrar o plano detalhado. Que tal?"
+      }
+    },
     objections: [
       {
-        title: "Já tentei de tudo e nada funciona",
-        cliente: "Já tentei outras coisas e não deu certo. Tenho medo de me frustrar de novo...",
-        errado: "Não se preocupe, vai dar certo!",
-        certo: "Entendo perfeitamente sua preocupação. Vamos com calma? Posso te mostrar o processo passo a passo e você vê se faz sentido. Sem pressão, ok?",
-        explicacao: "Estáveis precisam de segurança e processo claro. Remova pressão e mostre o caminho detalhado."
+        title: "❌ Tenho medo de mudanças",
+        question: "O que te preocupa mais em relação a mudanças no seu negócio?",
+        response: "Mudanças podem ser desafiadoras, mas com um processo estruturado e suporte, você pode fazer transições seguras e planejadas."
       },
       {
-        title: "Mas será que isso serve pra mim?",
-        cliente: "Parece complexo... será que consigo mesmo fazer?",
-        errado: "É super fácil, qualquer um consegue!",
-        certo: "Sei que mudanças podem parecer difíceis no início. Mas olha: você vai ter suporte em cada etapa. Vou estar aqui do seu lado. Vamos um passo de cada vez, sem pressa. Topa?",
-        explicacao: "Estáveis temem falhar. Reforce suporte constante e processo gradual."
+        title: "❌ Prefiro manter o que já funciona",
+        question: "O que você valoriza no que já está funcionando?",
+        response: "Manter o que funciona é importante, e nosso método respeita isso, trazendo melhorias graduais e seguras."
       },
       {
-        title: "Quanto tempo leva pra dar resultado?",
-        cliente: "E se eu começar e não conseguir acompanhar?",
-        errado: "Você vai conseguir, é só seguir!",
-        certo: "Nada de correria, ok? Você vai no seu ritmo. Temos um passo a passo clarinho e suporte toda semana. Se precisar de mais tempo, tudo bem! O importante é você se sentir segura.",
-        explicacao: "Estáveis não gostam de pressão. Dê flexibilidade e reforce que podem ir no ritmo deles."
+        title: "❌ Não quero me sentir pressionado",
+        question: "Como você lida com pressão e prazos?",
+        response: "Nosso acompanhamento é feito no seu ritmo, sem pressa, para garantir conforto e resultados duradouros."
       },
       {
-        title: "Eu não tenho dinheiro",
-        cliente: "Gostaria, mas preciso pensar no orçamento da família...",
-        errado: "É um investimento que vale a pena!",
-        certo: "Eu respeito muito isso. Que tal a gente conversar com calma sobre as opções? Posso te mostrar formas de pagamento que caibam no seu orçamento. Sem compromisso, ok?",
-        explicacao: "Estáveis precisam de segurança financeira. Seja respeitoso, ofereça opções e não pressione."
-      },
-      {
-        title: "Não tenho tempo pra isso agora",
-        cliente: "Estou com muita coisa na cabeça agora...",
-        errado: "Mas é rapidinho!",
-        certo: "Entendo totalmente. Que tal a gente começar bem devagar? Você não precisa mudar tudo de uma vez. Podemos ir com calma, no seu tempo. Te mando o material e você vê quando se sentir pronta?",
-        explicacao: "Estáveis não gostam de mudanças bruscas. Ofereça flexibilidade e processo gradual."
+        title: "❌ Não sei se consigo aprender algo novo",
+        question: "O que te dificulta em aprender novas abordagens?",
+        response: "Nosso método é simples e passo a passo, com suporte constante para que você se sinta seguro em cada etapa."
       }
-    ],
-    script: {
-      abertura: "Oi [Nome], tudo bem? Vi seu perfil e gostei da sua energia. Queria te contar sobre algo que pode te ajudar com [área], mas sem pressão nenhuma. Podemos conversar?",
-      spin: [
-        "S: Como você está se sentindo em relação a [área]?",
-        "P: O que mais te preocupa nisso?",
-        "I: Como isso afeta sua rotina e suas pessoas próximas?",
-        "N: Como seria se você tivesse mais tranquilidade com isso?"
-      ],
-      apresentacao: "Olha, o que eu acho importante você saber: 1) Você vai ter suporte constante comigo, 2) Vamos passo a passo, no seu ritmo, 3) Sem pressão, ok? Só começa quando se sentir pronta.",
-      cta: "Que tal começarmos? Temos vagas para [data1] ou [data2]. Qual funciona melhor para você? E fica tranquila, você pode pensar com calma.",
-      fechamento: "Qualquer dúvida, estou aqui. Vamos juntos nessa, no seu tempo. Topa?"
-    },
-    perguntas_abertas: [
-      "Como você está se sentindo em relação a [área]?",
-      "O que te deixa mais inseguro(a) sobre mudanças?",
-      "Como posso te ajudar a se sentir mais confortável?",
-      "O que você precisa saber para se sentir seguro(a)?"
-    ],
-    social_selling: {
-      conteudo: "Processos claros, passo a passo, depoimentos de apoio, garantias, suporte visível",
-      scripts: [
-        "Sei que mudanças assustam. Mas olha como a [Nome] foi no ritmo dela e conseguiu [resultado]. Você também pode! 🤗",
-        "Passo a passo completo: [link]. Dúvidas? Estou aqui!"
-      ],
-      timing: "Seja paciente, acolhedor e não pressione. Responda com calma.",
-      gatilho: "Segurança, suporte, processo claro, constância, sem mudanças bruscas"
-    }
+    ]
   },
   C: {
-    label: "🔵 Perfil Conforme",
-    color: "border-blue-500",
-    bgColor: "bg-blue-500",
-    approach: "📊 Traga lógica, processo e prova social",
+    label: "🟦 Perfil Conforme",
+    approach: "🎯 Traga lógica, processo e prova social",
     trigger: "🔥 Dados, método validado, clareza técnica",
+    perguntas_abertas: {
+      titulo: "Perguntas Abertas Estratégicas",
+      objetivo: "fazer a pessoa falar sobre processos, dados e qualidade",
+      caracteristicas: "Analítico, Preciso, Cauteloso",
+      perguntas: [
+        "Como você avalia a qualidade dos seus processos atualmente?",
+        "Quais métricas você acompanha para medir o sucesso?",
+        "Como você garante a conformidade e padrões no seu trabalho?",
+        "Quais ferramentas você usa para análise e controle?",
+        "O que você considera essencial para manter a excelência?"
+      ]
+    },
+    social_selling: {
+      titulo: "Estratégia de Social Selling",
+      objetivo: "conquistar perfis conforme com dados, provas e clareza",
+      caracteristicas: "Foco em lógica, evidências e processos claros",
+      estrategia_aproximacao: {
+        titulo: "🎯 ESTRATÉGIA DE APROXIMAÇÃO",
+        descricao: "Apresente dados, estudos de caso e metodologias comprovadas",
+        tacticas: [
+          "Compartilhe whitepapers e artigos técnicos",
+          "Use gráficos e estatísticas para embasar argumentos",
+          "Demonstre processos e certificações",
+          "Seja detalhista e transparente nas informações",
+          "Ofereça demonstrações e provas sociais"
+        ]
+      },
+      conteudo_engajamento: {
+        titulo: "📊 CONTEÚDO PARA ENGAJAMENTO",
+        descricao: "Tipos de posts que atraem e engajam perfis conforme",
+        tipos: [
+          "Estudos de caso detalhados",
+          "Análises técnicas e comparativas",
+          "Guias e manuais de processos",
+          "Posts sobre certificações e padrões",
+          "Conteúdos com dados e evidências"
+        ]
+      },
+      scripts_dm: {
+        titulo: "💬 SCRIPTS PARA MENSAGEM DIRETA",
+        descricao: "Abordagem lógica e focada em dados",
+        scripts: [
+          {
+            situacao: "1. Primeiro contato (Apresentação técnica)",
+            script: "Oi [Nome], notei seu interesse por processos e qualidade. Gostaria de compartilhar um estudo que pode ser útil para você."
+          },
+          {
+            situacao: "2. Mapeamento com dores técnicas",
+            script: "Quais desafios você enfrenta para manter a conformidade e qualidade nos seus processos?"
+          },
+          {
+            situacao: "3. Mapeamento qualificatório",
+            script: "Quais métricas você considera mais importantes para avaliar o sucesso do seu negócio?"
+          },
+          {
+            situacao: "4. Direcionamento (Características que levam para a call)",
+            script: "Tenho uma metodologia comprovada que ajuda a otimizar processos e garantir qualidade. Que tal uma conversa técnica para eu te mostrar?"
+          },
+          {
+            situacao: "5. Marcação de call",
+            script: "Tenho horários terça às 15h ou quarta às 10h, qual fica melhor para você? Será uma conversa objetiva e técnica."
+          }
+        ]
+      },
+      timing_frequencia: {
+        titulo: "⏰ TIMING E FREQUÊNCIA",
+        descricao: "Quando e com que frequência abordar",
+        diretrizes: [
+          "Aborde em horários de trabalho focado (manhã e início da tarde)",
+          "Use mensagens claras e objetivas",
+          "Mantenha contato profissional e respeitoso",
+          "Envie conteúdos técnicos e detalhados",
+          "Evite abordagens emocionais ou vagas"
+        ]
+      },
+      gatilhos_psicologicos: {
+        titulo: "🧠 GATILHOS PSICOLÓGICOS",
+        descricao: "Elementos que ativam o interesse de perfis conforme",
+        gatilhos: [
+          "Prova social: 'Método validado por especialistas'",
+          "Dados: 'Resultados comprovados com estatísticas'",
+          "Lógica: 'Processos claros e estruturados'",
+          "Segurança: 'Conformidade e padrões garantidos'",
+          "Detalhamento: 'Informações técnicas e precisas'"
+        ]
+      }
+    },
+    script: {
+      objetivo: {
+        caracteristicas: "Pessoa analítica, precisa e cautelosa.",
+        busca: "dados, processos, qualidade e segurança",
+        evita: "imprecisão, riscos e falta de clareza",
+        foco: "Como posso garantir qualidade e resultados confiáveis?"
+      },
+      abertura: {
+        titulo: "ABERTURA TÉCNICA",
+        script: "Oi [Nome], tudo bem? Gostaria de compartilhar uma abordagem que pode otimizar seus processos com dados e segurança. Posso?",
+        gatilhos: "Lógica, dados, clareza"
+      },
+      spin: {
+        situacao: {
+          titulo: "PERGUNTAS DE SITUAÇÃO (SPIN: S)",
+          objetivo: "entender processos e métricas atuais",
+          perguntas: [
+            "Quais processos você já tem implementados?",
+            "Como você monitora a qualidade e conformidade?",
+            "Quais ferramentas você utiliza para análise?"
+          ],
+          gatilhos: "Dados, processos, controle"
+        },
+        problema: {
+          titulo: "PERGUNTAS DE PROBLEMA (SPIN: P)",
+          objetivo: "identificar falhas e riscos nos processos",
+          perguntas: [
+            "Quais problemas você enfrenta para manter a qualidade?",
+            "Já teve dificuldades com conformidade ou auditorias?",
+            "O que te preocupa em relação à eficiência dos processos?"
+          ],
+          gatilhos: "Risco, falhas, ineficiência"
+        },
+        implicacao: {
+          titulo: "PERGUNTAS DE IMPLICAÇÃO (SPIN: I)",
+          objetivo: "mostrar consequências de processos falhos",
+          perguntas: [
+            "Como a falta de controle tem impactado seus resultados?",
+            "Quais perdas você já teve por falhas nos processos?",
+            "O que pode acontecer se esses problemas persistirem?"
+          ],
+          gatilhos: "Perda, risco, impacto financeiro"
+        },
+        necessidade: {
+          titulo: "PERGUNTAS DE NECESSIDADE DE SOLUÇÃO (SPIN: N)",
+          objetivo: "ativar desejo por processos otimizados e seguros",
+          perguntas: [
+            "Se você pudesse garantir processos eficientes e conformes, como isso mudaria seu negócio?",
+            "Que tipo de solução você busca para melhorar a qualidade?"
+          ],
+          gatilhos: "Desejo, segurança, eficiência"
+        }
+      },
+      apresentacao: {
+        titulo: "APRESENTAÇÃO DO MÉTODO",
+        script: "Nosso método oferece processos otimizados, controle rigoroso e dados confiáveis para garantir qualidade e conformidade.",
+        gatilhos: "Prova social, dados, segurança"
+      },
+      chamada: {
+        titulo: "CHAMADA PRA AÇÃO",
+        script: "Quer conversar para descobrir como otimizar seus processos e garantir resultados confiáveis?"
+      },
+      encaminhamento: {
+        titulo: "ENCAMINHAMENTO (FECHAMENTO PARCIAL)",
+        script: "Se fizer sentido, podemos agendar uma conversa técnica para eu te mostrar o plano detalhado. Que tal?"
+      }
+    },
     objections: [
       {
-        title: "Já tentei de tudo e nada funciona",
-        cliente: "Já investi em soluções que não entregaram resultados mensuráveis.",
-        errado: "Nossa solução é diferente, confia!",
-        certo: "Entendo. Posso te mostrar nossos dados? Taxa de sucesso de X%, metodologia validada em Y estudos, média de ROI de Z%. Quer o whitepaper completo?",
-        explicacao: "Conformes precisam de dados concretos e metodologia comprovada. Nada de achismos."
+        title: "❌ Não confio em métodos genéricos",
+        question: "O que te faz desconfiar de métodos que não são personalizados?",
+        response: "Nosso método é adaptado para sua realidade, com base em dados e processos específicos para seu negócio."
       },
       {
-        title: "Mas será que isso serve pra mim?",
-        cliente: "Preciso entender melhor a metodologia antes de decidir.",
-        errado: "É simples, você vai entender fazendo!",
-        certo: "Perfeito. Te mando: 1) Fluxograma completo do processo, 2) Estudos de caso com métricas, 3) Comparativo com outras metodologias. Aí você analisa e me fala o que achou.",
-        explicacao: "Conformes precisam analisar tudo. Dê material técnico completo e deixe-os processar."
+        title: "❌ Prefiro fazer do meu jeito",
+        question: "O que você valoriza no seu método atual?",
+        response: "Respeitamos seu jeito, e nosso método complementa com processos que trazem mais segurança e eficiência."
       },
       {
-        title: "Quanto tempo leva pra dar resultado?",
-        cliente: "Qual a metodologia para medir os resultados?",
-        errado: "Você vai ver os resultados acontecendo!",
-        certo: "Usamos KPIs específicos: [métrica 1, 2, 3]. Primeiros indicadores em 30 dias, ROI completo em 90 dias. Te mando o dashboard de exemplo?",
-        explicacao: "Conformes querem métricas claras e mensuráveis. Especifique KPIs e ferramentas de medição."
+        title: "❌ Não tenho tempo para mudanças complexas",
+        question: "Como você gerencia mudanças no seu negócio atualmente?",
+        response: "Nosso processo é gradual e estruturado para minimizar impactos e facilitar a adaptação."
       },
       {
-        title: "Eu não tenho dinheiro",
-        cliente: "Preciso analisar o ROI antes de aprovar o investimento.",
-        errado: "O retorno é garantido!",
-        certo: "Correto. Vamos aos números: investimento de R$ X, ROI médio de Y% em Z meses, payback em W meses. Te mando a planilha de cálculo para você validar?",
-        explicacao: "Conformes querem ver a conta. Dê números exatos e ferramentas para eles mesmos validarem."
-      },
-      {
-        title: "Não tenho tempo pra isso agora",
-        cliente: "Como funciona exatamente o processo de implementação?",
-        errado: "É rápido, não se preocupe!",
-        certo: "Processo em 4 fases: 1) Setup (5h), 2) Treinamento (10h), 3) Implementação (20h), 4) Monitoramento (2h/semana). Total: 35h no primeiro mês. Te mando o cronograma detalhado?",
-        explicacao: "Conformes querem cronograma detalhado. Especifique exatamente quanto tempo cada etapa leva."
+        title: "❌ Não vejo valor em investir nisso agora",
+        question: "O que te faz hesitar em investir em otimização de processos?",
+        response: "Investir em processos é garantir economia e resultados a longo prazo. Posso te mostrar dados que comprovam isso."
       }
-    ],
-    script: {
-      abertura: "Olá [Nome], vi seu perfil e identifiquei sinergia com nossa solução. Ajudamos [tipo de empresa] a [resultado] através de [método]. ROI médio de X%. Vale uma análise?",
-      spin: [
-        "S: Qual seu processo atual para [área]?",
-        "P: Quais gargalos você identificou nesse processo?",
-        "I: Qual o impacto financeiro desses gargalos?",
-        "N: Como você mediria o sucesso de uma solução?"
-      ],
-      apresentacao: "Três pilares metodológicos: 1) Framework baseado em [metodologia], 2) Métricas de acompanhamento via [ferramenta], 3) ROI médio de X% em Y meses. Documentação completa disponível.",
-      cta: "Proposta: análise técnica de 30min. Posso agendar [data1] ou [data2]? Te mando agenda e pauta antecipada.",
-      fechamento: "Te envio: 1) Proposta técnica, 2) Estudos de caso, 3) Cronograma. Analisa e me retorna com dúvidas?"
-    },
-    perguntas_abertas: [
-      "Qual seu processo atual para [área]?",
-      "Quais métricas você usa para medir [resultado]?",
-      "Qual a principal ineficiência que você identificou?",
-      "Como você validaria o sucesso de uma nova solução?"
-    ],
-    social_selling: {
-      conteudo: "Whitepapers, estudos de caso com dados, comparativos técnicos, infográficos com estatísticas",
-      scripts: [
-        "Análise comparativa: nossa metodologia vs. concorrentes. [Link com dados]",
-        "ROI médio de X% em Y meses (base: Z clientes). Quer o relatório completo?"
-      ],
-      timing: "Seja preciso, objetivo e técnico. Responda com dados.",
-      gatilho: "Dados, prova social técnica, metodologia validada, clareza nos processos"
-    }
+    ]
   }
 };
 
 export default function RadarConversao() {
-  const [checkedMarkers, setCheckedMarkers] = useState<Set<string>>(new Set());
-  const [showContent, setShowContent] = useState<Record<string, boolean>>({});
-  const [activeTab, setActiveTab] = useState<Record<string, string>>({
-    D: "objections",
-    I: "objections",
-    S: "objections",
-    C: "objections"
-  });
-  const [expandedObjection, setExpandedObjection] = useState<Record<string, string | null>>({
-    D: null,
-    I: null,
-    S: null,
-    C: null
-  });
+  const [selected, setSelected] = useState<Array<{label: string; profile: string}>>([]);
+  const [expandedProfiles, setExpandedProfiles] = useState<string[]>([]);
+  const [expandedObjections, setExpandedObjections] = useState<Record<string, boolean>>({});
+  const [expandedScripts, setExpandedScripts] = useState<Record<string, boolean>>({});
+  const [expandedSocialSelling, setExpandedSocialSelling] = useState<Record<string, boolean>>({});
+  const [viewMode, setViewMode] = useState<Record<string, string>>({});
 
-  const handleMarkerCheck = (markerId: string, profile: string) => {
-    const newChecked = new Set(checkedMarkers);
-    if (newChecked.has(markerId)) {
-      newChecked.delete(markerId);
-    } else {
-      newChecked.add(markerId);
+  const handleCheck = (label: string, profile: string) => {
+    const exists = selected.find((s) => s.label === label);
+    setSelected(exists ? selected.filter((s) => s.label !== label) : [...selected, { label, profile }]);
+  };
+
+  const toggleExpand = (profile: string) => {
+    setExpandedProfiles((prev) =>
+      prev.includes(profile) ? prev.filter((p) => p !== profile) : [...prev, profile]
+    );
+    if (!expandedProfiles.includes(profile) && !viewMode[profile]) {
+      setViewMode(prev => ({ ...prev, [profile]: 'objections' }));
     }
-    setCheckedMarkers(newChecked);
   };
 
-  const toggleContent = (profile: string) => {
-    setShowContent(prev => ({ ...prev, [profile]: !prev[profile] }));
+  const toggleViewMode = (profile: string, mode: string) => {
+    setViewMode(prev => ({ ...prev, [profile]: mode }));
   };
 
-  const changeTab = (profile: string, tab: string) => {
-    setActiveTab(prev => ({ ...prev, [profile]: tab }));
-  };
-
-  const toggleObjection = (profile: string, objectionTitle: string) => {
-    setExpandedObjection(prev => ({
+  const toggleObjection = (profile: string, index: number) => {
+    const key = `${profile}-${index}`;
+    setExpandedObjections(prev => ({
       ...prev,
-      [profile]: prev[profile] === objectionTitle ? null : objectionTitle
+      [key]: !prev[key]
     }));
   };
 
-  const getProfileCounts = () => {
-    const counts: Record<string, number> = { D: 0, I: 0, S: 0, C: 0 };
-    markers.forEach(marker => {
-      if (checkedMarkers.has(marker.id)) {
-        counts[marker.profile]++;
-      }
-    });
-    return counts;
+  const toggleScript = (profile: string, section: string) => {
+    const key = `${profile}-${section}`;
+    setExpandedScripts(prev => ({
+      ...prev,
+      [key]: !prev[key]
+    }));
   };
 
-  const counts = getProfileCounts();
+  const toggleSocialSelling = (profile: string, section: string) => {
+    const key = `${profile}-${section}`;
+    setExpandedSocialSelling(prev => ({
+      ...prev,
+      [key]: !prev[key]
+    }));
+  };
+
+  const profileCount = selected.reduce((acc: Record<string, number>, cur) => {
+    acc[cur.profile] = (acc[cur.profile] || 0) + 1;
+    return acc;
+  }, {});
+
+  const sortedProfiles = Object.keys(profileCount).sort((a, b) => profileCount[b] - profileCount[a]);
 
   return (
-    <div className="min-h-screen bg-[#0f1621] text-gray-100 p-4 md:p-8">
-      <div className="max-w-7xl mx-auto">
-        <div className="text-center mb-12">
-          <h1 className="text-4xl md:text-5xl font-bold text-[#d4af37] mb-4">CXconversão</h1>
-          <p className="text-lg md:text-xl text-gray-400">Radar Comportamental em Calls 1:1</p>
-        </div>
+    <div className="max-w-7xl mx-auto p-4 min-h-screen">
+      <div className="text-center text-4xl mb-2 text-[#d2bc8f]">
+        CXconversão
+      </div>
+      <p className="text-center text-muted-foreground text-xl mb-8">
+        Radar Comportamental em Calls 1:1
+      </p>
 
-        <div className="bg-[#1a2332] rounded-lg p-6 md:p-8 mb-8">
-          <h2 className="text-xl md:text-2xl font-bold text-[#d4af37] mb-6">Marque os sinais observados durante a call:</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {markers.map((marker) => (
-              <div key={marker.id} className="flex items-start gap-3">
-                <Checkbox
-                  id={marker.id}
-                  checked={checkedMarkers.has(marker.id)}
-                  onCheckedChange={() => handleMarkerCheck(marker.id, marker.profile)}
-                  className="mt-1 h-5 w-5 border-gray-500 data-[state=checked]:bg-[#d4af37] data-[state=checked]:border-[#d4af37]"
-                />
-                <label htmlFor={marker.id} className="text-sm leading-relaxed cursor-pointer text-gray-300 hover:text-white transition-colors">
-                  {marker.label}
-                </label>
-              </div>
-            ))}
-          </div>
+      {/* Marcadores de Observação */}
+      <div className="bg-[#1a2332] border border-[#333] rounded-lg p-6 mb-6">
+        <h2 className="text-[#d2bc8f] mb-4">Marque os sinais observados durante a call:</h2>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2 mt-4">
+          {markers.map((item, index) => (
+            <label key={index} className="flex items-center p-2 rounded-md cursor-pointer hover:bg-[#d2bc8f]/10 transition-colors">
+              <input
+                type="checkbox"
+                onChange={() => handleCheck(item.label, item.profile)}
+                checked={selected.some((s) => s.label === item.label)}
+                className="w-[18px] h-[18px] mr-3 accent-[#d2bc8f] cursor-pointer"
+              />
+              {item.label}
+            </label>
+          ))}
         </div>
+      </div>
 
-        <div className="border-2 border-dashed border-gray-600 rounded-lg p-8 mb-12 text-center">
-          <h2 className="text-2xl md:text-3xl font-bold text-[#d4af37] mb-4">Análise em Tempo Real</h2>
-          <p className="text-gray-400">Marque os sinais comportamentais observados para receber as estratégias de conversão personalizadas.</p>
-        </div>
-
-        <div className="space-y-6">
-          {Object.entries(suggestions).map(([profile, data]) => (
-            <div key={profile} className={`bg-[#1a2332] rounded-lg overflow-hidden border-l-4 ${data.color}`}>
-              <div className="p-6">
-                <div className="flex flex-col md:flex-row md:items-start justify-between gap-4 mb-4">
+      {/* Análise de Perfis */}
+      {sortedProfiles.length > 0 && (
+        <div>
+          <h2 className="text-center text-2xl mb-8">
+            🎯 Análise de Perfil Comportamental
+          </h2>
+          
+          {sortedProfiles.map((profileKey) => {
+            const suggestion = suggestions[profileKey as keyof typeof suggestions];
+            const count = profileCount[profileKey];
+            
+            const borderColor = 
+              profileKey === 'D' ? 'border-l-[#ff6b6b]' :
+              profileKey === 'I' ? 'border-l-[#ffd43b]' :
+              profileKey === 'S' ? 'border-l-[#51cf66]' :
+              'border-l-[#339af0]';
+            
+            return (
+              <div key={profileKey} className={`bg-[#1a2332] border border-[#333] ${borderColor} border-l-4 rounded-lg p-6 mb-6`}>
+                <div className="flex justify-between items-start mb-4">
                   <div className="flex-1">
-                    <div className="flex items-center gap-3 mb-3">
-                      <div className={`w-6 h-6 ${data.bgColor} rounded`}></div>
-                      <h3 className="text-xl md:text-2xl font-bold text-[#d4af37]">
-                        Perfil {data.label.split(' ')[1]} ({counts[profile]} indicadores)
-                      </h3>
-                    </div>
-                    <p className="text-gray-300 mb-2 flex items-center gap-2">{data.approach}</p>
-                    <p className="text-gray-300 flex items-center gap-2">{data.trigger}</p>
+                    <h2 className="text-[#d2bc8f] text-xl mb-2">
+                      {suggestion.label} ({count} indicadores)
+                    </h2>
+                    <p>{suggestion.approach}</p>
+                    <p>{suggestion.trigger}</p>
                   </div>
-                  <Button
-                    onClick={() => toggleContent(profile)}
-                    className="bg-[#d4af37] hover:bg-[#c49f2f] text-black font-semibold px-6 py-2 rounded-md transition-colors whitespace-nowrap"
-                  >
-                    {showContent[profile] ? "Ocultar Conteúdo" : "Ver Conteúdo"}
-                  </Button>
+                  <div className="flex gap-2 flex-col">
+                    <button
+                      onClick={() => toggleExpand(profileKey)}
+                      className="bg-[#d2bc8f] text-[#0c121c] px-6 py-3 rounded-lg font-bold hover:bg-[#e6d0a3] transition-all whitespace-nowrap"
+                    >
+                      {expandedProfiles.includes(profileKey) ? 'Ocultar Conteúdo' : 'Ver Conteúdo'}
+                    </button>
+                  </div>
                 </div>
-
-                {showContent[profile] && (
-                  <div className="mt-6 animate-fade-in">
-                    <div className="flex flex-wrap gap-2 mb-6">
-                      {["objections", "script", "questions", "social"].map((tab) => (
-                        <button
-                          key={tab}
-                          onClick={() => changeTab(profile, tab)}
-                          className={`px-4 py-2 rounded-md font-medium transition-colors ${
-                            activeTab[profile] === tab ? "bg-[#d4af37] text-black" : "bg-gray-700 text-gray-300 hover:bg-gray-600"
-                          }`}
-                        >
-                          {tab === "objections" && "💬 Objeções"}
-                          {tab === "script" && "📋 Script de Conexão"}
-                          {tab === "questions" && "🤔 Perguntas Abertas"}
-                          {tab === "social" && "📊 Social Selling"}
-                        </button>
-                      ))}
+                
+                {expandedProfiles.includes(profileKey) && (
+                  <div className="mt-6">
+                    {/* Botões para alternar entre as 4 abas */}
+                    <div className="flex gap-4 mb-6 flex-wrap">
+                      <button 
+                        onClick={() => toggleViewMode(profileKey, 'objections')}
+                        className={`px-4 py-3 rounded-lg font-bold transition-all text-sm ${
+                          viewMode[profileKey] === 'objections' || !viewMode[profileKey]
+                            ? 'bg-[#d2bc8f] text-[#0c121c]'
+                            : 'bg-[#666] text-white'
+                        }`}
+                      >
+                        💬 Objeções
+                      </button>
+                      <button 
+                        onClick={() => toggleViewMode(profileKey, 'scripts')}
+                        className={`px-4 py-3 rounded-lg font-bold transition-all text-sm ${
+                          viewMode[profileKey] === 'scripts'
+                            ? 'bg-[#d2bc8f] text-[#0c121c]'
+                            : 'bg-[#666] text-white'
+                        }`}
+                      >
+                        📋 Script de Conexão
+                      </button>
+                      <button 
+                        onClick={() => toggleViewMode(profileKey, 'perguntas')}
+                        className={`px-4 py-3 rounded-lg font-bold transition-all text-sm ${
+                          viewMode[profileKey] === 'perguntas'
+                            ? 'bg-[#d2bc8f] text-[#0c121c]'
+                            : 'bg-[#666] text-white'
+                        }`}
+                      >
+                        🤔 Perguntas Abertas
+                      </button>
+                      <button 
+                        onClick={() => toggleViewMode(profileKey, 'social')}
+                        className={`px-4 py-3 rounded-lg font-bold transition-all text-sm ${
+                          viewMode[profileKey] === 'social'
+                            ? 'bg-[#d2bc8f] text-[#0c121c]'
+                            : 'bg-[#666] text-white'
+                        }`}
+                      >
+                        📊 Social Selling
+                      </button>
                     </div>
 
-                    <div className="bg-[#0f1621] rounded-lg p-6">
-                      {activeTab[profile] === "objections" && (
-                        <div>
-                          <h4 className="text-xl font-bold text-[#d4af37] mb-4 flex items-center gap-2">💬 Objeções e Respostas Calibradas:</h4>
-                          <div className="space-y-3">
-                            {data.objections.map((obj: any) => (
-                              <div key={obj.title} className="bg-[#1a2332] rounded-lg overflow-hidden">
-                                <button
-                                  onClick={() => toggleObjection(profile, obj.title)}
-                                  className="w-full px-4 py-3 flex items-center justify-between text-left hover:bg-[#212d3f] transition-colors"
-                                >
-                                  <span className="flex items-center gap-2 text-red-400 font-medium">❌ {obj.title}</span>
-                                  <ChevronRight className={`w-5 h-5 text-gray-400 transition-transform ${expandedObjection[profile] === obj.title ? "rotate-90" : ""}`} />
-                                </button>
-                                {expandedObjection[profile] === obj.title && (
-                                  <div className="px-4 pb-4 space-y-4 animate-fade-in">
-                                    <div className="bg-[#0f1621] p-4 rounded">
-                                      <p className="text-sm text-gray-400 mb-1">Cliente diz:</p>
-                                      <p className="text-gray-300 italic">"{obj.cliente}"</p>
-                                    </div>
-                                    <div className="grid md:grid-cols-2 gap-4">
-                                      <div className="bg-red-950/30 border border-red-900/50 p-4 rounded">
-                                        <p className="text-sm text-red-400 font-semibold mb-2">❌ Resposta Errada:</p>
-                                        <p className="text-gray-300 text-sm italic">"{obj.errado}"</p>
-                                      </div>
-                                      <div className="bg-green-950/30 border border-green-900/50 p-4 rounded">
-                                        <p className="text-sm text-green-400 font-semibold mb-2">✅ Resposta Certa:</p>
-                                        <p className="text-gray-300 text-sm italic">"{obj.certo}"</p>
-                                      </div>
-                                    </div>
-                                    <div className="bg-blue-950/30 border border-blue-900/50 p-4 rounded">
-                                      <p className="text-sm text-blue-400 font-semibold mb-2">💡 Por que funciona:</p>
-                                      <p className="text-gray-300 text-sm">{obj.explicacao}</p>
-                                    </div>
+                    {/* Seção de Objeções */}
+                    {(viewMode[profileKey] === 'objections' || !viewMode[profileKey]) && (
+                      <div>
+                        <h3 className="text-lg font-semibold mb-4">💬 Objeções e Respostas Calibradas:</h3>
+                        {suggestion.objections.map((objection: any, index: number) => (
+                          <div key={index} className="bg-[#2a3441] border border-[#444] rounded-lg p-4 mb-4">
+                            <div 
+                              onClick={() => toggleObjection(profileKey, index)}
+                              className="cursor-pointer flex justify-between items-center text-[#ff6b6b] font-bold mb-2"
+                            >
+                              <span>{objection.title}</span>
+                              <span>{expandedObjections[`${profileKey}-${index}`] ? '▼' : '▶'}</span>
+                            </div>
+                            
+                            {expandedObjections[`${profileKey}-${index}`] && (
+                              <div className="mt-4">
+                                <div className="bg-[#1a2332] border-l-4 border-l-[#4dabf7] p-3 my-2 rounded-r-md">
+                                  <div className="text-[#4dabf7] font-bold text-sm mb-1">
+                                    💬 Pergunta Calibrada:
                                   </div>
-                                )}
+                                  <em>"{objection.question}"</em>
+                                </div>
+                                <div className="bg-[#1a2332] border-l-4 border-l-[#51cf66] p-3 my-2 rounded-r-md">
+                                  <div className="text-[#51cf66] font-bold text-sm mb-1">
+                                    💡 Resposta Adaptada:
+                                  </div>
+                                  "{objection.response}"
+                                </div>
                               </div>
-                            ))}
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    {/* Seção de Scripts */}
+                    {viewMode[profileKey] === 'scripts' && (
+                      <div>
+                        <h3 className="text-lg font-semibold mb-4">📋 Script de Conexão e Abordagem:</h3>
+                        <div className="space-y-4">
+                          <div className="bg-[#2a3441] border border-[#444] rounded-lg p-4">
+                            <h4 className="font-bold mb-2">{suggestion.script.objetivo.caracteristicas}</h4>
+                            <p><strong>Busca:</strong> {suggestion.script.objetivo.busca}</p>
+                            <p><strong>Evita:</strong> {suggestion.script.objetivo.evita}</p>
+                            <p><strong>Foco:</strong> {suggestion.script.objetivo.foco}</p>
+                          </div>
+
+                          <div className="bg-[#2a3441] border border-[#444] rounded-lg p-4">
+                            <h4 className="font-bold mb-2">{suggestion.script.abertura.titulo}</h4>
+                            <p>{suggestion.script.abertura.script}</p>
+                            <p><em>Gatilhos: {suggestion.script.abertura.gatilhos}</em></p>
+                          </div>
+
+                          {Object.entries(suggestion.script.spin).map(([key, section]: any) => (
+                            <div key={key} className="bg-[#2a3441] border border-[#444] rounded-lg p-4">
+                              <h4 className="font-bold mb-2">{section.titulo}</h4>
+                              <p><strong>Objetivo:</strong> {section.objetivo}</p>
+                              <p><strong>Gatilhos:</strong> {section.gatilhos}</p>
+                              <ul className="list-disc list-inside mt-2">
+                                {section.perguntas.map((q: string, idx: number) => (
+                                  <li key={idx}>{q}</li>
+                                ))}
+                              </ul>
+                            </div>
+                          ))}
+
+                          <div className="bg-[#2a3441] border border-[#444] rounded-lg p-4">
+                            <h4 className="font-bold mb-2">{suggestion.script.apresentacao.titulo}</h4>
+                            <p>{suggestion.script.apresentacao.script}</p>
+                            <p><em>Gatilhos: {suggestion.script.apresentacao.gatilhos}</em></p>
+                          </div>
+
+                          <div className="bg-[#2a3441] border border-[#444] rounded-lg p-4">
+                            <h4 className="font-bold mb-2">{suggestion.script.chamada.titulo}</h4>
+                            <p>{suggestion.script.chamada.script}</p>
+                          </div>
+
+                          <div className="bg-[#2a3441] border border-[#444] rounded-lg p-4">
+                            <h4 className="font-bold mb-2">{suggestion.script.encaminhamento.titulo}</h4>
+                            <p>{suggestion.script.encaminhamento.script}</p>
                           </div>
                         </div>
-                      )}
+                      </div>
+                    )}
 
-                      {activeTab[profile] === "script" && (
-                        <div>
-                          <h4 className="text-xl font-bold text-[#d4af37] mb-4">📋 Script de Conexão</h4>
-                          <div className="space-y-4">
-                            {Object.entries(data.script).map(([key, value]) => (
-                              <div key={key} className="bg-[#1a2332] p-4 rounded-lg">
-                                <h5 className="font-semibold text-[#d4af37] mb-2 capitalize">{key === "cta" ? "Call to Action" : key.replace("_", " ")}:</h5>
-                                {Array.isArray(value) ? (
-                                  <ul className="space-y-2">{value.map((item: string, i: number) => <li key={i} className="text-gray-300">{item}</li>)}</ul>
-                                ) : (
-                                  <p className="text-gray-300">{value as string}</p>
-                                )}
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      )}
+                    {/* Seção de Perguntas Abertas */}
+                    {viewMode[profileKey] === 'perguntas' && (
+                      <div>
+                        <h3 className="text-lg font-semibold mb-4">🤔 Perguntas Abertas Estratégicas:</h3>
+                        <p><strong>Objetivo:</strong> {suggestion.perguntas_abertas.objetivo}</p>
+                        <p><strong>Características:</strong> {suggestion.perguntas_abertas.caracteristicas}</p>
+                        <ul className="list-disc list-inside mt-2">
+                          {suggestion.perguntas_abertas.perguntas.map((q: string, idx: number) => (
+                            <li key={idx}>{q}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
 
-                      {activeTab[profile] === "questions" && (
-                        <div>
-                          <h4 className="text-xl font-bold text-[#d4af37] mb-4">🤔 Perguntas Abertas Estratégicas</h4>
-                          <ul className="space-y-3">
-                            {data.perguntas_abertas.map((q: string, i: number) => (
-                              <li key={i} className="bg-[#1a2332] p-4 rounded-lg text-gray-300 flex items-start gap-2">
-                                <span className="text-[#d4af37] font-bold">{i + 1}.</span>
-                                {q}
-                              </li>
+                    {/* Seção de Social Selling */}
+                    {viewMode[profileKey] === 'social' && (
+                      <div>
+                        <h3 className="text-lg font-semibold mb-4">📊 Estratégia de Social Selling:</h3>
+                        <p><strong>Objetivo:</strong> {suggestion.social_selling.objetivo}</p>
+                        <p><strong>Características:</strong> {suggestion.social_selling.caracteristicas}</p>
+
+                        <div className="mb-4">
+                          <h4 className="font-bold">{suggestion.social_selling.estrategia_aproximacao.titulo}</h4>
+                          <p>{suggestion.social_selling.estrategia_aproximacao.descricao}</p>
+                          <ul className="list-disc list-inside mt-2">
+                            {suggestion.social_selling.estrategia_aproximacao.tacticas.map((t: string, idx: number) => (
+                              <li key={idx}>{t}</li>
                             ))}
                           </ul>
                         </div>
-                      )}
 
-                      {activeTab[profile] === "social" && (
-                        <div>
-                          <h4 className="text-xl font-bold text-[#d4af37] mb-4">📊 Social Selling</h4>
-                          <div className="space-y-4">
-                            {Object.entries(data.social_selling).map(([key, value]) => (
-                              <div key={key} className="bg-[#1a2332] p-4 rounded-lg">
-                                <h5 className="font-semibold text-[#d4af37] mb-2 capitalize">{key.replace("_", " ")}:</h5>
-                                {Array.isArray(value) ? (
-                                  <ul className="space-y-2">{value.map((item: string, i: number) => <li key={i} className="text-gray-300 italic">"{item}"</li>)}</ul>
-                                ) : (
-                                  <p className="text-gray-300">{value as string}</p>
-                                )}
-                              </div>
+                        <div className="mb-4">
+                          <h4 className="font-bold">{suggestion.social_selling.conteudo_engajamento.titulo}</h4>
+                          <p>{suggestion.social_selling.conteudo_engajamento.descricao}</p>
+                          <ul className="list-disc list-inside mt-2">
+                            {suggestion.social_selling.conteudo_engajamento.tipos.map((t: string, idx: number) => (
+                              <li key={idx}>{t}</li>
                             ))}
-                          </div>
+                          </ul>
                         </div>
-                      )}
-                    </div>
+
+                        <div className="mb-4">
+                          <h4 className="font-bold">{suggestion.social_selling.scripts_dm.titulo}</h4>
+                          <p>{suggestion.social_selling.scripts_dm.descricao}</p>
+                          {suggestion.social_selling.scripts_dm.scripts.map((script: any, idx: number) => (
+                            <div key={idx} className="mb-2">
+                              <strong>{script.situacao}</strong>
+                              <p>{script.script}</p>
+                            </div>
+                          ))}
+                        </div>
+
+                        <div className="mb-4">
+                          <h4 className="font-bold">{suggestion.social_selling.timing_frequencia.titulo}</h4>
+                          <p>{suggestion.social_selling.timing_frequencia.descricao}</p>
+                          <ul className="list-disc list-inside mt-2">
+                            {suggestion.social_selling.timing_frequencia.diretrizes.map((d: string, idx: number) => (
+                              <li key={idx}>{d}</li>
+                            ))}
+                          </ul>
+                        </div>
+
+                        <div>
+                          <h4 className="font-bold">{suggestion.social_selling.gatilhos_psicologicos.titulo}</h4>
+                          <p>{suggestion.social_selling.gatilhos_psicologicos.descricao}</p>
+                          <ul className="list-disc list-inside mt-2">
+                            {suggestion.social_selling.gatilhos_psicologicos.gatilhos.map((g: string, idx: number) => (
+                              <li key={idx}>{g}</li>
+                            ))}
+                          </ul>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
+      )}
 
-        <div className="text-center mt-12 text-gray-500 text-sm">
-          CXconversão - Sistema de Análise Comportamental para Conversão em Calls
+      {/* Estado inicial */}
+      {sortedProfiles.length === 0 && (
+        <div className="text-center p-12 text-muted-foreground bg-[#1a2332] rounded-lg border-2 border-dashed border-[#444]">
+          <h2 className="text-[#d2bc8f] text-2xl mb-4">Análise em Tempo Real</h2>
+          <p>Marque os sinais comportamentais observados para receber as estratégias de conversão personalizadas.</p>
         </div>
+      )}
+
+      {/* Rodapé */}
+      <div className="mt-8 text-center">
+        <p className="text-muted-foreground text-sm">
+          CXconversão - Sistema de Análise Comportamental para Conversão em Calls
+        </p>
       </div>
     </div>
   );

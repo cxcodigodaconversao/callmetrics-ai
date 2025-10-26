@@ -93,16 +93,17 @@ export function AudioPlayer({ open, onOpenChange, videoUrl, timestamp, title }: 
             Reproduzindo a partir de: <span className="font-semibold">{timestamp}</span>
           </div>
 
-          <audio
-            ref={audioRef}
+          <video
+            ref={audioRef as any}
             src={videoUrl}
             onTimeUpdate={handleTimeUpdate}
             onLoadedMetadata={handleLoadedMetadata}
             onError={(e) => {
-              console.error("Erro no elemento de áudio:", e);
-              setError("Erro ao carregar o áudio.");
+              console.error("Erro no elemento de vídeo:", e);
+              setError("Erro ao carregar o áudio do vídeo.");
             }}
             preload="metadata"
+            style={{ display: "none" }}
           />
 
           {error ? (

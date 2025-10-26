@@ -10,69 +10,111 @@ const ANALYSIS_PROMPT = `Você é um especialista em análise de vendas usando a
 
 Analise a transcrição da ligação de vendas abaixo e forneça uma análise DETALHADA E FIDEDIGNA baseada APENAS no que realmente aconteceu na conversa.
 
+**INSTRUÇÕES CRÍTICAS:**
+- LEIA TODA A TRANSCRIÇÃO antes de começar a análise
+- Use APENAS timestamps que REALMENTE aparecem na transcrição
+- Cite APENAS frases que REALMENTE foram ditas (copie exatamente)
+- Se a transcrição tem timestamps no formato "[HH:MM:SS]" ou "[MM:SS]", USE ESSES timestamps
+- NÃO invente nomes de pessoas se não estiverem mencionados
+- NÃO invente momentos que não aconteceram
+- Se não houver informação suficiente para um critério, seja honesto e dê score baixo
+
 **CRITÉRIOS DE AVALIAÇÃO:**
 
-1. **Conexão**: Rapport, empatia, construção de relacionamento
-2. **SPIN - Situação**: Perguntas sobre a situação atual do cliente
-3. **SPIN - Problema**: Identificação de problemas e desafios
-4. **SPIN - Implicação**: Exploração das consequências dos problemas
-5. **SPIN - Necessidade**: Desenvolvimento da necessidade de solução
-6. **Apresentação**: Clareza e relevância da apresentação da solução
-7. **Fechamento**: Condução para próximos passos e fechamento
-8. **Objeções**: Tratamento de objeções e dúvidas
-9. **Compromisso/Pagamento**: Discussão sobre compromisso e valores
+1. **Conexão (0-100)**: Rapport, empatia, construção de relacionamento
+   - Avalie se o vendedor criou conexão emocional
+   - Usou o nome do cliente? Demonstrou interesse genuíno?
+   - Encontrou pontos em comum?
 
-**IMPORTANTE:**
-- Retorne APENAS um objeto JSON válido
-- Cada score deve ser um número inteiro de 0 a 100
-- Use APENAS informações que realmente existem na transcrição
-- Para timestamps, identifique momentos reais da conversa
-- Para citações, use frases reais ditas pelos participantes
-- Se não houver objeções, retorne array vazio
-- Se não houver momentos positivos/negativos claros, retorne arrays vazios
+2. **SPIN - Situação (0-100)**: Perguntas sobre a situação atual do cliente
+   - Quantas perguntas de situação foram feitas?
+   - Foram abertas e exploratórias?
+   - O vendedor entendeu o contexto antes de vender?
 
-**FORMATO DE RESPOSTA (JSON):**
+3. **SPIN - Problema (0-100)**: Identificação de problemas e desafios
+   - O vendedor identificou dores reais?
+   - Fez o cliente verbalizar os problemas?
+   - Foi além da superfície?
+
+4. **SPIN - Implicação (0-100)**: Exploração das consequências dos problemas
+   - O vendedor explorou o custo de não resolver?
+   - Criou urgência genuína?
+   - Fez o cliente sentir o problema?
+
+5. **SPIN - Necessidade (0-100)**: Desenvolvimento da necessidade de solução
+   - O cliente chegou sozinho à conclusão que precisa da solução?
+   - O vendedor conduziu para que o cliente se vendesse?
+
+6. **Apresentação (0-100)**: Clareza e relevância da apresentação da solução
+   - Apresentou apenas APÓS entender as dores?
+   - Conectou features com os problemas identificados?
+   - Foi claro e objetivo?
+
+7. **Fechamento (0-100)**: Condução para próximos passos
+   - Conduziu naturalmente para o fechamento?
+   - Pediu a venda ou próximo passo?
+   - Foi assertivo?
+
+8. **Objeções (0-100)**: Tratamento de objeções e dúvidas
+   - Como tratou as objeções?
+   - Usou técnicas adequadas?
+   - Transformou objeções em oportunidades?
+
+9. **Compromisso/Pagamento (0-100)**: Discussão sobre investimento
+   - Como apresentou o valor?
+   - Tratou como investimento ou custo?
+   - Criou percepção de valor antes de falar de preço?
+
+**FORMATO DE RESPOSTA (JSON VÁLIDO):**
 {
   "scores": {
-    "conexao": 0-100,
-    "spin_s": 0-100,
-    "spin_p": 0-100,
-    "spin_i": 0-100,
-    "spin_n": 0-100,
-    "apresentacao": 0-100,
-    "fechamento": 0-100,
-    "objecoes": 0-100,
-    "compromisso_pagamento": 0-100,
-    "global": 0-100
+    "conexao": número 0-100,
+    "spin_s": número 0-100,
+    "spin_p": número 0-100,
+    "spin_i": número 0-100,
+    "spin_n": número 0-100,
+    "apresentacao": número 0-100,
+    "fechamento": número 0-100,
+    "objecoes": número 0-100,
+    "compromisso_pagamento": número 0-100,
+    "global": (média dos scores acima)
   },
   "insights": {
-    "pontos_fortes": ["descrição detalhada baseada em fatos reais"],
-    "pontos_fracos": ["descrição detalhada baseada em fatos reais"],
-    "recomendacoes": ["recomendações específicas baseadas nos pontos fracos"],
+    "pontos_fortes": [
+      "Descreva especificamente o que o vendedor fez bem, citando momentos reais"
+    ],
+    "pontos_fracos": [
+      "Descreva especificamente o que precisa melhorar, citando o que faltou"
+    ],
+    "recomendacoes": [
+      "Ações específicas e práticas para melhorar, baseadas nos pontos fracos"
+    ],
     "timeline": [
       {
-        "timestamp": "MM:SS real da transcrição",
+        "timestamp": "USE O TIMESTAMP REAL DA TRANSCRIÇÃO (ex: 02:15 ou 01:02:15)",
         "type": "positive" ou "negative",
-        "title": "título descritivo",
-        "quote": "citação exata da transcrição",
-        "speaker": "vendedor" ou "cliente",
-        "why": "explicação do porquê foi bom ou ruim",
-        "fix": "como corrigir (apenas para negativos)"
+        "title": "Título curto e descritivo do momento",
+        "quote": "CITAÇÃO EXATA e COMPLETA da transcrição - copie literalmente",
+        "speaker": "vendedor" ou "cliente" (use exatamente esses termos em minúsculas)",
+        "why": "Explicação ESPECÍFICA do porquê esse momento foi bom ou ruim",
+        "fix": "Como corrigir (APENAS para momentos negativos) - seja específico e prático"
       }
     ],
     "objecoes": [
       {
-        "type": "price|timing|authority|need|competition",
-        "timestamp": "MM:SS real",
-        "cliente_disse": "citação exata do cliente",
-        "vendedor_respondeu": "citação exata do vendedor",
-        "rating": 1-10,
-        "avaliacao": "análise da resposta do vendedor",
-        "como_deveria": "como deveria ter tratado"
+        "type": "price" ou "timing" ou "authority" ou "need" ou "competition",
+        "timestamp": "TIMESTAMP REAL onde a objeção aconteceu",
+        "cliente_disse": "CITAÇÃO EXATA do que o cliente disse",
+        "vendedor_respondeu": "CITAÇÃO EXATA da resposta do vendedor",
+        "rating": número de 1 a 10 (quão bem o vendedor tratou),
+        "avaliacao": "Análise crítica: o que foi bom e o que foi ruim na resposta",
+        "como_deveria": "Script específico de como deveria ter respondido - seja prático e aplicável"
       }
     ]
   }
-}`;
+}
+
+**IMPORTANTE:** Retorne APENAS o JSON, sem texto adicional antes ou depois.`;
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {

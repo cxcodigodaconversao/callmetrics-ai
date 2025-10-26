@@ -36,6 +36,8 @@ interface AnalysisData {
     created_at: string;
     duration_sec: number;
     mode: string;
+    storage_path: string;
+    videoUrl?: string;
   };
   transcription?: {
     text: string;
@@ -64,7 +66,8 @@ export default function AnalysisDetail() {
             title,
             created_at,
             duration_sec,
-            mode
+            mode,
+            storage_path
           )
         `)
         .eq("id", id)
@@ -79,9 +82,25 @@ export default function AnalysisDetail() {
         .eq("video_id", data.video_id)
         .single();
 
+      // Get video URL from storage
+      let videoUrl = "";
+      if (data.video.storage_path) {
+        const { data: signedUrlData } = await supabase.storage
+          .from("uploads")
+          .createSignedUrl(data.video.storage_path, 3600); // 1 hour expiry
+        
+        if (signedUrlData) {
+          videoUrl = signedUrlData.signedUrl;
+        }
+      }
+
       setAnalysis({
         ...data,
         transcription: transcriptionData,
+        video: {
+          ...data.video,
+          videoUrl,
+        },
       });
     } catch (error: any) {
       console.error("Error fetching analysis:", error);

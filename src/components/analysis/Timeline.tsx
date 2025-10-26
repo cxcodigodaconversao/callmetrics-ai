@@ -1,6 +1,9 @@
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Play, FileText } from "lucide-react";
+import { useState } from "react";
+import { AudioPlayer } from "./AudioPlayer";
+import { TranscriptionDialog } from "./TranscriptionDialog";
 
 interface TimelineProps {
   analysis: any;
@@ -8,10 +11,50 @@ interface TimelineProps {
 
 export function Timeline({ analysis }: TimelineProps) {
   const moments = analysis?.insights_json?.timeline || [];
+  const [audioPlayerOpen, setAudioPlayerOpen] = useState(false);
+  const [transcriptionOpen, setTranscriptionOpen] = useState(false);
+  const [selectedMoment, setSelectedMoment] = useState<any>(null);
 
   if (moments.length === 0) {
     return null;
   }
+
+  const handlePlayAudio = (moment: any) => {
+    setSelectedMoment(moment);
+    setAudioPlayerOpen(true);
+  };
+
+  const handleViewTranscription = (moment: any) => {
+    setSelectedMoment(moment);
+    setTranscriptionOpen(true);
+  };
+
+  // Calculate position on timeline based on timestamp
+  const calculatePosition = (timestamp: string, totalDuration: number) => {
+    const parts = timestamp.split(':').map(Number);
+    let seconds = 0;
+    
+    if (parts.length === 2) {
+      seconds = parts[0] * 60 + parts[1];
+    } else if (parts.length === 3) {
+      seconds = parts[0] * 3600 + parts[1] * 60 + parts[2];
+    }
+    
+    return (seconds / totalDuration) * 100;
+  };
+
+  const formatDuration = (seconds: number): string => {
+    const hrs = Math.floor(seconds / 3600);
+    const mins = Math.floor((seconds % 3600) / 60);
+    const secs = Math.floor(seconds % 60);
+    
+    if (hrs > 0) {
+      return `${hrs}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+    }
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
+  };
+
+  const totalDuration = analysis?.video?.duration_sec || 0;
 
   return (
     <Card className="p-6">
@@ -22,18 +65,19 @@ export function Timeline({ analysis }: TimelineProps) {
         <div className="flex items-center gap-2 text-sm text-muted-foreground mb-2">
           <span>00:00</span>
           <div className="flex-1 h-2 bg-muted rounded-full relative">
-            {moments.map((moment) => (
+            {moments.map((moment, idx) => (
               <div
-                key={moment.timestamp}
-                className={`absolute top-1/2 -translate-y-1/2 w-4 h-4 rounded-full ${
+                key={`${moment.timestamp}-${idx}`}
+                className={`absolute top-1/2 -translate-y-1/2 w-4 h-4 rounded-full cursor-pointer hover:scale-125 transition-transform ${
                   moment.type === "positive" ? "bg-green-500" : "bg-red-500"
                 }`}
-                style={{ left: "20%" }}
-                title={moment.timestamp}
+                style={{ left: `${calculatePosition(moment.timestamp, totalDuration)}%` }}
+                title={`${moment.timestamp} - ${moment.title}`}
+                onClick={() => handlePlayAudio(moment)}
               />
             ))}
           </div>
-          <span>{analysis.video?.duration_sec ? `${Math.floor(analysis.video.duration_sec / 60)}:${(analysis.video.duration_sec % 60).toString().padStart(2, '0')}` : "18:32"}</span>
+          <span>{totalDuration ? formatDuration(totalDuration) : "00:00"}</span>
         </div>
       </div>
 
@@ -94,11 +138,22 @@ export function Timeline({ analysis }: TimelineProps) {
                 </div>
 
                 <div className="flex gap-2">
-                  <Button variant="outline" size="sm" className="gap-2">
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    className="gap-2"
+                    onClick={() => handlePlayAudio(moment)}
+                    disabled={!analysis?.video?.videoUrl}
+                  >
                     <Play className="w-3 h-3" />
                     Ouvir trecho
                   </Button>
-                  <Button variant="ghost" size="sm" className="gap-2">
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    className="gap-2"
+                    onClick={() => handleViewTranscription(moment)}
+                  >
                     <FileText className="w-3 h-3" />
                     Ver transcrição
                   </Button>
@@ -108,6 +163,27 @@ export function Timeline({ analysis }: TimelineProps) {
           </div>
         ))}
       </div>
+
+      {/* Audio Player Dialog */}
+      {selectedMoment && (
+        <>
+          <AudioPlayer
+            open={audioPlayerOpen}
+            onOpenChange={setAudioPlayerOpen}
+            videoUrl={analysis?.video?.videoUrl || ""}
+            timestamp={selectedMoment.timestamp}
+            title={selectedMoment.title}
+          />
+          
+          <TranscriptionDialog
+            open={transcriptionOpen}
+            onOpenChange={setTranscriptionOpen}
+            timestamp={selectedMoment.timestamp}
+            transcription={selectedMoment.quote}
+            title={selectedMoment.title}
+          />
+        </>
+      )}
     </Card>
   );
 }

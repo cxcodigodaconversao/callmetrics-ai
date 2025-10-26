@@ -10,6 +10,7 @@ import Upload from "./pages/Upload";
 import Analyses from "./pages/Analyses";
 import AnalysisDetail from "./pages/AnalysisDetail";
 import Settings from "./pages/Settings";
+import DISCRadar from "./pages/DISCRadar";
 import NotFound from "./pages/NotFound";
 import AdminDashboard from "./pages/admin/AdminDashboard";
 import AdminUsers from "./pages/admin/AdminUsers";
@@ -30,6 +31,7 @@ const App = () => (
           <Route path="/dashboard/upload" element={<Upload />} />
           <Route path="/dashboard/analyses" element={<Analyses />} />
           <Route path="/dashboard/analyses/:id" element={<AnalysisDetail />} />
+          <Route path="/dashboard/disc-radar" element={<DISCRadar />} />
           <Route path="/dashboard/settings" element={<Settings />} />
           <Route path="/admin" element={<AdminDashboard />} />
           <Route path="/admin/users" element={<AdminUsers />} />

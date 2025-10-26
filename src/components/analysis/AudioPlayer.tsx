@@ -15,7 +15,8 @@ export function AudioPlayer({ open, onOpenChange, videoUrl, timestamp, title }: 
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
-  const audioRef = useRef<HTMLVideoElement>(null);
+  const [error, setError] = useState<string>("");
+  const audioRef = useRef<HTMLAudioElement>(null);
 
   // Convert timestamp (MM:SS or HH:MM:SS) to seconds
   const timestampToSeconds = (ts: string): number => {
@@ -30,10 +31,16 @@ export function AudioPlayer({ open, onOpenChange, videoUrl, timestamp, title }: 
 
   useEffect(() => {
     if (open && audioRef.current) {
+      setError("");
       const startTime = timestampToSeconds(timestamp);
       audioRef.current.currentTime = startTime;
-      audioRef.current.play();
-      setIsPlaying(true);
+      audioRef.current.play()
+        .then(() => setIsPlaying(true))
+        .catch((err) => {
+          console.error("Erro ao reproduzir áudio:", err);
+          setError("Não foi possível reproduzir o áudio. Verifique se o arquivo existe.");
+          setIsPlaying(false);
+        });
     }
   }, [open, timestamp]);
 
@@ -86,43 +93,55 @@ export function AudioPlayer({ open, onOpenChange, videoUrl, timestamp, title }: 
             Reproduzindo a partir de: <span className="font-semibold">{timestamp}</span>
           </div>
 
-          <video
+          <audio
             ref={audioRef}
             src={videoUrl}
             onTimeUpdate={handleTimeUpdate}
             onLoadedMetadata={handleLoadedMetadata}
-            className="hidden"
+            onError={(e) => {
+              console.error("Erro no elemento de áudio:", e);
+              setError("Erro ao carregar o áudio.");
+            }}
+            preload="metadata"
           />
 
-          <div className="space-y-2">
-            <div className="flex items-center justify-between text-sm text-muted-foreground">
-              <span>{formatTime(currentTime)}</span>
-              <span>{formatTime(duration)}</span>
+          {error ? (
+            <div className="p-4 bg-destructive/10 border border-destructive/20 rounded-md text-center">
+              <p className="text-sm text-destructive">{error}</p>
             </div>
-            
-            <div className="w-full bg-muted rounded-full h-2">
-              <div
-                className="bg-primary h-2 rounded-full transition-all"
-                style={{ width: `${(currentTime / duration) * 100}%` }}
-              />
-            </div>
-          </div>
+          ) : (
+            <>
+              <div className="space-y-2">
+                <div className="flex items-center justify-between text-sm text-muted-foreground">
+                  <span>{formatTime(currentTime)}</span>
+                  <span>{formatTime(duration)}</span>
+                </div>
+                
+                <div className="w-full bg-muted rounded-full h-2">
+                  <div
+                    className="bg-primary h-2 rounded-full transition-all"
+                    style={{ width: `${(currentTime / duration) * 100}%` }}
+                  />
+                </div>
+              </div>
 
-          <div className="flex justify-center">
-            <Button onClick={togglePlay} size="lg" className="gap-2">
-              {isPlaying ? (
-                <>
-                  <Pause className="w-5 h-5" />
-                  Pausar
-                </>
-              ) : (
-                <>
-                  <Play className="w-5 h-5" />
-                  Reproduzir
-                </>
-              )}
-            </Button>
-          </div>
+              <div className="flex justify-center">
+                <Button onClick={togglePlay} size="lg" className="gap-2">
+                  {isPlaying ? (
+                    <>
+                      <Pause className="w-5 h-5" />
+                      Pausar
+                    </>
+                  ) : (
+                    <>
+                      <Play className="w-5 h-5" />
+                      Reproduzir
+                    </>
+                  )}
+                </Button>
+              </div>
+            </>
+          )}
         </div>
       </DialogContent>
     </Dialog>

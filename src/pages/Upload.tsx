@@ -420,6 +420,14 @@ const Upload = () => {
                       <p className="text-xs text-muted-foreground mt-2">
                         Recomendamos arquivos MP3 para análises mais rápidas
                       </p>
+                      <a 
+                        href="https://www.freeconvert.com/pt/mp4-to-mp3" 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className="text-xs text-primary hover:underline mt-1 inline-block"
+                      >
+                        🔗 Converter vídeo para MP3 (grátis)
+                      </a>
                     </div>
                   )}
                 </div>

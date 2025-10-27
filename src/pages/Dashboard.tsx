@@ -29,6 +29,12 @@ const Dashboard = () => {
   const { user, signOut, loading } = useAuth();
   const [videos, setVideos] = useState<any[]>([]);
   const [loadingVideos, setLoadingVideos] = useState(true);
+  const [stats, setStats] = useState({
+    total: 0,
+    processing: 0,
+    completed: 0,
+    failed: 0
+  });
 
   useEffect(() => {
     if (!loading && !user) {
@@ -64,6 +70,24 @@ const Dashboard = () => {
     if (!user) return;
     
     try {
+      // Buscar estatísticas completas (sem limite)
+      const { data: allVideos, error: statsError } = await supabase
+        .from("videos")
+        .select("status")
+        .eq("user_id", user.id);
+
+      if (statsError) throw statsError;
+
+      // Calcular estatísticas
+      const allVideosData = allVideos || [];
+      setStats({
+        total: allVideosData.length,
+        processing: allVideosData.filter(v => v.status === 'pending' || v.status === 'processing' || v.status === 'queued').length,
+        completed: allVideosData.filter(v => v.status === 'completed').length,
+        failed: allVideosData.filter(v => v.status === 'failed').length
+      });
+
+      // Buscar apenas os 5 vídeos mais recentes para exibição
       const { data, error } = await supabase
         .from("videos")
         .select("*")
@@ -189,11 +213,11 @@ const Dashboard = () => {
     { icon: <Settings className="w-5 h-5" />, label: "Configurações", path: "/dashboard/settings" },
   ];
 
-  const stats = [
-    { label: "Total de Vídeos", value: videos.length.toString(), icon: <FileText className="w-6 h-6" /> },
-    { label: "Em Processamento", value: videos.filter(v => v.status === 'pending' || v.status === 'processing').length.toString(), icon: <Clock className="w-6 h-6" /> },
-    { label: "Completos", value: videos.filter(v => v.status === 'completed').length.toString(), icon: <Target className="w-6 h-6" /> },
-    { label: "Com Erro", value: videos.filter(v => v.status === 'failed').length.toString(), icon: <TrendingUp className="w-6 h-6" /> },
+  const statsCards = [
+    { label: "Total de Vídeos", value: stats.total.toString(), icon: <FileText className="w-6 h-6" /> },
+    { label: "Em Processamento", value: stats.processing.toString(), icon: <Clock className="w-6 h-6" /> },
+    { label: "Completos", value: stats.completed.toString(), icon: <Target className="w-6 h-6" /> },
+    { label: "Com Erro", value: stats.failed.toString(), icon: <TrendingUp className="w-6 h-6" /> },
   ];
 
   const getStatusBadge = (status: string) => {
@@ -270,7 +294,7 @@ const Dashboard = () => {
 
           {/* Stats Cards */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-            {stats.map((stat, index) => (
+            {statsCards.map((stat, index) => (
               <Card key={index} className="stat-card">
                 <div className="flex items-start justify-between">
                   <div>

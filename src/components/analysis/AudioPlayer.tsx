@@ -127,15 +127,21 @@ export function AudioPlayer({ open, onOpenChange, videoUrl, timestamp, title }: 
                 error: e,
                 networkState: target.networkState,
                 readyState: target.readyState,
-                currentSrc: target.currentSrc
+                currentSrc: target.currentSrc,
+                errorCode: target.error?.code,
+                errorMessage: target.error?.message
               });
               setError("Erro ao carregar o áudio. O link pode ter expirado ou o arquivo não está acessível.");
             }}
             onLoadStart={() => console.log("Video load started")}
             onProgress={() => console.log("Video loading progress")}
+            onCanPlay={() => console.log("Video can play")}
+            onCanPlayThrough={() => console.log("Video can play through")}
             preload="auto"
             crossOrigin="anonymous"
-            style={{ display: "none" }}
+            controls
+            controlsList="nodownload"
+            className="w-full rounded-md"
           />
 
           {error ? (

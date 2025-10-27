@@ -59,10 +59,13 @@ const Dashboard = () => {
   }, [user, loading, navigate]);
 
   const fetchVideos = async () => {
+    if (!user) return;
+    
     try {
       const { data, error } = await supabase
         .from("videos")
         .select("*")
+        .eq("user_id", user.id)
         .order("created_at", { ascending: false })
         .limit(5);
 

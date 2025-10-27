@@ -9,8 +9,6 @@ import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { FFmpeg } from "@ffmpeg/ffmpeg";
-import { fetchFile, toBlobURL } from "@ffmpeg/util";
 import { Progress } from "@/components/ui/progress";
 
 const Upload = () => {
@@ -23,55 +21,8 @@ const Upload = () => {
   const [dragActive, setDragActive] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
-  const [conversionProgress, setConversionProgress] = useState(0);
-  const [conversionStatus, setConversionStatus] = useState("");
-  const [isConverting, setIsConverting] = useState(false);
-  const ffmpegRef = useRef(new FFmpeg());
-  const [ffmpegLoaded, setFfmpegLoaded] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
 
-  // Load FFmpeg with timeout
-  useEffect(() => {
-    const loadFFmpeg = async () => {
-      const ffmpeg = ffmpegRef.current;
-      
-      ffmpeg.on("log", ({ message }) => {
-        console.log("[FFmpeg]", message);
-      });
-      
-      ffmpeg.on("progress", ({ progress, time }) => {
-        setConversionProgress(Math.round(progress * 100));
-      });
-
-      try {
-        console.log("Iniciando carregamento do FFmpeg...");
-        const baseURL = "https://unpkg.com/@ffmpeg/core@0.12.6/dist/umd";
-        
-        // Add timeout to FFmpeg loading
-        const loadPromise = ffmpeg.load({
-          coreURL: await toBlobURL(`${baseURL}/ffmpeg-core.js`, "text/javascript"),
-          wasmURL: await toBlobURL(`${baseURL}/ffmpeg-core.wasm`, "application/wasm"),
-        });
-
-        const timeoutPromise = new Promise((_, reject) => 
-          setTimeout(() => reject(new Error("Timeout ao carregar FFmpeg")), 30000)
-        );
-
-        await Promise.race([loadPromise, timeoutPromise]);
-        
-        setFfmpegLoaded(true);
-        console.log("FFmpeg carregado com sucesso!");
-      } catch (error) {
-        console.error("Erro ao carregar FFmpeg:", error);
-        // Set loaded to true anyway to allow direct video upload
-        setFfmpegLoaded(true);
-        toast.error("Conversor não disponível. Upload direto será usado.", {
-          duration: 4000
-        });
-      }
-    };
-
-    loadFFmpeg();
-  }, []);
 
   // Redirect to auth if not logged in
   useEffect(() => {
@@ -207,104 +158,34 @@ const Upload = () => {
     }
   };
 
-  const extractAudioFromVideo = async (videoFile: File): Promise<File> => {
-    if (!ffmpegLoaded) {
-      throw new Error("Conversor de áudio não está carregado");
-    }
-
-    const ffmpeg = ffmpegRef.current;
-    const inputName = "input." + videoFile.name.split('.').pop();
-    const outputName = "output.mp3";
-
-    try {
-      setIsConverting(true);
-      setConversionProgress(0);
-      setConversionStatus("Carregando vídeo...");
-
-      // Write input file to FFmpeg virtual file system
-      await ffmpeg.writeFile(inputName, await fetchFile(videoFile));
-      
-      setConversionStatus("Extraindo áudio...");
-
-      // Convert video to audio (MP3)
-      await ffmpeg.exec([
-        "-i", inputName,
-        "-vn", // No video
-        "-acodec", "libmp3lame",
-        "-b:a", "128k", // Audio bitrate
-        "-ar", "44100", // Sample rate
-        outputName
-      ]);
-
-      setConversionStatus("Finalizando...");
-
-      // Read output file
-      const data = await ffmpeg.readFile(outputName);
-      const uint8Data = typeof data === 'string' ? new TextEncoder().encode(data) : new Uint8Array(data);
-      const audioBlob = new Blob([uint8Data], { type: "audio/mpeg" });
-      const audioFile = new File(
-        [audioBlob],
-        videoFile.name.replace(/\.[^/.]+$/, ".mp3"),
-        { type: "audio/mpeg" }
-      );
-
-      // Cleanup
-      await ffmpeg.deleteFile(inputName);
-      await ffmpeg.deleteFile(outputName);
-
-      setIsConverting(false);
-      setConversionProgress(100);
-      
-      return audioFile;
-    } catch (error) {
-      setIsConverting(false);
-      console.error("Error extracting audio:", error);
-      throw new Error("Erro ao extrair áudio do vídeo");
-    }
-  };
 
   const handleFileSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user || !selectedFile) return;
 
     setIsProcessing(true);
+    setUploadProgress(0);
+    
     try {
-      let fileToUpload = selectedFile;
-      
-      // Check if it's a video file (not audio)
-      const isVideo = selectedFile.type.startsWith('video/');
-      
-      // Try to extract audio if it's a video and FFmpeg is loaded
-      if (isVideo && ffmpegLoaded) {
-        try {
-          toast.info("Extraindo áudio do vídeo para otimizar o processamento...");
-          fileToUpload = await extractAudioFromVideo(selectedFile);
-          const originalSizeMB = (selectedFile.size / 1024 / 1024).toFixed(2);
-          const newSizeMB = (fileToUpload.size / 1024 / 1024).toFixed(2);
-          toast.success(`Áudio extraído! Tamanho reduzido de ${originalSizeMB}MB para ${newSizeMB}MB`);
-        } catch (error) {
-          console.error("Erro na extração de áudio, fazendo upload do vídeo completo:", error);
-          toast.info("Fazendo upload do vídeo completo...");
-        }
-      }
-      
-      const fileExt = fileToUpload.name.split('.').pop();
+      const fileExt = selectedFile.name.split('.').pop();
       const fileName = `${user.id}/${Date.now()}.${fileExt}`;
       
-      // Use resumable upload for files > 6MB
-      const uploadMethod = fileToUpload.size > 6 * 1024 * 1024 
-        ? supabase.storage.from("uploads").upload(fileName, fileToUpload, {
-            cacheControl: '3600',
-            upsert: false
-          })
-        : supabase.storage.from("uploads").upload(fileName, fileToUpload);
-
-      const { error: uploadError } = await uploadMethod;
+      toast.info("Iniciando upload...");
+      
+      // Upload with progress tracking
+      const { data: uploadData, error: uploadError } = await supabase.storage
+        .from("uploads")
+        .upload(fileName, selectedFile, {
+          cacheControl: '3600',
+          upsert: false,
+        });
 
       if (uploadError) {
         console.error("Upload error:", uploadError);
-        throw new Error("Erro ao fazer upload. Tente novamente ou use um arquivo menor.");
+        throw new Error("Erro ao fazer upload. Tente novamente.");
       }
+      
+      setUploadProgress(100);
 
       // Create video record
       const { data, error } = await supabase
@@ -313,9 +194,9 @@ const Upload = () => {
           user_id: user.id,
           mode: "upload",
           storage_path: fileName,
-          title: videoTitle.trim() || fileToUpload.name,
-          mime_type: fileToUpload.type,
-          file_size_bytes: fileToUpload.size,
+          title: videoTitle.trim() || selectedFile.name,
+          mime_type: selectedFile.type,
+          file_size_bytes: selectedFile.size,
           status: "pending"
         })
         .select()
@@ -330,8 +211,7 @@ const Upload = () => {
       toast.error(error.message || "Erro ao enviar arquivo");
     } finally {
       setIsProcessing(false);
-      setConversionProgress(0);
-      setConversionStatus("");
+      setUploadProgress(0);
     }
   };
 
@@ -488,7 +368,7 @@ const Upload = () => {
                   onDragOver={handleDrag}
                   onDrop={handleDrop}
                 >
-                  {selectedFile ? (
+                      {selectedFile ? (
                     <div className="space-y-4">
                       {selectedFile.type.startsWith('video/') ? (
                         <FileVideo className="w-16 h-16 mx-auto text-primary" />
@@ -500,18 +380,13 @@ const Upload = () => {
                         <p className="text-sm text-muted-foreground">
                           {(selectedFile.size / 1024 / 1024).toFixed(2)} MB
                         </p>
-                        {selectedFile.type.startsWith('video/') && ffmpegLoaded && (
-                          <p className="text-xs text-primary mt-2">
-                            ✨ O áudio será extraído automaticamente antes do upload
-                          </p>
-                        )}
                       </div>
                       <Button
                         type="button"
                         variant="outline"
                         onClick={() => setSelectedFile(null)}
                         className="btn-outline"
-                        disabled={isConverting}
+                        disabled={isProcessing}
                       >
                         Remover Arquivo
                       </Button>
@@ -542,20 +417,20 @@ const Upload = () => {
                       <p className="text-sm text-muted-foreground">
                         <strong>Vídeos ou Áudios</strong> - Formatos: MP4, MOV, AVI, MP3, WAV
                       </p>
-                      <p className="text-xs text-primary mt-2">
-                        ✨ Vídeos terão o áudio extraído automaticamente para otimizar o processamento
+                      <p className="text-xs text-muted-foreground mt-2">
+                        Recomendamos arquivos MP3 para análises mais rápidas
                       </p>
                     </div>
                   )}
                 </div>
 
-                {isConverting && (
+                {isProcessing && uploadProgress > 0 && (
                   <div className="space-y-2">
                     <div className="flex items-center justify-between text-sm">
-                      <span className="text-muted-foreground">{conversionStatus}</span>
-                      <span className="text-primary font-semibold">{conversionProgress}%</span>
+                      <span className="text-muted-foreground">Enviando arquivo...</span>
+                      <span className="text-primary font-semibold">{uploadProgress}%</span>
                     </div>
-                    <Progress value={conversionProgress} className="w-full" />
+                    <Progress value={uploadProgress} className="w-full" />
                   </div>
                 )}
 
@@ -563,16 +438,11 @@ const Upload = () => {
                   <Button 
                     type="submit" 
                     className="w-full btn-primary text-lg py-6" 
-                    disabled={isProcessing || isConverting}
+                    disabled={isProcessing}
                   >
-                    {isConverting ? (
+                    {isProcessing ? (
                       <>
-                        <Music className="w-5 h-5 mr-2 animate-pulse" />
-                        Extraindo áudio...
-                      </>
-                    ) : isProcessing ? (
-                      <>
-                        <UploadIcon className="w-5 h-5 mr-2" />
+                        <UploadIcon className="w-5 h-5 mr-2 animate-spin" />
                         Enviando...
                       </>
                     ) : (

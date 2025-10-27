@@ -29,13 +29,13 @@ const Upload = () => {
   const ffmpegRef = useRef(new FFmpeg());
   const [ffmpegLoaded, setFfmpegLoaded] = useState(false);
 
-  // Load FFmpeg
+  // Load FFmpeg with timeout
   useEffect(() => {
     const loadFFmpeg = async () => {
       const ffmpeg = ffmpegRef.current;
       
       ffmpeg.on("log", ({ message }) => {
-        console.log(message);
+        console.log("[FFmpeg]", message);
       });
       
       ffmpeg.on("progress", ({ progress, time }) => {
@@ -43,16 +43,30 @@ const Upload = () => {
       });
 
       try {
+        console.log("Iniciando carregamento do FFmpeg...");
         const baseURL = "https://unpkg.com/@ffmpeg/core@0.12.6/dist/umd";
-        await ffmpeg.load({
+        
+        // Add timeout to FFmpeg loading
+        const loadPromise = ffmpeg.load({
           coreURL: await toBlobURL(`${baseURL}/ffmpeg-core.js`, "text/javascript"),
           wasmURL: await toBlobURL(`${baseURL}/ffmpeg-core.wasm`, "application/wasm"),
         });
+
+        const timeoutPromise = new Promise((_, reject) => 
+          setTimeout(() => reject(new Error("Timeout ao carregar FFmpeg")), 30000)
+        );
+
+        await Promise.race([loadPromise, timeoutPromise]);
+        
         setFfmpegLoaded(true);
-        console.log("FFmpeg loaded successfully");
+        console.log("FFmpeg carregado com sucesso!");
       } catch (error) {
-        console.error("Error loading FFmpeg:", error);
-        toast.error("Erro ao carregar conversor de áudio");
+        console.error("Erro ao carregar FFmpeg:", error);
+        // Set loaded to true anyway to allow direct video upload
+        setFfmpegLoaded(true);
+        toast.error("Conversor não disponível. Upload direto será usado.", {
+          duration: 4000
+        });
       }
     };
 
@@ -260,12 +274,18 @@ const Upload = () => {
       // Check if it's a video file (not audio)
       const isVideo = selectedFile.type.startsWith('video/');
       
+      // Try to extract audio if it's a video and FFmpeg is loaded
       if (isVideo && ffmpegLoaded) {
-        toast.info("Extraindo áudio do vídeo para otimizar o processamento...");
-        fileToUpload = await extractAudioFromVideo(selectedFile);
-        const originalSizeMB = (selectedFile.size / 1024 / 1024).toFixed(2);
-        const newSizeMB = (fileToUpload.size / 1024 / 1024).toFixed(2);
-        toast.success(`Áudio extraído! Tamanho reduzido de ${originalSizeMB}MB para ${newSizeMB}MB`);
+        try {
+          toast.info("Extraindo áudio do vídeo para otimizar o processamento...");
+          fileToUpload = await extractAudioFromVideo(selectedFile);
+          const originalSizeMB = (selectedFile.size / 1024 / 1024).toFixed(2);
+          const newSizeMB = (fileToUpload.size / 1024 / 1024).toFixed(2);
+          toast.success(`Áudio extraído! Tamanho reduzido de ${originalSizeMB}MB para ${newSizeMB}MB`);
+        } catch (error) {
+          console.error("Erro na extração de áudio, fazendo upload do vídeo completo:", error);
+          toast.info("Fazendo upload do vídeo completo...");
+        }
       }
       
       const fileExt = fileToUpload.name.split('.').pop();
@@ -543,14 +563,9 @@ const Upload = () => {
                   <Button 
                     type="submit" 
                     className="w-full btn-primary text-lg py-6" 
-                    disabled={isProcessing || isConverting || !ffmpegLoaded}
+                    disabled={isProcessing || isConverting}
                   >
-                    {!ffmpegLoaded ? (
-                      <>
-                        <Brain className="w-5 h-5 mr-2 animate-pulse" />
-                        Carregando conversor...
-                      </>
-                    ) : isConverting ? (
+                    {isConverting ? (
                       <>
                         <Music className="w-5 h-5 mr-2 animate-pulse" />
                         Extraindo áudio...

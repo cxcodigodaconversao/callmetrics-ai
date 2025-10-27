@@ -96,10 +96,10 @@ const Index = () => {
               <Brain className="w-12 h-12 text-primary" />
               <h2 className="text-2xl font-bold text-primary">Conversão Consciente com IA</h2>
             </div>
-            <h1 className="text-4xl lg:text-6xl font-bold mb-6 gradient-text break-words">
+            <h1 className="text-3xl sm:text-4xl lg:text-6xl font-bold mb-8 gradient-text leading-tight py-2 px-2">
               Transforme Suas Conversas em Vendas com Profundidade e Inteligência Artificial
             </h1>
-            <p className="text-xl lg:text-2xl text-muted-foreground mb-8 leading-relaxed">
+            <p className="text-lg sm:text-xl lg:text-2xl text-muted-foreground mb-8 leading-relaxed px-2">
               Análise em tempo real, recomendações personalizadas e performance contínua com base em metodologia comportamental e IA.
             </p>
             <div className="flex justify-center">
@@ -118,13 +118,13 @@ const Index = () => {
       <section className="py-20 bg-card/30">
         <div className="container mx-auto px-4">
           <div className="max-w-4xl mx-auto text-center mb-16">
-            <h2 className="text-4xl lg:text-5xl font-bold mb-6">
+            <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold mb-6 leading-tight py-2 px-2">
               O Que é a Conversão Consciente com IA?
             </h2>
-            <p className="text-xl text-muted-foreground leading-relaxed">
+            <p className="text-base sm:text-lg lg:text-xl text-muted-foreground leading-relaxed px-2">
               Vendas não são sobre fórmulas prontas — são sobre <strong>entendimento humano, timing e precisão</strong>.
             </p>
-            <p className="text-xl text-muted-foreground leading-relaxed mt-4">
+            <p className="text-base sm:text-lg lg:text-xl text-muted-foreground leading-relaxed mt-4 px-2">
               Agora, com a integração da <strong>IA + Método Conversão Consciente™</strong>, você tem uma plataforma completa que lê, analisa e orienta cada conversa de vendas com base no que realmente importa:
             </p>
             <p className="text-2xl font-bold text-primary mt-6">
@@ -138,7 +138,7 @@ const Index = () => {
       <section className="py-20">
         <div className="container mx-auto px-4">
           <div className="text-center mb-16">
-            <h2 className="text-4xl lg:text-5xl font-bold mb-4">
+            <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold mb-4 leading-tight py-2 px-2">
               O Método Conversão Consciente + IA
             </h2>
             <p className="text-xl text-muted-foreground max-w-3xl mx-auto">
@@ -168,7 +168,7 @@ const Index = () => {
       <section className="py-20 bg-card/30">
         <div className="container mx-auto px-4">
           <div className="text-center mb-16">
-            <h2 className="text-4xl lg:text-5xl font-bold mb-4">
+            <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold mb-4 leading-tight py-2 px-2">
               O Que a Plataforma Faz por Você
             </h2>
             <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
@@ -199,9 +199,9 @@ const Index = () => {
         <div className="container mx-auto px-4">
           <div className="max-w-4xl mx-auto">
             <div className="text-center mb-12">
-              <h2 className="text-4xl lg:text-5xl font-bold mb-4">
-                Para Quem é Essa Plataforma?
-              </h2>
+            <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold mb-4 leading-tight py-2 px-2">
+              Para Quem é Essa Plataforma?
+            </h2>
               <p className="text-2xl text-primary font-semibold mt-6">
                 Para quem quer vender com verdade, com consciência e com estratégia.
               </p>
@@ -226,9 +226,9 @@ const Index = () => {
         <div className="container mx-auto px-4">
           <div className="max-w-4xl mx-auto">
             <div className="text-center mb-12">
-              <h2 className="text-4xl lg:text-5xl font-bold mb-4">
-                Por Que Esse Método Funciona
-              </h2>
+            <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold mb-4 leading-tight py-2 px-2">
+              Por Que Esse Método Funciona
+            </h2>
             </div>
 
             <div className="space-y-4">
@@ -251,13 +251,13 @@ const Index = () => {
       <section className="py-20">
         <div className="container mx-auto px-4">
           <div className="max-w-4xl mx-auto text-center">
-            <h2 className="text-3xl lg:text-5xl font-bold mb-6 gradient-text break-words">
+            <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold mb-6 gradient-text leading-tight py-3 px-2">
               Chega de vender no escuro.
             </h2>
-            <p className="text-2xl text-muted-foreground mb-4">
+            <p className="text-lg sm:text-xl lg:text-2xl text-muted-foreground mb-4 px-2">
               Comece a conversar com quem está pronto — e saiba exatamente o que dizer.
             </p>
-            <p className="text-xl text-muted-foreground mb-8">
+            <p className="text-base sm:text-lg lg:text-xl text-muted-foreground mb-8 px-2">
               Com tecnologia, método e consciência.
             </p>
             <div className="flex justify-center">

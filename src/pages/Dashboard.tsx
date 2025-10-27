@@ -14,7 +14,9 @@ import {
   Target,
   Plus,
   Play,
-  Trash2
+  Trash2,
+  Calculator,
+  GraduationCap
 } from "lucide-react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
@@ -169,6 +171,8 @@ const Dashboard = () => {
     { icon: <Upload className="w-5 h-5" />, label: "Nova Análise", path: "/dashboard/upload" },
     { icon: <FileText className="w-5 h-5" />, label: "Minhas Análises", path: "/dashboard/analyses" },
     { icon: <Target className="w-5 h-5" />, label: "Radar da Conversão", path: "/dashboard/disc-radar" },
+    { icon: <Calculator className="w-5 h-5" />, label: "Calculadora Time Comercial", path: "/dashboard/calculadora" },
+    { icon: <GraduationCap className="w-5 h-5" />, label: "Academia Comercial", path: "/dashboard/academia" },
     { icon: <Settings className="w-5 h-5" />, label: "Configurações", path: "/dashboard/settings" },
   ];
 
@@ -206,7 +210,7 @@ const Dashboard = () => {
         <div className="p-6 border-b border-border">
           <div className="flex items-center gap-2">
             <Brain className="w-8 h-8 text-primary" />
-            <span className="text-xl font-bold text-primary">CX - Código da Conversão</span>
+            <span className="text-xl font-bold text-primary">CX Código da Conversão</span>
           </div>
         </div>
 

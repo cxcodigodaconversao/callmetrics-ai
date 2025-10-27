@@ -130,12 +130,25 @@ const Dashboard = () => {
     }
   };
 
-  const handleDeleteVideo = async (videoId: string) => {
+  const handleDeleteVideo = async (videoId: string, storagePath?: string) => {
     if (!confirm('Tem certeza que deseja excluir este vídeo? Esta ação não pode ser desfeita.')) {
       return;
     }
 
     try {
+      // First, delete the file from storage if it exists
+      if (storagePath) {
+        const { error: storageError } = await supabase.storage
+          .from('uploads')
+          .remove([storagePath]);
+        
+        if (storageError) {
+          console.error('Error deleting from storage:', storageError);
+          // Continue anyway, storage file might not exist
+        }
+      }
+
+      // Then delete the database record
       const { error } = await supabase
         .from('videos')
         .delete()
@@ -313,7 +326,7 @@ const Dashboard = () => {
                     </div>
                     <div className="flex items-center gap-4">
                       {getStatusBadge(video.status)}
-                      {video.status === 'pending' && (
+                      {(video.status === 'pending' || video.status === 'queued') && (
                         <>
                           <Button 
                             size="sm" 
@@ -326,7 +339,7 @@ const Dashboard = () => {
                           <Button 
                             size="sm" 
                             variant="destructive"
-                            onClick={() => handleDeleteVideo(video.id)}
+                            onClick={() => handleDeleteVideo(video.id, video.storage_path)}
                           >
                             <Trash2 className="w-4 h-4" />
                           </Button>
@@ -345,7 +358,7 @@ const Dashboard = () => {
                           <Button 
                             size="sm" 
                             variant="outline"
-                            onClick={() => handleDeleteVideo(video.id)}
+                            onClick={() => handleDeleteVideo(video.id, video.storage_path)}
                           >
                             <Trash2 className="w-4 h-4" />
                           </Button>
@@ -361,7 +374,7 @@ const Dashboard = () => {
                           <Button 
                             size="sm" 
                             variant="outline"
-                            onClick={() => handleDeleteVideo(video.id)}
+                            onClick={() => handleDeleteVideo(video.id, video.storage_path)}
                           >
                             <Trash2 className="w-4 h-4" />
                           </Button>
@@ -385,7 +398,7 @@ const Dashboard = () => {
                           <Button 
                             size="sm" 
                             variant="destructive"
-                            onClick={() => handleDeleteVideo(video.id)}
+                            onClick={() => handleDeleteVideo(video.id, video.storage_path)}
                           >
                             <Trash2 className="w-4 h-4" />
                           </Button>

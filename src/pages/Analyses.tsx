@@ -104,6 +104,7 @@ export default function Analyses() {
       completed: { label: "Completo", variant: "default" },
       processing: { label: "Processando", variant: "secondary" },
       pending: { label: "Pendente", variant: "outline" },
+      queued: { label: "Na Fila", variant: "outline" },
       failed: { label: "Falhou", variant: "destructive" },
     };
     

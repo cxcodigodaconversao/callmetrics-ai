@@ -206,12 +206,14 @@ export function DISCAnalysis({ analysis }: DISCAnalysisProps) {
       </div>
 
       {/* Estratégia de Fechamento */}
-      <div className="bg-green-50 dark:bg-green-950/20 rounded-lg p-4">
-        <h3 className="font-semibold mb-2 flex items-center gap-2">
-          🎯 Estratégia de Fechamento para este Perfil
-        </h3>
-        <p className="text-sm">{disc.estrategia_fechamento}</p>
-      </div>
+      {disc.estrategia_fechamento && disc.estrategia_fechamento.trim() !== '' && (
+        <div className="bg-green-50 dark:bg-green-950/20 rounded-lg p-4">
+          <h3 className="font-semibold mb-2 flex items-center gap-2">
+            🎯 Estratégia de Fechamento para este Perfil
+          </h3>
+          <p className="text-sm">{disc.estrategia_fechamento}</p>
+        </div>
+      )}
     </Card>
   );
 }

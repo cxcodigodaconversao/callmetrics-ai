@@ -7,6 +7,7 @@ import { ScoreHeader } from "@/components/analysis/ScoreHeader";
 import { ScoreGrid } from "@/components/analysis/ScoreGrid";
 import { CriticalPoints } from "@/components/analysis/CriticalPoints";
 import { StrongPoints } from "@/components/analysis/StrongPoints";
+import { DISCAnalysis } from "@/components/analysis/DISCAnalysis";
 import { SpinAnalysis } from "@/components/analysis/SpinAnalysis";
 import { Timeline } from "@/components/analysis/Timeline";
 import { ObjectionsSection } from "@/components/analysis/ObjectionsSection";
@@ -182,6 +183,7 @@ export default function AnalysisDetail() {
         <ScoreGrid analysis={analysis} />
         <CriticalPoints analysis={analysis} />
         <StrongPoints analysis={analysis} />
+        <DISCAnalysis analysis={analysis} />
         <SpinAnalysis analysis={analysis} />
         <Timeline analysis={analysis} />
         <ObjectionsSection analysis={analysis} />

@@ -6,7 +6,7 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-const ANALYSIS_PROMPT = `Você é um especialista em análise de vendas usando a metodologia SPIN Selling.
+const ANALYSIS_PROMPT = `Você é um especialista em análise de vendas usando a metodologia SPIN Selling e perfis comportamentais DISC.
 
 Analise a transcrição da ligação de vendas abaixo e forneça uma análise DETALHADA E FIDEDIGNA baseada APENAS no que realmente aconteceu na conversa.
 
@@ -24,6 +24,76 @@ Analise a transcrição da ligação de vendas abaixo e forneça uma análise DE
 - NÃO invente nomes de pessoas se não estiverem mencionados
 - NÃO invente momentos que não aconteceram
 - Se não houver informação suficiente para um critério, seja honesto e dê score baixo
+
+**PERFIS COMPORTAMENTAIS DISC:**
+
+🟥 **DOMINANTE (D)** - "Eu quero resultado, e quero agora"
+Características do cliente:
+- Fala rápido, direto ao ponto, pouco tolerante a rodeios
+- Foca em resultados, ROI, performance, impacto, liderança
+- Usa linguagem assertiva, toma decisões rapidamente
+- Evita perda de tempo, explicações longas, superficialidade
+- Perguntas sobre eficiência e resultados
+- Palavras-chave: resultado, ganho, velocidade, eficiência, liderança, poder
+
+Comunicação CORRETA do vendedor para perfil D:
+✅ Ser direto, objetivo, sem rodeios
+✅ Falar de ROI, tempo economizado, resultados concretos
+✅ Mostrar números, metas, performance
+✅ Ser assertivo e confiante
+✅ Ir direto ao ponto, economizar tempo
+❌ EVITAR: explicações longas, papo emocional, superficialidade, enrolação
+
+🟨 **INFLUENTE (I)** - "Eu quero me sentir parte, me conectar"
+Características do cliente:
+- Fala com entusiasmo e emoção, usa histórias e exemplos
+- Sociável, expressivo, foca em relacionamentos
+- Linguagem positiva e animada
+- Busca reconhecimento, pertencimento, visibilidade
+- Evita frieza, ambientes secos, rigidez
+- Palavras-chave: inspiração, comunidade, conexão, alegria, pertencimento
+
+Comunicação CORRETA do vendedor para perfil I:
+✅ Criar conexão emocional, acolhimento
+✅ Contar histórias e usar exemplos inspiradores
+✅ Mostrar comunidade, pertencimento
+✅ Ser entusiasmado, positivo, expressivo
+✅ Validar emoções e criar vínculo
+❌ EVITAR: tom frio, linguagem técnica seca, distanciamento, rigidez
+
+🟩 **ESTÁVEL (S)** - "Eu preciso me sentir seguro e acolhido"
+Características do cliente:
+- Fala pausadamente e calmamente
+- Busca segurança, estabilidade, processos claros
+- Evita conflitos, pressão, mudanças bruscas
+- Faz perguntas sobre implementação
+- Precisa de tempo para decidir
+- Palavras-chave: segurança, processo, apoio, estabilidade, previsibilidade
+
+Comunicação CORRETA do vendedor para perfil S:
+✅ Mostrar processo passo a passo
+✅ Criar segurança, sem pressão
+✅ Oferecer suporte contínuo
+✅ Empatia, calma, acolhimento
+✅ Dar tempo para refletir
+❌ EVITAR: urgência agressiva, pressão, mudança brusca, linguagem de ruptura
+
+🟦 **CONFORME (C)** - "Eu só acredito se tiver lógica e dados"
+Características do cliente:
+- Foca em dados, detalhes técnicos, precisão
+- Faz muitas perguntas específicas
+- Linguagem precisa e formal
+- Quer provas, evidências, comparações
+- Analítico e cauteloso
+- Palavras-chave: análise, dados, método, lógica, estrutura, detalhamento
+
+Comunicação CORRETA do vendedor para perfil C:
+✅ Apresentar dados, métricas, provas
+✅ Mostrar comparativos técnicos
+✅ Estrutura clara, metodologia validada
+✅ Responder com precisão e lógica
+✅ Oferecer documentação e detalhes
+❌ EVITAR: improviso, frases vagas, apelos emocionais sem lógica, falta de estrutura
 
 **CRITÉRIOS DE AVALIAÇÃO:**
 
@@ -95,6 +165,39 @@ Analise a transcrição da ligação de vendas abaixo e forneça uma análise DE
     "recomendacoes": [
       "Ações específicas e práticas para melhorar, baseadas nos pontos fracos"
     ],
+    "perfil_disc": {
+      "perfil_dominante": "D" ou "I" ou "S" ou "C",
+      "perfil_nome": "Dominante" ou "Influente" ou "Estável" ou "Conforme",
+      "emoji": "🟥" ou "🟨" ou "🟩" ou "🟦",
+      "descricao": "Descrição curta do perfil identificado",
+      "percentuais": {
+        "D": número 0-100,
+        "I": número 0-100,
+        "S": número 0-100,
+        "C": número 0-100
+      },
+      "caracteristicas_identificadas": [
+        "Lista de características específicas observadas na fala do CLIENTE que indicam este perfil"
+      ],
+      "comunicacao_vendedor": {
+        "adequada": true ou false,
+        "score_adequacao": número 0-100,
+        "analise": "Análise detalhada se o vendedor está comunicando de forma adequada para este perfil",
+        "pontos_positivos": [
+          "Aspectos CORRETOS na comunicação do vendedor para este perfil, citando momentos específicos"
+        ],
+        "pontos_melhorar": [
+          "Aspectos que NÃO se adequam ao perfil, citando momentos específicos onde o vendedor errou a abordagem"
+        ]
+      },
+      "recomendacoes_abordagem": [
+        "Como o vendedor deve melhorar a comunicação especificamente para este perfil DISC"
+      ],
+      "objecoes_previstas": [
+        "Objeções típicas que este perfil pode apresentar"
+      ],
+      "estrategia_fechamento": "Como o vendedor deve fechar a venda especificamente para este perfil"
+    },
     "timeline": [
       {
         "timestamp": "OBRIGATÓRIO: Use o timestamp EXATO que aparece entre colchetes [MM:SS] na transcrição. Copie exatamente sem os colchetes.",

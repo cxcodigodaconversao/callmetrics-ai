@@ -167,15 +167,29 @@ const Upload = () => {
 
     setIsProcessing(true);
     try {
-      // Upload file to storage
       const fileExt = selectedFile.name.split('.').pop();
       const fileName = `${user.id}/${Date.now()}.${fileExt}`;
       
-      const { error: uploadError } = await supabase.storage
-        .from("uploads")
-        .upload(fileName, selectedFile);
+      // Use resumable upload for files > 6MB (mais confiável e suporta até 50GB)
+      const uploadMethod = selectedFile.size > 6 * 1024 * 1024 
+        ? supabase.storage.from("uploads").upload(fileName, selectedFile, {
+            cacheControl: '3600',
+            upsert: false
+          })
+        : supabase.storage.from("uploads").upload(fileName, selectedFile);
 
-      if (uploadError) throw uploadError;
+      const { error: uploadError } = await uploadMethod;
+
+      if (uploadError) {
+        // Se o erro for de tamanho, mostrar mensagem específica
+        if (uploadError.message?.includes('size') || uploadError.message?.includes('413')) {
+          throw new Error(
+            'O limite global do seu projeto Supabase precisa ser aumentado. ' +
+            'Acesse Storage Settings no dashboard do Supabase e ajuste o "Global file size limit" para 5GB ou mais.'
+          );
+        }
+        throw uploadError;
+      }
 
       // Create video record
       const { data, error } = await supabase
@@ -196,9 +210,9 @@ const Upload = () => {
 
       toast.success("Vídeo enviado para análise!");
       navigate("/dashboard");
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error uploading file:", error);
-      toast.error("Erro ao enviar arquivo");
+      toast.error(error.message || "Erro ao enviar arquivo");
     } finally {
       setIsProcessing(false);
     }
@@ -274,24 +288,6 @@ const Upload = () => {
                   </p>
                 </div>
 
-                <div className="bg-secondary border border-border rounded-lg p-6">
-                  <h3 className="font-semibold mb-3 text-primary">Estimativa de Custo</h3>
-                  <div className="space-y-2 text-sm">
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Transcrição (estimado):</span>
-                      <span className="font-semibold">$0.50</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Análise com IA:</span>
-                      <span className="font-semibold">$1.00</span>
-                    </div>
-                    <div className="border-t border-border pt-2 mt-2 flex justify-between">
-                      <span className="font-semibold">Total Estimado:</span>
-                      <span className="font-bold text-primary text-lg">$1.50</span>
-                    </div>
-                  </div>
-                </div>
-
                 <Button type="submit" className="w-full btn-primary text-lg py-6" disabled={isProcessing}>
                   <Youtube className="w-5 h-5 mr-2" />
                   {isProcessing ? "Processando..." : "Analisar Vídeo do YouTube"}
@@ -335,28 +331,6 @@ const Upload = () => {
                   <p className="text-sm text-muted-foreground">
                     Cole o link completo do vídeo do Google Drive. <strong>Importante:</strong> Configure o link como "Qualquer pessoa com o link pode visualizar"
                   </p>
-                </div>
-
-                <div className="bg-secondary border border-border rounded-lg p-6">
-                  <h3 className="font-semibold mb-3 text-primary">Estimativa de Custo</h3>
-                  <div className="space-y-2 text-sm">
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Acesso ao Drive:</span>
-                      <span className="font-semibold">$0.25</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Transcrição (estimado):</span>
-                      <span className="font-semibold">$0.50</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Análise com IA:</span>
-                      <span className="font-semibold">$1.00</span>
-                    </div>
-                    <div className="border-t border-border pt-2 mt-2 flex justify-between">
-                      <span className="font-semibold">Total Estimado:</span>
-                      <span className="font-bold text-primary text-lg">$1.75</span>
-                    </div>
-                  </div>
                 </div>
 
                 <Button type="submit" className="w-full btn-primary text-lg py-6" disabled={isProcessing}>
@@ -449,34 +423,10 @@ const Upload = () => {
                 </div>
 
                 {selectedFile && (
-                  <>
-                    <div className="bg-secondary border border-border rounded-lg p-6">
-                      <h3 className="font-semibold mb-3 text-primary">Estimativa de Custo</h3>
-                      <div className="space-y-2 text-sm">
-                        <div className="flex justify-between">
-                          <span className="text-muted-foreground">Upload e Processamento:</span>
-                          <span className="font-semibold">$0.25</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-muted-foreground">Transcrição:</span>
-                          <span className="font-semibold">$0.75</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-muted-foreground">Análise com IA:</span>
-                          <span className="font-semibold">$1.00</span>
-                        </div>
-                        <div className="border-t border-border pt-2 mt-2 flex justify-between">
-                          <span className="font-semibold">Total Estimado:</span>
-                          <span className="font-bold text-primary text-lg">$2.00</span>
-                        </div>
-                      </div>
-                    </div>
-
-                    <Button type="submit" className="w-full btn-primary text-lg py-6" disabled={isProcessing}>
-                      <UploadIcon className="w-5 h-5 mr-2" />
-                      {isProcessing ? "Processando..." : "Fazer Upload e Analisar"}
-                    </Button>
-                  </>
+                  <Button type="submit" className="w-full btn-primary text-lg py-6" disabled={isProcessing}>
+                    <UploadIcon className="w-5 h-5 mr-2" />
+                    {isProcessing ? "Enviando..." : "Fazer Upload e Analisar"}
+                  </Button>
                 )}
               </form>
             </TabsContent>

@@ -93,21 +93,37 @@ const AdminUsers = () => {
       const now = new Date();
       const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
 
-      // For each user, fetch their AI usage counts
+      // For each user, fetch their AI usage counts from analyses
       const usersWithUsage = await Promise.all(
         profiles.map(async (profile) => {
-          // Total AI usage
-          const { count: totalUsage } = await supabase
-            .from("ai_usage_logs")
-            .select("*", { count: "exact", head: true })
+          // Get all videos for this user
+          const { data: userVideos } = await supabase
+            .from("videos")
+            .select("id")
             .eq("user_id", profile.id);
+
+          const videoIds = userVideos?.map(v => v.id) || [];
+
+          if (videoIds.length === 0) {
+            return {
+              ...profile,
+              ai_usage_count: 0,
+              ai_usage_this_month: 0,
+            };
+          }
+
+          // Total AI usage (count of analyses for user's videos)
+          const { count: totalUsage } = await supabase
+            .from("analyses")
+            .select("*", { count: "exact", head: true })
+            .in("video_id", videoIds);
 
           // This month's AI usage
           const { count: monthUsage } = await supabase
-            .from("ai_usage_logs")
+            .from("analyses")
             .select("*", { count: "exact", head: true })
-            .eq("user_id", profile.id)
-            .gte("used_at", firstDayOfMonth.toISOString());
+            .in("video_id", videoIds)
+            .gte("created_at", firstDayOfMonth.toISOString());
 
           return {
             ...profile,

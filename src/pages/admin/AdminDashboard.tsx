@@ -98,50 +98,90 @@ const AdminDashboard = () => {
       });
 
       // Fetch top users by counting analyses per user
-      const { data: usageData } = await supabase
+      // First get all analyses with video_id
+      const { data: analysesData } = await supabase
         .from("analyses")
-        .select("id, video_id, videos(user_id, profiles(name))")
+        .select("video_id")
         .order("created_at", { ascending: false });
 
-      if (usageData) {
-        const userCounts = usageData.reduce((acc: any, analysis: any) => {
-          const userId = analysis.videos?.user_id;
-          const userName = analysis.videos?.profiles?.name;
-          if (userId && !acc[userId]) {
-            acc[userId] = {
-              user_id: userId,
-              name: userName || "Usuário sem nome",
-              usage_count: 0,
-            };
-          }
-          if (userId) {
-            acc[userId].usage_count++;
-          }
-          return acc;
-        }, {});
+      if (analysesData) {
+        // Get unique video IDs
+        const videoIds = [...new Set(analysesData.map((a: any) => a.video_id))];
+        
+        // Fetch video and user info
+        const { data: videosData } = await supabase
+          .from("videos")
+          .select("id, user_id")
+          .in("id", videoIds);
 
-        const sortedUsers = Object.values(userCounts)
-          .sort((a: any, b: any) => b.usage_count - a.usage_count)
-          .slice(0, 5) as TopUser[];
+        if (videosData) {
+          // Count analyses per user
+          const userCounts: { [key: string]: number } = {};
+          analysesData.forEach((analysis: any) => {
+            const video = videosData.find((v: any) => v.id === analysis.video_id);
+            if (video?.user_id) {
+              userCounts[video.user_id] = (userCounts[video.user_id] || 0) + 1;
+            }
+          });
 
-        setTopUsers(sortedUsers);
+          // Get user names
+          const userIds = Object.keys(userCounts);
+          const { data: profilesData } = await supabase
+            .from("profiles")
+            .select("id, name")
+            .in("id", userIds);
+
+          // Build top users array
+          const topUsersArray: TopUser[] = userIds.map(userId => ({
+            user_id: userId,
+            name: profilesData?.find((p: any) => p.id === userId)?.name || "Usuário sem nome",
+            usage_count: userCounts[userId]
+          }));
+
+          const sortedUsers = topUsersArray
+            .sort((a, b) => b.usage_count - a.usage_count)
+            .slice(0, 5);
+
+          setTopUsers(sortedUsers);
+        }
       }
 
       // Fetch recent analyses
-      const { data: recentData } = await supabase
+      const { data: recentAnalysesData } = await supabase
         .from("analyses")
-        .select("id, created_at, videos(user_id, profiles(name))")
+        .select("id, created_at, video_id")
         .order("created_at", { ascending: false })
         .limit(8);
 
-      if (recentData) {
-        setRecentAnalyses(
-          recentData.map((item: any) => ({
-            id: item.id,
-            user_name: item.videos?.profiles?.name || "Usuário sem nome",
-            used_at: item.created_at,
-          }))
-        );
+      if (recentAnalysesData) {
+        // Get video IDs
+        const recentVideoIds = recentAnalysesData.map((a: any) => a.video_id);
+        
+        // Fetch videos and users
+        const { data: recentVideosData } = await supabase
+          .from("videos")
+          .select("id, user_id")
+          .in("id", recentVideoIds);
+
+        if (recentVideosData) {
+          const recentUserIds = [...new Set(recentVideosData.map((v: any) => v.user_id))];
+          const { data: recentProfilesData } = await supabase
+            .from("profiles")
+            .select("id, name")
+            .in("id", recentUserIds);
+
+          setRecentAnalyses(
+            recentAnalysesData.map((item: any) => {
+              const video = recentVideosData.find((v: any) => v.id === item.video_id);
+              const profile = recentProfilesData?.find((p: any) => p.id === video?.user_id);
+              return {
+                id: item.id,
+                user_name: profile?.name || "Usuário sem nome",
+                used_at: item.created_at,
+              };
+            })
+          );
+        }
       }
 
       // Fetch monthly data (last 12 months)

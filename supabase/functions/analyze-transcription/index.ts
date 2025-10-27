@@ -11,13 +11,13 @@ const ANALYSIS_PROMPT = `Você é um especialista em análise de vendas usando a
 Analise a transcrição da ligação de vendas abaixo e forneça uma análise DETALHADA E FIDEDIGNA baseada APENAS no que realmente aconteceu na conversa.
 
 **INSTRUÇÕES CRÍTICAS SOBRE TIMESTAMPS E ORDEM CRONOLÓGICA:**
-- LEIA TODA A TRANSCRIÇÃO antes de começar a análise
-- A transcrição do AssemblyAI inclui timestamps precisos no formato [HH:MM:SS.mmm] ou [MM:SS.mmm]
-- Você DEVE extrair e usar EXATAMENTE esses timestamps da transcrição
-- NUNCA invente timestamps - copie EXATAMENTE como aparecem na transcrição
-- Se não houver timestamps visíveis, analise a posição aproximada do texto na transcrição
-- Formato do timestamp na sua resposta deve ser "MM:SS" ou "HH:MM:SS" (sem milissegundos)
+- A transcrição vem formatada com timestamps EXATOS no formato [MM:SS] ou [HH:MM:SS] antes de cada fala
+- Você DEVE usar EXATAMENTE esses timestamps que aparecem entre colchetes [MM:SS]
+- NUNCA invente timestamps - copie EXATAMENTE como aparecem na transcrição entre colchetes
+- Exemplo: se na transcrição está "[03:03] cliente: Mas eu fiquei com dúvida...", o timestamp é "03:03"
+- Formato do timestamp na sua resposta deve ser "MM:SS" ou "HH:MM:SS" (sem colchetes, sem milissegundos)
 - **ORDEM CRONOLÓGICA**: Mantenha ESTRITAMENTE a ordem dos eventos como aparecem na transcrição
+- **SILÊNCIO INICIAL**: Se a primeira fala está em [03:00], significa que houve 3 minutos de silêncio/introdução antes
 - Cite APENAS frases que REALMENTE foram ditas (copie exatamente, incluindo contexto suficiente)
 - **CONTEXTO CORRETO**: Se mencionar uma frase específica na análise (campo "why"), ela DEVE estar presente na citação (campo "quote")
 - **VERIFICAÇÃO**: Antes de finalizar, verifique se a ordem dos eventos no campo "why" corresponde exatamente à ordem no campo "quote"
@@ -97,7 +97,7 @@ Analise a transcrição da ligação de vendas abaixo e forneça uma análise DE
     ],
     "timeline": [
       {
-        "timestamp": "OBRIGATÓRIO: Extraia o timestamp EXATO da transcrição no formato MM:SS ou HH:MM:SS. A transcrição do AssemblyAI tem timestamps precisos - use-os!",
+        "timestamp": "OBRIGATÓRIO: Use o timestamp EXATO que aparece entre colchetes [MM:SS] na transcrição. Copie exatamente sem os colchetes.",
         "type": "positive" ou "negative",
         "title": "Título curto e descritivo do momento (máx 60 caracteres)",
         "quote": "CITAÇÃO EXATA e COMPLETA da fala - copie literalmente pelo menos 2-3 frases do contexto. Esta citação DEVE conter todas as frases mencionadas no campo 'why'.",
@@ -109,7 +109,7 @@ Analise a transcrição da ligação de vendas abaixo e forneça uma análise DE
     "objecoes": [
       {
         "type": "price" ou "timing" ou "authority" ou "need" ou "competition",
-        "timestamp": "TIMESTAMP REAL onde a objeção aconteceu",
+        "timestamp": "TIMESTAMP REAL que aparece entre colchetes [MM:SS] onde a objeção aconteceu",
         "cliente_disse": "CITAÇÃO EXATA do que o cliente disse",
         "vendedor_respondeu": "CITAÇÃO EXATA da resposta do vendedor",
         "rating": número de 1 a 10 (quão bem o vendedor tratou),
@@ -178,7 +178,7 @@ Deno.serve(async (req) => {
         model: 'google/gemini-2.5-flash',
         messages: [
           { role: 'system', content: ANALYSIS_PROMPT },
-          { role: 'user', content: `Transcrição da ligação (com timestamps precisos do AssemblyAI):${durationInfo}\n\n${transcription}` }
+          { role: 'user', content: `Transcrição da ligação (formatada com timestamps [MM:SS] antes de cada fala):${durationInfo}\n\n${transcription}` }
         ],
         temperature: 0.3,
       }),

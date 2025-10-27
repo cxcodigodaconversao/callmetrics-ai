@@ -63,6 +63,7 @@ Deno.serve(async (req) => {
       body: JSON.stringify({
         audio_url: audioUrl,
         language_code: 'pt',
+        speaker_labels: true,
       }),
     });
 
@@ -111,19 +112,35 @@ Deno.serve(async (req) => {
 
     const fullTranscription = transcript.text || '';
     const totalDuration = Math.round((transcript.audio_duration || 0));
+    const utterances = transcript.utterances || [];
     
-    console.log(`Transcription complete. Length: ${fullTranscription.length} characters, Duration: ${totalDuration}s`);
+    console.log(`Transcription complete. Length: ${fullTranscription.length} characters, Duration: ${totalDuration}s, Utterances: ${utterances.length}`);
+
+    // Format transcription with timestamps for AI analysis
+    let formattedTranscription = '';
+    for (const utterance of utterances) {
+      const startMs = utterance.start;
+      const minutes = Math.floor(startMs / 60000);
+      const seconds = Math.floor((startMs % 60000) / 1000);
+      const timestamp = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+      const speaker = utterance.speaker === 'A' ? 'vendedor' : 'cliente';
+      formattedTranscription += `[${timestamp}] ${speaker}: ${utterance.text}\n\n`;
+    }
+
+    // Use formatted transcription if available, otherwise fallback to plain text
+    const transcriptionToSave = formattedTranscription || fullTranscription;
 
     // Save transcription to database
     const { data: transcriptionData, error: transcriptionError } = await supabase
       .from('transcriptions')
       .insert({
         video_id: videoId,
-        text: fullTranscription,
+        text: transcriptionToSave,
         provider: 'assemblyai',
         language: 'pt-BR',
         duration_sec: totalDuration,
         words_count: fullTranscription.split(' ').length,
+        speakers_json: utterances.length > 0 ? utterances : null,
       })
       .select()
       .single();
@@ -137,7 +154,7 @@ Deno.serve(async (req) => {
     return new Response(
       JSON.stringify({
         success: true,
-        transcription: fullTranscription,
+        transcription: transcriptionToSave,
         transcriptionId: transcriptionData.id,
         duration: totalDuration,
         language: 'pt-BR',

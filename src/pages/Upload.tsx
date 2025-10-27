@@ -60,12 +60,13 @@ const Upload = () => {
     
     if (e.dataTransfer.files && e.dataTransfer.files[0]) {
       const file = e.dataTransfer.files[0];
-      const maxSize = 25 * 1024 * 1024; // 25MB - limite da API Whisper
+      const maxSize = 2048 * 1024 * 1024; // 2GB - limite AssemblyAI
       
       if (file.size > maxSize) {
         const fileSizeMB = (file.size / (1024 * 1024)).toFixed(2);
+        const fileSizeGB = (file.size / (1024 * 1024 * 1024)).toFixed(2);
         toast.error(
-          `Arquivo muito grande! O limite é 25MB (seu arquivo: ${fileSizeMB}MB).\n\n` +
+          `Arquivo muito grande! O limite é 2GB (seu arquivo: ${fileSizeGB}GB / ${fileSizeMB}MB).\n\n` +
           `Para comprimir seu vídeo:\n` +
           `• Use https://www.freeconvert.com/video-compressor\n` +
           `• Ou extraia apenas o áudio em MP3\n` +
@@ -82,12 +83,13 @@ const Upload = () => {
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
-      const maxSize = 25 * 1024 * 1024; // 25MB - limite da API Whisper
+      const maxSize = 2048 * 1024 * 1024; // 2GB - limite AssemblyAI
       
       if (file.size > maxSize) {
         const fileSizeMB = (file.size / (1024 * 1024)).toFixed(2);
+        const fileSizeGB = (file.size / (1024 * 1024 * 1024)).toFixed(2);
         toast.error(
-          `Arquivo muito grande! O limite é 25MB (seu arquivo: ${fileSizeMB}MB).\n\n` +
+          `Arquivo muito grande! O limite é 2GB (seu arquivo: ${fileSizeGB}GB / ${fileSizeMB}MB).\n\n` +
           `Para comprimir seu vídeo:\n` +
           `• Use https://www.freeconvert.com/video-compressor\n` +
           `• Ou extraia apenas o áudio em MP3\n` +
@@ -439,10 +441,10 @@ const Upload = () => {
                         />
                       </div>
                       <p className="text-sm text-muted-foreground">
-                        <strong>Limite: 25MB</strong> - Formatos: MP4, MOV, AVI, MP3
+                        <strong>Limite: 2GB</strong> - Formatos: MP4, MOV, AVI, MP3
                       </p>
                       <p className="text-xs text-amber-600 mt-2">
-                        ⚠️ Arquivos maiores? Comprima em <a href="https://www.freeconvert.com/video-compressor" target="_blank" rel="noopener noreferrer" className="underline hover:text-amber-700">FreeConvert</a> ou extraia o áudio
+                        ⚠️ Arquivos maiores que 2GB? Comprima em <a href="https://www.freeconvert.com/video-compressor" target="_blank" rel="noopener noreferrer" className="underline hover:text-amber-700">FreeConvert</a> ou extraia o áudio
                       </p>
                     </div>
                   )}

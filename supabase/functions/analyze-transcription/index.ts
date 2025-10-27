@@ -163,7 +163,7 @@ Comunicação CORRETA do vendedor para perfil C:
       "Descreva especificamente o que precisa melhorar, citando o que faltou"
     ],
     "recomendacoes": [
-      "Ações específicas e práticas para melhorar, baseadas nos pontos fracos"
+      "Ações específicas e práticas para melhorar, baseadas nos pontos fracos. NUNCA recomende acelerar o ritmo, reduzir a duração da call ou falar mais rápido. Foque em técnicas de vendas, abordagem e comunicação."
     ],
     "perfil_disc": {
       "perfil_dominante": "D" ou "I" ou "S" ou "C",

@@ -10,14 +10,17 @@ const ANALYSIS_PROMPT = `Você é um especialista em análise de vendas usando a
 
 Analise a transcrição da ligação de vendas abaixo e forneça uma análise DETALHADA E FIDEDIGNA baseada APENAS no que realmente aconteceu na conversa.
 
-**INSTRUÇÕES CRÍTICAS SOBRE TIMESTAMPS:**
+**INSTRUÇÕES CRÍTICAS SOBRE TIMESTAMPS E ORDEM CRONOLÓGICA:**
 - LEIA TODA A TRANSCRIÇÃO antes de começar a análise
 - A transcrição do AssemblyAI inclui timestamps precisos no formato [HH:MM:SS.mmm] ou [MM:SS.mmm]
 - Você DEVE extrair e usar EXATAMENTE esses timestamps da transcrição
 - NUNCA invente timestamps - copie EXATAMENTE como aparecem na transcrição
 - Se não houver timestamps visíveis, analise a posição aproximada do texto na transcrição
 - Formato do timestamp na sua resposta deve ser "MM:SS" ou "HH:MM:SS" (sem milissegundos)
-- Cite APENAS frases que REALMENTE foram ditas (copie exatamente, incluindo contexto)
+- **ORDEM CRONOLÓGICA**: Mantenha ESTRITAMENTE a ordem dos eventos como aparecem na transcrição
+- Cite APENAS frases que REALMENTE foram ditas (copie exatamente, incluindo contexto suficiente)
+- **CONTEXTO CORRETO**: Se mencionar uma frase específica na análise (campo "why"), ela DEVE estar presente na citação (campo "quote")
+- **VERIFICAÇÃO**: Antes de finalizar, verifique se a ordem dos eventos no campo "why" corresponde exatamente à ordem no campo "quote"
 - NÃO invente nomes de pessoas se não estiverem mencionados
 - NÃO invente momentos que não aconteceram
 - Se não houver informação suficiente para um critério, seja honesto e dê score baixo
@@ -97,9 +100,9 @@ Analise a transcrição da ligação de vendas abaixo e forneça uma análise DE
         "timestamp": "OBRIGATÓRIO: Extraia o timestamp EXATO da transcrição no formato MM:SS ou HH:MM:SS. A transcrição do AssemblyAI tem timestamps precisos - use-os!",
         "type": "positive" ou "negative",
         "title": "Título curto e descritivo do momento (máx 60 caracteres)",
-        "quote": "CITAÇÃO EXATA e COMPLETA da fala - copie literalmente pelo menos 2-3 frases do contexto",
+        "quote": "CITAÇÃO EXATA e COMPLETA da fala - copie literalmente pelo menos 2-3 frases do contexto. Esta citação DEVE conter todas as frases mencionadas no campo 'why'.",
         "speaker": "vendedor" ou "cliente" (use exatamente esses termos em minúsculas)",
-        "why": "Explicação ESPECÍFICA e DETALHADA do porquê esse momento foi bom ou ruim (mínimo 50 palavras)",
+        "why": "Explicação ESPECÍFICA e DETALHADA do porquê esse momento foi bom ou ruim (mínimo 50 palavras). CRÍTICO: Se mencionar frases específicas aqui, elas DEVEM aparecer no campo 'quote'. Mantenha a ordem cronológica EXATA dos eventos como aparecem na transcrição.",
         "fix": "Como corrigir (APENAS para momentos negativos) - seja específico, prático e detalhado (mínimo 50 palavras)"
       }
     ],

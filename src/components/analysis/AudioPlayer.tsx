@@ -30,19 +30,42 @@ export function AudioPlayer({ open, onOpenChange, videoUrl, timestamp, title }: 
   };
 
   useEffect(() => {
-    if (open && videoRef.current) {
+    if (open && videoRef.current && videoUrl) {
       setError("");
-      const startTime = timestampToSeconds(timestamp);
-      videoRef.current.currentTime = startTime;
-      videoRef.current.play()
-        .then(() => setIsPlaying(true))
-        .catch((err) => {
-          console.error("Erro ao reproduzir vídeo:", err);
-          setError("Não foi possível reproduzir o vídeo. Verifique se o arquivo existe.");
-          setIsPlaying(false);
-        });
+      console.log("Loading video from URL:", videoUrl);
+      
+      // Wait for metadata to load before seeking
+      const handleCanPlay = () => {
+        if (videoRef.current) {
+          const startTime = timestampToSeconds(timestamp);
+          console.log(`Seeking to ${timestamp} (${startTime}s)`);
+          videoRef.current.currentTime = startTime;
+          
+          videoRef.current.play()
+            .then(() => {
+              console.log("Playback started successfully");
+              setIsPlaying(true);
+            })
+            .catch((err) => {
+              console.error("Playback error:", err);
+              setError(`Não foi possível reproduzir o áudio: ${err.message}`);
+              setIsPlaying(false);
+            });
+        }
+      };
+
+      videoRef.current.addEventListener('canplay', handleCanPlay, { once: true });
+      videoRef.current.load();
+
+      return () => {
+        if (videoRef.current) {
+          videoRef.current.removeEventListener('canplay', handleCanPlay);
+        }
+      };
+    } else if (open && !videoUrl) {
+      setError("URL do vídeo não disponível. O arquivo pode ter sido removido.");
     }
-  }, [open, timestamp]);
+  }, [open, timestamp, videoUrl]);
 
   const togglePlay = () => {
     if (videoRef.current) {
@@ -99,10 +122,19 @@ export function AudioPlayer({ open, onOpenChange, videoUrl, timestamp, title }: 
             onTimeUpdate={handleTimeUpdate}
             onLoadedMetadata={handleLoadedMetadata}
             onError={(e) => {
-              console.error("Erro no elemento de vídeo:", e);
-              setError("Erro ao carregar o vídeo. Verifique se o URL está correto.");
+              const target = e.target as HTMLVideoElement;
+              console.error("Video element error:", {
+                error: e,
+                networkState: target.networkState,
+                readyState: target.readyState,
+                currentSrc: target.currentSrc
+              });
+              setError("Erro ao carregar o áudio. O link pode ter expirado ou o arquivo não está acessível.");
             }}
-            preload="metadata"
+            onLoadStart={() => console.log("Video load started")}
+            onProgress={() => console.log("Video loading progress")}
+            preload="auto"
+            crossOrigin="anonymous"
             style={{ display: "none" }}
           />
 

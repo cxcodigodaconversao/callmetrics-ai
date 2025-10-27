@@ -82,15 +82,18 @@ export default function AnalysisDetail() {
         .eq("video_id", data.video_id)
         .single();
 
-      // Get video URL from storage
+      // Get video URL from storage with longer expiry
       let videoUrl = "";
       if (data.video.storage_path) {
-        const { data: signedUrlData } = await supabase.storage
+        const { data: signedUrlData, error: urlError } = await supabase.storage
           .from("uploads")
-          .createSignedUrl(data.video.storage_path, 3600); // 1 hour expiry
+          .createSignedUrl(data.video.storage_path, 7200); // 2 hours expiry
         
-        if (signedUrlData) {
+        if (urlError) {
+          console.error("Error creating signed URL:", urlError);
+        } else if (signedUrlData) {
           videoUrl = signedUrlData.signedUrl;
+          console.log("Signed URL created successfully");
         }
       }
 

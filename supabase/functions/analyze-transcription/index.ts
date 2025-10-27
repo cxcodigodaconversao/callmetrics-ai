@@ -10,11 +10,14 @@ const ANALYSIS_PROMPT = `Você é um especialista em análise de vendas usando a
 
 Analise a transcrição da ligação de vendas abaixo e forneça uma análise DETALHADA E FIDEDIGNA baseada APENAS no que realmente aconteceu na conversa.
 
-**INSTRUÇÕES CRÍTICAS:**
+**INSTRUÇÕES CRÍTICAS SOBRE TIMESTAMPS:**
 - LEIA TODA A TRANSCRIÇÃO antes de começar a análise
-- Use APENAS timestamps que REALMENTE aparecem na transcrição
-- Cite APENAS frases que REALMENTE foram ditas (copie exatamente)
-- Se a transcrição tem timestamps no formato "[HH:MM:SS]" ou "[MM:SS]", USE ESSES timestamps
+- A transcrição do AssemblyAI inclui timestamps precisos no formato [HH:MM:SS.mmm] ou [MM:SS.mmm]
+- Você DEVE extrair e usar EXATAMENTE esses timestamps da transcrição
+- NUNCA invente timestamps - copie EXATAMENTE como aparecem na transcrição
+- Se não houver timestamps visíveis, analise a posição aproximada do texto na transcrição
+- Formato do timestamp na sua resposta deve ser "MM:SS" ou "HH:MM:SS" (sem milissegundos)
+- Cite APENAS frases que REALMENTE foram ditas (copie exatamente, incluindo contexto)
 - NÃO invente nomes de pessoas se não estiverem mencionados
 - NÃO invente momentos que não aconteceram
 - Se não houver informação suficiente para um critério, seja honesto e dê score baixo
@@ -91,13 +94,13 @@ Analise a transcrição da ligação de vendas abaixo e forneça uma análise DE
     ],
     "timeline": [
       {
-        "timestamp": "USE O TIMESTAMP REAL DA TRANSCRIÇÃO (ex: 02:15 ou 01:02:15)",
+        "timestamp": "OBRIGATÓRIO: Extraia o timestamp EXATO da transcrição no formato MM:SS ou HH:MM:SS. A transcrição do AssemblyAI tem timestamps precisos - use-os!",
         "type": "positive" ou "negative",
-        "title": "Título curto e descritivo do momento",
-        "quote": "CITAÇÃO EXATA e COMPLETA da transcrição - copie literalmente",
+        "title": "Título curto e descritivo do momento (máx 60 caracteres)",
+        "quote": "CITAÇÃO EXATA e COMPLETA da fala - copie literalmente pelo menos 2-3 frases do contexto",
         "speaker": "vendedor" ou "cliente" (use exatamente esses termos em minúsculas)",
-        "why": "Explicação ESPECÍFICA do porquê esse momento foi bom ou ruim",
-        "fix": "Como corrigir (APENAS para momentos negativos) - seja específico e prático"
+        "why": "Explicação ESPECÍFICA e DETALHADA do porquê esse momento foi bom ou ruim (mínimo 50 palavras)",
+        "fix": "Como corrigir (APENAS para momentos negativos) - seja específico, prático e detalhado (mínimo 50 palavras)"
       }
     ],
     "objecoes": [
@@ -134,6 +137,25 @@ Deno.serve(async (req) => {
 
     console.log(`Analyzing transcription for video: ${videoId}`);
 
+    // Get video duration from database
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    const supabase = createClient(supabaseUrl, supabaseKey);
+
+    const { data: videoData, error: videoError } = await supabase
+      .from('videos')
+      .select('duration_sec')
+      .eq('id', videoId)
+      .single();
+
+    if (videoError) {
+      console.error('Error fetching video duration:', videoError);
+    }
+
+    const durationInfo = videoData?.duration_sec 
+      ? `\n\n**INFORMAÇÃO IMPORTANTE:** A duração total desta gravação é de ${Math.floor(videoData.duration_sec / 60)} minutos e ${videoData.duration_sec % 60} segundos (${videoData.duration_sec}s total). Todos os timestamps na sua análise devem estar dentro deste intervalo.`
+      : '';
+
     const lovableApiKey = Deno.env.get('LOVABLE_API_KEY');
     if (!lovableApiKey) {
       throw new Error('LOVABLE_API_KEY not configured');
@@ -153,7 +175,7 @@ Deno.serve(async (req) => {
         model: 'google/gemini-2.5-flash',
         messages: [
           { role: 'system', content: ANALYSIS_PROMPT },
-          { role: 'user', content: `Transcrição da ligação:\n\n${transcription}` }
+          { role: 'user', content: `Transcrição da ligação (com timestamps precisos do AssemblyAI):${durationInfo}\n\n${transcription}` }
         ],
         temperature: 0.3,
       }),
@@ -178,10 +200,7 @@ Deno.serve(async (req) => {
     const analysisData = JSON.parse(jsonMatch[0]);
     const processingTime = Math.round((Date.now() - startTime) / 1000);
 
-    // Initialize Supabase client
-    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-    const supabase = createClient(supabaseUrl, supabaseKey);
+    // Save analysis using existing Supabase client
 
     // Save analysis to database
     const { data: analysisRecord, error: analysisError } = await supabase

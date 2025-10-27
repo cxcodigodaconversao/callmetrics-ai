@@ -60,17 +60,14 @@ const Upload = () => {
     
     if (e.dataTransfer.files && e.dataTransfer.files[0]) {
       const file = e.dataTransfer.files[0];
-      const maxSize = 5 * 1024 * 1024 * 1024; // 5GB - limite Supabase Pro Plan
+      const maxSize = 1 * 1024 * 1024 * 1024; // 1GB - limite recomendado
       
       if (file.size > maxSize) {
-        const fileSizeGB = (file.size / (1024 * 1024 * 1024)).toFixed(2);
+        const fileSizeMB = (file.size / (1024 * 1024)).toFixed(0);
         toast.error(
-          `Arquivo muito grande! O limite é 5GB (seu arquivo: ${fileSizeGB}GB).\n\n` +
-          `Para comprimir seu vídeo:\n` +
-          `• Use https://www.freeconvert.com/video-compressor\n` +
-          `• Ou extraia apenas o áudio em MP3\n` +
-          `• Configure qualidade menor ou resolução reduzida`,
-          { duration: 10000 }
+          `Arquivo muito grande (${fileSizeMB}MB). Recomendamos até 1GB.\n\n` +
+          `💡 Dica: Extraia apenas o áudio em MP3 para análises mais rápidas`,
+          { duration: 6000 }
         );
         return;
       }
@@ -82,17 +79,14 @@ const Upload = () => {
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
-      const maxSize = 5 * 1024 * 1024 * 1024; // 5GB - limite Supabase Pro Plan
+      const maxSize = 1 * 1024 * 1024 * 1024; // 1GB - limite recomendado
       
       if (file.size > maxSize) {
-        const fileSizeGB = (file.size / (1024 * 1024 * 1024)).toFixed(2);
+        const fileSizeMB = (file.size / (1024 * 1024)).toFixed(0);
         toast.error(
-          `Arquivo muito grande! O limite é 5GB (seu arquivo: ${fileSizeGB}GB).\n\n` +
-          `Para comprimir seu vídeo:\n` +
-          `• Use https://www.freeconvert.com/video-compressor\n` +
-          `• Ou extraia apenas o áudio em MP3\n` +
-          `• Configure qualidade menor ou resolução reduzida`,
-          { duration: 10000 }
+          `Arquivo muito grande (${fileSizeMB}MB). Recomendamos até 1GB.\n\n` +
+          `💡 Dica: Extraia apenas o áudio em MP3 para análises mais rápidas`,
+          { duration: 6000 }
         );
         return;
       }
@@ -181,14 +175,8 @@ const Upload = () => {
       const { error: uploadError } = await uploadMethod;
 
       if (uploadError) {
-        // Se o erro for de tamanho, mostrar mensagem específica
-        if (uploadError.message?.includes('size') || uploadError.message?.includes('413')) {
-          throw new Error(
-            'O limite global do seu projeto Supabase precisa ser aumentado. ' +
-            'Acesse Storage Settings no dashboard do Supabase e ajuste o "Global file size limit" para 5GB ou mais.'
-          );
-        }
-        throw uploadError;
+        console.error("Upload error:", uploadError);
+        throw new Error("Erro ao fazer upload. Tente novamente ou use um arquivo menor.");
       }
 
       // Create video record
@@ -413,10 +401,10 @@ const Upload = () => {
                         />
                       </div>
                       <p className="text-sm text-muted-foreground">
-                        <strong>Limite: 5GB</strong> - Formatos: MP4, MOV, AVI, MP3
+                        <strong>Recomendado: até 1GB</strong> - Formatos: MP4, MOV, AVI, MP3
                       </p>
                       <p className="text-xs text-muted-foreground mt-2">
-                        💡 Para arquivos grandes, considere comprimir em <a href="https://www.freeconvert.com/video-compressor" target="_blank" rel="noopener noreferrer" className="underline hover:text-primary">FreeConvert</a> ou extrair apenas o áudio
+                        💡 Dica: Extraia apenas o áudio em MP3 para melhor desempenho
                       </p>
                     </div>
                   )}

@@ -96,40 +96,63 @@ const AdminUsers = () => {
       // For each user, fetch their AI usage counts from analyses
       const usersWithUsage = await Promise.all(
         profiles.map(async (profile) => {
-          // Get all videos for this user
-          const { data: userVideos } = await supabase
-            .from("videos")
-            .select("id")
-            .eq("user_id", profile.id);
+          try {
+            // Get all videos for this user
+            const { data: userVideos, error: videosError } = await supabase
+              .from("videos")
+              .select("id")
+              .eq("user_id", profile.id);
 
-          const videoIds = userVideos?.map(v => v.id) || [];
+            if (videosError) {
+              console.error("Error fetching videos for user", profile.id, videosError);
+            }
 
-          if (videoIds.length === 0) {
+            const videoIds = userVideos?.map(v => v.id) || [];
+
+            if (videoIds.length === 0) {
+              return {
+                ...profile,
+                ai_usage_count: 0,
+                ai_usage_this_month: 0,
+              };
+            }
+
+            // Total AI usage (count of analyses for user's videos)
+            const { count: totalUsage, error: totalError } = await supabase
+              .from("analyses")
+              .select("*", { count: "exact", head: true })
+              .in("video_id", videoIds);
+
+            if (totalError) {
+              console.error("Error counting total analyses for user", profile.id, totalError);
+            }
+
+            // This month's AI usage
+            const { count: monthUsage, error: monthError } = await supabase
+              .from("analyses")
+              .select("*", { count: "exact", head: true })
+              .in("video_id", videoIds)
+              .gte("created_at", firstDayOfMonth.toISOString());
+
+            if (monthError) {
+              console.error("Error counting monthly analyses for user", profile.id, monthError);
+            }
+
+            console.log(`User ${profile.name}: videos=${videoIds.length}, total=${totalUsage}, month=${monthUsage}`);
+
+            return {
+              ...profile,
+              ai_usage_count: totalUsage || 0,
+              ai_usage_this_month: monthUsage || 0,
+            };
+          } catch (err) {
+            console.error("Error processing user", profile.id, err);
             return {
               ...profile,
               ai_usage_count: 0,
               ai_usage_this_month: 0,
             };
           }
-
-          // Total AI usage (count of analyses for user's videos)
-          const { count: totalUsage } = await supabase
-            .from("analyses")
-            .select("*", { count: "exact", head: true })
-            .in("video_id", videoIds);
-
-          // This month's AI usage
-          const { count: monthUsage } = await supabase
-            .from("analyses")
-            .select("*", { count: "exact", head: true })
-            .in("video_id", videoIds)
-            .gte("created_at", firstDayOfMonth.toISOString());
-
-          return {
-            ...profile,
-            ai_usage_count: totalUsage || 0,
-            ai_usage_this_month: monthUsage || 0,
-          };
         })
       );
 

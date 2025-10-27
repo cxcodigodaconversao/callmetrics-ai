@@ -99,22 +99,27 @@ const AdminDashboard = () => {
 
       // Fetch top users by counting analyses per user
       // First get all analyses with video_id
-      const { data: analysesData } = await supabase
+      const { data: analysesData, error: analysesError } = await supabase
         .from("analyses")
         .select("video_id")
         .order("created_at", { ascending: false });
 
-      if (analysesData) {
+      console.log("Analyses data:", analysesData?.length, "error:", analysesError);
+
+      if (analysesData && analysesData.length > 0) {
         // Get unique video IDs
         const videoIds = [...new Set(analysesData.map((a: any) => a.video_id))];
+        console.log("Video IDs:", videoIds.length);
         
         // Fetch video and user info
-        const { data: videosData } = await supabase
+        const { data: videosData, error: videosError } = await supabase
           .from("videos")
           .select("id, user_id")
           .in("id", videoIds);
 
-        if (videosData) {
+        console.log("Videos data:", videosData?.length, "error:", videosError);
+
+        if (videosData && videosData.length > 0) {
           // Count analyses per user
           const userCounts: { [key: string]: number } = {};
           analysesData.forEach((analysis: any) => {
@@ -124,25 +129,32 @@ const AdminDashboard = () => {
             }
           });
 
+          console.log("User counts:", userCounts);
+
           // Get user names
           const userIds = Object.keys(userCounts);
-          const { data: profilesData } = await supabase
-            .from("profiles")
-            .select("id, name")
-            .in("id", userIds);
+          if (userIds.length > 0) {
+            const { data: profilesData, error: profilesError } = await supabase
+              .from("profiles")
+              .select("id, name")
+              .in("id", userIds);
 
-          // Build top users array
-          const topUsersArray: TopUser[] = userIds.map(userId => ({
-            user_id: userId,
-            name: profilesData?.find((p: any) => p.id === userId)?.name || "Usuário sem nome",
-            usage_count: userCounts[userId]
-          }));
+            console.log("Profiles data:", profilesData?.length, "error:", profilesError);
 
-          const sortedUsers = topUsersArray
-            .sort((a, b) => b.usage_count - a.usage_count)
-            .slice(0, 5);
+            // Build top users array
+            const topUsersArray: TopUser[] = userIds.map(userId => ({
+              user_id: userId,
+              name: profilesData?.find((p: any) => p.id === userId)?.name || "Usuário sem nome",
+              usage_count: userCounts[userId]
+            }));
 
-          setTopUsers(sortedUsers);
+            const sortedUsers = topUsersArray
+              .sort((a, b) => b.usage_count - a.usage_count)
+              .slice(0, 5);
+
+            console.log("Top users:", sortedUsers);
+            setTopUsers(sortedUsers);
+          }
         }
       }
 
@@ -407,8 +419,8 @@ const AdminDashboard = () => {
                 </div>
               </div>
               <p style={{ fontSize: '14px', color: '#888', margin: '0 0 12px 0', fontWeight: '500' }}>Análises de IA</p>
-              <p style={{ fontSize: '42px', fontWeight: 'bold', margin: 0, color: '#d2bc8f', letterSpacing: '-2px' }}>{stats.aiUsageThisMonth}</p>
-              <p style={{ fontSize: '13px', color: '#888', marginTop: '8px' }}>Neste mês</p>
+              <p style={{ fontSize: '42px', fontWeight: 'bold', margin: 0, color: '#d2bc8f', letterSpacing: '-2px' }}>{stats.totalAIUsage}</p>
+              <p style={{ fontSize: '13px', color: '#888', marginTop: '8px' }}>{stats.aiUsageThisMonth} neste mês</p>
             </div>
 
             <div style={{ backgroundColor: '#1a2332', padding: '28px', borderRadius: '16px', border: '1px solid #333' }}>

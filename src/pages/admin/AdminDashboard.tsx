@@ -82,13 +82,13 @@ const AdminDashboard = () => {
         .eq("is_active", true);
 
       const { count: totalAIUsage } = await supabase
-        .from("ai_usage_logs")
+        .from("analyses")
         .select("*", { count: "exact", head: true });
 
       const { count: aiUsageThisMonth } = await supabase
-        .from("ai_usage_logs")
+        .from("analyses")
         .select("*", { count: "exact", head: true })
-        .gte("used_at", firstDayOfMonth.toISOString());
+        .gte("created_at", firstDayOfMonth.toISOString());
 
       setStats({
         totalUsers: totalUsers || 0,
@@ -97,23 +97,26 @@ const AdminDashboard = () => {
         aiUsageThisMonth: aiUsageThisMonth || 0,
       });
 
-      // Fetch top users
+      // Fetch top users by counting analyses per user
       const { data: usageData } = await supabase
-        .from("ai_usage_logs")
-        .select("user_id, profiles(name)")
-        .order("used_at", { ascending: false });
+        .from("analyses")
+        .select("id, video_id, videos(user_id, profiles(name))")
+        .order("created_at", { ascending: false });
 
       if (usageData) {
-        const userCounts = usageData.reduce((acc: any, log: any) => {
-          const userId = log.user_id;
-          if (!acc[userId]) {
+        const userCounts = usageData.reduce((acc: any, analysis: any) => {
+          const userId = analysis.videos?.user_id;
+          const userName = analysis.videos?.profiles?.name;
+          if (userId && !acc[userId]) {
             acc[userId] = {
               user_id: userId,
-              name: log.profiles?.name || "Usuário sem nome",
+              name: userName || "Usuário sem nome",
               usage_count: 0,
             };
           }
-          acc[userId].usage_count++;
+          if (userId) {
+            acc[userId].usage_count++;
+          }
           return acc;
         }, {});
 
@@ -126,17 +129,17 @@ const AdminDashboard = () => {
 
       // Fetch recent analyses
       const { data: recentData } = await supabase
-        .from("ai_usage_logs")
-        .select("id, used_at, profiles(name)")
-        .order("used_at", { ascending: false })
+        .from("analyses")
+        .select("id, created_at, videos(user_id, profiles(name))")
+        .order("created_at", { ascending: false })
         .limit(8);
 
       if (recentData) {
         setRecentAnalyses(
           recentData.map((item: any) => ({
             id: item.id,
-            user_name: item.profiles?.name || "Usuário sem nome",
-            used_at: item.used_at,
+            user_name: item.videos?.profiles?.name || "Usuário sem nome",
+            used_at: item.created_at,
           }))
         );
       }
@@ -147,10 +150,10 @@ const AdminDashboard = () => {
       monthsAgo.setDate(1);
 
       const { data: monthlyUsage } = await supabase
-        .from("ai_usage_logs")
-        .select("used_at")
-        .gte("used_at", monthsAgo.toISOString())
-        .order("used_at", { ascending: true });
+        .from("analyses")
+        .select("created_at")
+        .gte("created_at", monthsAgo.toISOString())
+        .order("created_at", { ascending: true });
 
       if (monthlyUsage) {
         const monthlyMap: { [key: string]: number } = {};
@@ -164,7 +167,7 @@ const AdminDashboard = () => {
         }
 
         monthlyUsage.forEach((log: any) => {
-          const date = new Date(log.used_at);
+          const date = new Date(log.created_at);
           const monthKey = monthNames[date.getMonth()];
           if (monthlyMap[monthKey] !== undefined) {
             monthlyMap[monthKey]++;

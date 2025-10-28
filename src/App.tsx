@@ -13,6 +13,7 @@ import Settings from "./pages/Settings";
 import RadarConversao from "./pages/RadarConversao";
 import CalculadoraTimeComercial from "./pages/CalculadoraTimeComercial";
 import AcademiaComercial from "./pages/AcademiaComercial";
+import CRMConversao from "./pages/CRMConversao";
 import NotFound from "./pages/NotFound";
 import AdminDashboard from "./pages/admin/AdminDashboard";
 import AdminUsers from "./pages/admin/AdminUsers";
@@ -36,6 +37,7 @@ const App = () => (
           <Route path="/dashboard/disc-radar" element={<RadarConversao />} />
           <Route path="/dashboard/calculadora" element={<CalculadoraTimeComercial />} />
           <Route path="/dashboard/academia" element={<AcademiaComercial />} />
+          <Route path="/dashboard/crm" element={<CRMConversao />} />
           <Route path="/dashboard/settings" element={<Settings />} />
           <Route path="/admin" element={<AdminDashboard />} />
           <Route path="/admin/users" element={<AdminUsers />} />

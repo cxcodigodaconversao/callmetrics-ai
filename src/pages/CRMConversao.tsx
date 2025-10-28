@@ -22,7 +22,7 @@ const CRMConversao = () => {
       
       <div className="flex-1">
         <iframe
-          src="https://crm-cxconversao.netlify.app/crm"
+          src="https://crm-cxconversao.netlify.app/"
           title="CRM da Conversão"
           className="w-full h-full"
           style={{ minHeight: "calc(100vh - 73px)", border: "none" }}

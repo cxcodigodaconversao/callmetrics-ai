@@ -208,6 +208,7 @@ const Dashboard = () => {
     { icon: <Upload className="w-5 h-5" />, label: "Nova Análise", path: "/dashboard/upload" },
     { icon: <FileText className="w-5 h-5" />, label: "Minhas Análises", path: "/dashboard/analyses" },
     { icon: <Target className="w-5 h-5" />, label: "Radar da Conversão", path: "/dashboard/disc-radar" },
+    { icon: <Target className="w-5 h-5" />, label: "DISC da Conversão", path: "/dashboard/disc" },
     { icon: <Calculator className="w-5 h-5" />, label: "Calculadora Time Comercial", path: "/dashboard/calculadora" },
     { icon: <GraduationCap className="w-5 h-5" />, label: "Academia Comercial", path: "/dashboard/academia" },
     { icon: <FileText className="w-5 h-5" />, label: "CRM da Conversão", path: "/dashboard/crm" },

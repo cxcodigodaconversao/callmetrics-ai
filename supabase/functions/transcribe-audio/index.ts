@@ -20,9 +20,9 @@ Deno.serve(async (req) => {
 
     console.log(`Transcribing audio for video: ${videoId}`);
 
-    const openaiApiKey = Deno.env.get('OPENAI_API_KEY');
-    if (!openaiApiKey) {
-      throw new Error('OPENAI_API_KEY not configured');
+    const assemblyaiApiKey = Deno.env.get('ASSEMBLYAI_API_KEY');
+    if (!assemblyaiApiKey) {
+      throw new Error('ASSEMBLYAI_API_KEY not configured');
     }
 
     // Check file size
@@ -48,57 +48,117 @@ Deno.serve(async (req) => {
       throw new Error('Não foi possível acessar o arquivo. Para vídeos do Google Drive: 1) Certifique-se que o compartilhamento está como "Qualquer pessoa com o link", 2) Ou baixe o vídeo e faça upload direto.');
     }
 
-    // OpenAI Whisper supports larger files
-    console.log('Sending audio to OpenAI Whisper API...');
-    
-    // Download the audio file
+    // AssemblyAI supports files up to 5GB
+    console.log('Downloading audio file...');
     const audioResponse = await fetch(audioUrl);
     if (!audioResponse.ok) {
       throw new Error(`Failed to download audio: ${audioResponse.status}`);
     }
     
     const audioBlob = await audioResponse.blob();
-    
-    const formData = new FormData();
-    formData.append('file', audioBlob, 'audio.mp4');
-    formData.append('model', 'whisper-1');
-    formData.append('language', 'pt');
-    formData.append('response_format', 'verbose_json');
+    console.log(`Audio downloaded: ${audioBlob.size} bytes`);
 
-    const response = await fetch('https://api.openai.com/v1/audio/transcriptions', {
+    // Step 1: Upload audio to AssemblyAI
+    console.log('Uploading audio to AssemblyAI...');
+    const uploadResponse = await fetch('https://api.assemblyai.com/v2/upload', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${openaiApiKey}`,
+        'authorization': assemblyaiApiKey,
       },
-      body: formData,
+      body: audioBlob,
     });
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error(`OpenAI API error:`, errorText);
-      throw new Error(`OpenAI API failed: ${errorText}`);
+    if (!uploadResponse.ok) {
+      const errorText = await uploadResponse.text();
+      console.error(`AssemblyAI upload error:`, errorText);
+      throw new Error(`AssemblyAI upload failed: ${errorText}`);
     }
 
-    const result = await response.json();
-    const transcriptionText = result.text || '';
-    const duration = result.duration || 0;
-    const wordCount = transcriptionText.split(/\s+/).length;
+    const { upload_url } = await uploadResponse.json();
+    console.log('Audio uploaded to AssemblyAI:', upload_url);
 
-    console.log(`Transcription complete: ${transcriptionText.length} chars, ${wordCount} words, ${duration.toFixed(2)}s`);
+    // Step 2: Start transcription
+    console.log('Starting transcription...');
+    const transcriptResponse = await fetch('https://api.assemblyai.com/v2/transcript', {
+      method: 'POST',
+      headers: {
+        'authorization': assemblyaiApiKey,
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({
+        audio_url: upload_url,
+        language_code: 'pt',
+      }),
+    });
+
+    if (!transcriptResponse.ok) {
+      const errorText = await transcriptResponse.text();
+      console.error(`AssemblyAI transcript start error:`, errorText);
+      throw new Error(`AssemblyAI transcript start failed: ${errorText}`);
+    }
+
+    const { id: transcriptId } = await transcriptResponse.json();
+    console.log('Transcription started with ID:', transcriptId);
+
+    // Step 3: Poll for completion (max 2 minutes)
+    console.log('Polling for transcription completion...');
+    const maxPollingTime = 120000; // 2 minutes
+    const pollingInterval = 3000; // 3 seconds
+    const startTime = Date.now();
+    
+    let transcriptData: any;
+    
+    while (Date.now() - startTime < maxPollingTime) {
+      const pollingResponse = await fetch(`https://api.assemblyai.com/v2/transcript/${transcriptId}`, {
+        headers: {
+          'authorization': assemblyaiApiKey,
+        },
+      });
+
+      if (!pollingResponse.ok) {
+        const errorText = await pollingResponse.text();
+        console.error(`AssemblyAI polling error:`, errorText);
+        throw new Error(`AssemblyAI polling failed: ${errorText}`);
+      }
+
+      transcriptData = await pollingResponse.json();
+      console.log(`Transcription status: ${transcriptData.status}`);
+
+      if (transcriptData.status === 'completed') {
+        break;
+      }
+
+      if (transcriptData.status === 'error') {
+        throw new Error(`AssemblyAI transcription error: ${transcriptData.error}`);
+      }
+
+      // Wait before next poll
+      await new Promise(resolve => setTimeout(resolve, pollingInterval));
+    }
+
+    if (!transcriptData || transcriptData.status !== 'completed') {
+      throw new Error('Transcription timed out after 2 minutes. The file may be too large or the service is busy. Please try again.');
+    }
+
+    const transcriptionText = transcriptData.text || '';
+    const duration = Math.round((transcriptData.audio_duration || 0) / 1000); // AssemblyAI returns milliseconds
+    const wordCount = transcriptData.words?.length || transcriptionText.split(/\s+/).length;
+
+    console.log(`Transcription complete: ${transcriptionText.length} chars, ${wordCount} words, ${duration}s`);
 
     // Save transcription to database
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    const { data: transcriptionData, error: transcriptionError } = await supabase
+    const { data: transcriptionDbData, error: transcriptionError } = await supabase
       .from('transcriptions')
       .insert({
         video_id: videoId,
         text: transcriptionText,
-        provider: 'openai-whisper',
+        provider: 'assemblyai',
         language: 'pt-BR',
-        duration_sec: Math.round(duration),
+        duration_sec: duration,
         words_count: wordCount,
         speakers_json: null,
       })
@@ -109,14 +169,14 @@ Deno.serve(async (req) => {
       throw new Error(`Failed to save transcription: ${transcriptionError.message}`);
     }
 
-    console.log(`Transcription saved: ${transcriptionData.id}`);
+    console.log(`Transcription saved: ${transcriptionDbData.id}`);
 
     return new Response(
       JSON.stringify({
         success: true,
         transcription: transcriptionText,
-        transcriptionId: transcriptionData.id,
-        duration: Math.round(duration),
+        transcriptionId: transcriptionDbData.id,
+        duration: duration,
         language: 'pt-BR',
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }

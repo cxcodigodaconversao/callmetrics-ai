@@ -6,6 +6,85 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+const CHUNK_SIZE = 20 * 1024 * 1024; // 20MB chunks
+
+// Helper to split audio into chunks
+async function downloadAudioInChunks(audioUrl: string): Promise<Uint8Array> {
+  console.log('Downloading audio file in streaming mode...');
+  const response = await fetch(audioUrl);
+  
+  if (!response.ok) {
+    throw new Error(`Failed to download audio: ${response.status}`);
+  }
+
+  const reader = response.body?.getReader();
+  if (!reader) {
+    throw new Error('Failed to get response reader');
+  }
+
+  const chunks: Uint8Array[] = [];
+  let totalSize = 0;
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    
+    chunks.push(value);
+    totalSize += value.length;
+  }
+
+  // Combine all chunks
+  const audioData = new Uint8Array(totalSize);
+  let offset = 0;
+  for (const chunk of chunks) {
+    audioData.set(chunk, offset);
+    offset += chunk.length;
+  }
+
+  console.log(`Downloaded ${(totalSize / 1024 / 1024).toFixed(2)}MB`);
+  return audioData;
+}
+
+// Process a single chunk with Whisper
+async function transcribeChunk(
+  audioChunk: Uint8Array,
+  chunkIndex: number,
+  openAIKey: string
+): Promise<{ text: string; duration: number }> {
+  console.log(`Processing chunk ${chunkIndex + 1} (${(audioChunk.length / 1024 / 1024).toFixed(2)}MB)...`);
+
+  const formData = new FormData();
+  // Create a proper ArrayBuffer from the Uint8Array
+  const arrayBuffer = audioChunk.slice(0).buffer;
+  const blob = new Blob([arrayBuffer], { type: 'audio/mp4' });
+  formData.append('file', blob, `chunk_${chunkIndex}.mp4`);
+  formData.append('model', 'whisper-1');
+  formData.append('language', 'pt');
+  formData.append('response_format', 'verbose_json');
+
+  const response = await fetch('https://api.openai.com/v1/audio/transcriptions', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${openAIKey}`,
+    },
+    body: formData,
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    console.error(`Whisper error on chunk ${chunkIndex}:`, errorText);
+    throw new Error(`Whisper failed: ${errorText}`);
+  }
+
+  const result = await response.json();
+  console.log(`Chunk ${chunkIndex + 1} transcribed: ${result.text?.length || 0} chars`);
+
+  return {
+    text: result.text || '',
+    duration: result.duration || 0,
+  };
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -20,9 +99,9 @@ Deno.serve(async (req) => {
 
     console.log(`Transcribing audio for video: ${videoId}`);
 
-    const lovableApiKey = Deno.env.get('LOVABLE_API_KEY');
-    if (!lovableApiKey) {
-      throw new Error('LOVABLE_API_KEY not configured');
+    const openAIKey = Deno.env.get('OPENAI_API_KEY');
+    if (!openAIKey) {
+      throw new Error('OPENAI_API_KEY not configured');
     }
 
     // Check file size
@@ -47,7 +126,6 @@ Deno.serve(async (req) => {
       throw new Error('Não foi possível acessar o arquivo. Para vídeos do Google Drive: 1) Certifique-se que o compartilhamento está como "Qualquer pessoa com o link", 2) Ou baixe o vídeo e faça upload direto.');
     }
 
-    // Lovable AI + Gemini supports up to 2GB, but we'll limit to 200MB for practical reasons
     if (fileSizeInMB > 200) {
       throw new Error('Arquivo muito grande. O limite atual é de 200MB. Por favor, comprima o arquivo de áudio ou vídeo antes de fazer upload.');
     }
@@ -57,89 +135,43 @@ Deno.serve(async (req) => {
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    // Download the audio file
-    console.log('Downloading audio file...');
-    const audioResponse = await fetch(audioUrl);
-    if (!audioResponse.ok) {
-      throw new Error(`Failed to download audio file: ${audioResponse.status}`);
-    }
+    // Download audio
+    const audioData = await downloadAudioInChunks(audioUrl);
     
-    const audioBlob = await audioResponse.blob();
-    const audioBuffer = await audioBlob.arrayBuffer();
-    const audioBase64 = btoa(String.fromCharCode(...new Uint8Array(audioBuffer)));
-    console.log('Audio file downloaded and encoded');
-
-    // Call Lovable AI Gateway with Gemini for transcription
-    console.log('Calling Lovable AI + Gemini for transcription...');
-    const geminiResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${lovableApiKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: 'google/gemini-2.5-flash',
-        messages: [
-          {
-            role: 'system',
-            content: 'You are a professional transcription assistant. Transcribe the audio accurately in Portuguese, identifying speakers as "vendedor" and "cliente". Format the output as timestamped segments with speaker labels in the format: [MM:SS] speaker: text'
-          },
-          {
-            role: 'user',
-            content: `Please transcribe this audio file. The audio is in Portuguese and is a sales call between a salesperson (vendedor) and a customer (cliente). Provide timestamps in [MM:SS] format and alternate between speakers. Start each line with the timestamp and speaker label.
-
-Format example:
-[00:00] vendedor: Olá, bom dia!
-[00:03] cliente: Bom dia!
-
-Audio data (base64): ${audioBase64.substring(0, 100)}...`
-          }
-        ]
-      }),
-    });
-
-    if (!geminiResponse.ok) {
-      const errorText = await geminiResponse.text();
-      console.error('Lovable AI + Gemini error:', errorText);
-      
-      if (geminiResponse.status === 429) {
-        throw new Error('Limite de requisições excedido. Por favor, tente novamente em alguns minutos.');
-      }
-      if (geminiResponse.status === 402) {
-        throw new Error('Créditos insuficientes. Por favor, adicione créditos ao seu workspace Lovable.');
-      }
-      
-      throw new Error(`Erro na transcrição: ${errorText}`);
+    // Split into chunks and process
+    const chunks: Uint8Array[] = [];
+    for (let i = 0; i < audioData.length; i += CHUNK_SIZE) {
+      const chunk = audioData.slice(i, Math.min(i + CHUNK_SIZE, audioData.length));
+      chunks.push(chunk);
     }
 
-    const geminiData = await geminiResponse.json();
-    console.log('Transcription completed');
-    
-    // Parse Gemini response to extract transcription
-    const transcriptionText = geminiData.choices?.[0]?.message?.content || '';
-    
-    if (!transcriptionText) {
-      throw new Error('Transcrição vazia recebida do Gemini');
+    console.log(`Split into ${chunks.length} chunks`);
+
+    // Process all chunks
+    const transcriptions: { text: string; duration: number }[] = [];
+    let totalDuration = 0;
+
+    for (let i = 0; i < chunks.length; i++) {
+      const result = await transcribeChunk(chunks[i], i, openAIKey);
+      transcriptions.push(result);
+      totalDuration += result.duration;
     }
 
-    // Gemini already provides formatted transcription
-    const transcriptionToSave = transcriptionText;
-    
-    // Estimate duration based on text length (rough estimate: ~150 words per minute)
-    const wordCount = transcriptionText.split(/\s+/).length;
-    const estimatedDuration = Math.round((wordCount / 150) * 60);
-    
-    console.log(`Transcription complete. Length: ${transcriptionText.length} characters, Estimated duration: ${estimatedDuration}s, Words: ${wordCount}`);
+    // Combine all transcriptions
+    const fullTranscription = transcriptions.map(t => t.text).join(' ');
+    const wordCount = fullTranscription.split(/\s+/).length;
+
+    console.log(`Transcription complete. Total: ${fullTranscription.length} chars, ${wordCount} words, ${totalDuration.toFixed(2)}s`);
 
     // Save transcription to database
     const { data: transcriptionData, error: transcriptionError } = await supabase
       .from('transcriptions')
       .insert({
         video_id: videoId,
-        text: transcriptionToSave,
-        provider: 'lovable-ai-gemini',
+        text: fullTranscription,
+        provider: 'openai-whisper',
         language: 'pt-BR',
-        duration_sec: estimatedDuration,
+        duration_sec: Math.round(totalDuration),
         words_count: wordCount,
         speakers_json: null,
       })
@@ -155,10 +187,11 @@ Audio data (base64): ${audioBase64.substring(0, 100)}...`
     return new Response(
       JSON.stringify({
         success: true,
-        transcription: transcriptionToSave,
+        transcription: fullTranscription,
         transcriptionId: transcriptionData.id,
-        duration: estimatedDuration,
+        duration: Math.round(totalDuration),
         language: 'pt-BR',
+        chunks: chunks.length,
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );

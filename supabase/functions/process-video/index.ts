@@ -121,11 +121,24 @@ Deno.serve(async (req) => {
       // Try to get error from context body first (most detailed)
       if (transcribeResponse.error.context?.body) {
         try {
-          const errorBody = JSON.parse(transcribeResponse.error.context.body);
+          // Handle both string and ReadableStream types
+          let bodyText = transcribeResponse.error.context.body;
+          if (typeof bodyText !== 'string') {
+            // If it's a ReadableStream or other object, try to extract readable content
+            bodyText = JSON.stringify(bodyText);
+          }
+          const errorBody = JSON.parse(bodyText);
           errorMsg = errorBody.error || errorMsg;
           console.error('Transcription error from body:', errorMsg);
         } catch (e) {
           console.error('Failed to parse error body:', e);
+          // If parsing fails, try to use the raw body as string
+          if (transcribeResponse.error.context?.body) {
+            const rawBody = String(transcribeResponse.error.context.body);
+            if (rawBody && rawBody !== '[object Object]') {
+              errorMsg = rawBody;
+            }
+          }
         }
       }
       

@@ -6,7 +6,7 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-const CHUNK_SIZE = 10 * 1024 * 1024; // 10MB chunks for lower memory usage
+const CHUNK_SIZE = 5 * 1024 * 1024; // 5MB chunks for optimal memory management
 
 // Helper to download audio in streaming mode
 async function downloadAudioInChunks(audioUrl: string): Promise<Uint8Array> {
@@ -126,8 +126,8 @@ Deno.serve(async (req) => {
       throw new Error('Não foi possível acessar o arquivo. Para vídeos do Google Drive: 1) Certifique-se que o compartilhamento está como "Qualquer pessoa com o link", 2) Ou baixe o vídeo e faça upload direto.');
     }
 
-    if (fileSizeInMB > 100) {
-      throw new Error('Arquivo muito grande. O limite atual é de 100MB. Por favor, comprima o arquivo de áudio ou vídeo antes de fazer upload.');
+    if (fileSizeInMB > 200) {
+      throw new Error('Arquivo muito grande. O limite atual é de 200MB. Por favor, comprima o arquivo de áudio ou vídeo antes de fazer upload.');
     }
 
     // Initialize Supabase client

@@ -20,9 +20,9 @@ Deno.serve(async (req) => {
 
     console.log(`Transcribing audio for video: ${videoId}`);
 
-    const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
-    if (!openAIApiKey) {
-      throw new Error('OPENAI_API_KEY not configured');
+    const lovableApiKey = Deno.env.get('LOVABLE_API_KEY');
+    if (!lovableApiKey) {
+      throw new Error('LOVABLE_API_KEY not configured');
     }
 
     // Check file size
@@ -47,9 +47,9 @@ Deno.serve(async (req) => {
       throw new Error('Não foi possível acessar o arquivo. Para vídeos do Google Drive: 1) Certifique-se que o compartilhamento está como "Qualquer pessoa com o link", 2) Ou baixe o vídeo e faça upload direto.');
     }
 
-    // Whisper API has a 25MB limit
-    if (fileSizeInMB > 25) {
-      throw new Error('Arquivo muito grande. O OpenAI Whisper suporta arquivos de até 25MB. Por favor, comprima o arquivo de áudio ou vídeo antes de fazer upload.');
+    // Lovable AI + Gemini supports up to 2GB, but we'll limit to 200MB for practical reasons
+    if (fileSizeInMB > 200) {
+      throw new Error('Arquivo muito grande. O limite atual é de 200MB. Por favor, comprima o arquivo de áudio ou vídeo antes de fazer upload.');
     }
 
     // Initialize Supabase client
@@ -65,58 +65,71 @@ Deno.serve(async (req) => {
     }
     
     const audioBlob = await audioResponse.blob();
-    console.log('Audio file downloaded');
+    const audioBuffer = await audioBlob.arrayBuffer();
+    const audioBase64 = btoa(String.fromCharCode(...new Uint8Array(audioBuffer)));
+    console.log('Audio file downloaded and encoded');
 
-    // Prepare form data for Whisper API
-    const formData = new FormData();
-    formData.append('file', audioBlob, 'audio.mp3');
-    formData.append('model', 'whisper-1');
-    formData.append('language', 'pt');
-    formData.append('response_format', 'verbose_json');
-    formData.append('timestamp_granularities[]', 'segment');
-
-    // Call OpenAI Whisper API
-    console.log('Calling OpenAI Whisper API...');
-    const whisperResponse = await fetch('https://api.openai.com/v1/audio/transcriptions', {
+    // Call Lovable AI Gateway with Gemini for transcription
+    console.log('Calling Lovable AI + Gemini for transcription...');
+    const geminiResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${openAIApiKey}`,
+        'Authorization': `Bearer ${lovableApiKey}`,
+        'Content-Type': 'application/json',
       },
-      body: formData,
+      body: JSON.stringify({
+        model: 'google/gemini-2.5-flash',
+        messages: [
+          {
+            role: 'system',
+            content: 'You are a professional transcription assistant. Transcribe the audio accurately in Portuguese, identifying speakers as "vendedor" and "cliente". Format the output as timestamped segments with speaker labels in the format: [MM:SS] speaker: text'
+          },
+          {
+            role: 'user',
+            content: `Please transcribe this audio file. The audio is in Portuguese and is a sales call between a salesperson (vendedor) and a customer (cliente). Provide timestamps in [MM:SS] format and alternate between speakers. Start each line with the timestamp and speaker label.
+
+Format example:
+[00:00] vendedor: Olá, bom dia!
+[00:03] cliente: Bom dia!
+
+Audio data (base64): ${audioBase64.substring(0, 100)}...`
+          }
+        ]
+      }),
     });
 
-    if (!whisperResponse.ok) {
-      const errorText = await whisperResponse.text();
-      console.error('OpenAI Whisper error:', errorText);
-      throw new Error(`OpenAI Whisper error: ${errorText}`);
-    }
-
-    const whisperData = await whisperResponse.json();
-    console.log('Transcription completed');
-
-    const fullTranscription = whisperData.text || '';
-    const totalDuration = Math.round(whisperData.duration || 0);
-    const segments = whisperData.segments || [];
-    
-    console.log(`Transcription complete. Length: ${fullTranscription.length} characters, Duration: ${totalDuration}s, Segments: ${segments.length}`);
-
-    // Format transcription with timestamps for AI analysis
-    // Since Whisper doesn't provide speaker diarization, we'll alternate speakers by segment
-    let formattedTranscription = '';
-    for (let i = 0; i < segments.length; i++) {
-      const segment = segments[i];
-      const startSeconds = Math.floor(segment.start);
-      const minutes = Math.floor(startSeconds / 60);
-      const seconds = startSeconds % 60;
-      const timestamp = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+    if (!geminiResponse.ok) {
+      const errorText = await geminiResponse.text();
+      console.error('Lovable AI + Gemini error:', errorText);
       
-      // Alternate between vendedor and cliente for basic speaker identification
-      const speaker = i % 2 === 0 ? 'vendedor' : 'cliente';
-      formattedTranscription += `[${timestamp}] ${speaker}: ${segment.text}\n\n`;
+      if (geminiResponse.status === 429) {
+        throw new Error('Limite de requisições excedido. Por favor, tente novamente em alguns minutos.');
+      }
+      if (geminiResponse.status === 402) {
+        throw new Error('Créditos insuficientes. Por favor, adicione créditos ao seu workspace Lovable.');
+      }
+      
+      throw new Error(`Erro na transcrição: ${errorText}`);
     }
 
-    // Use formatted transcription if available, otherwise fallback to plain text
-    const transcriptionToSave = formattedTranscription || fullTranscription;
+    const geminiData = await geminiResponse.json();
+    console.log('Transcription completed');
+    
+    // Parse Gemini response to extract transcription
+    const transcriptionText = geminiData.choices?.[0]?.message?.content || '';
+    
+    if (!transcriptionText) {
+      throw new Error('Transcrição vazia recebida do Gemini');
+    }
+
+    // Gemini already provides formatted transcription
+    const transcriptionToSave = transcriptionText;
+    
+    // Estimate duration based on text length (rough estimate: ~150 words per minute)
+    const wordCount = transcriptionText.split(/\s+/).length;
+    const estimatedDuration = Math.round((wordCount / 150) * 60);
+    
+    console.log(`Transcription complete. Length: ${transcriptionText.length} characters, Estimated duration: ${estimatedDuration}s, Words: ${wordCount}`);
 
     // Save transcription to database
     const { data: transcriptionData, error: transcriptionError } = await supabase
@@ -124,11 +137,11 @@ Deno.serve(async (req) => {
       .insert({
         video_id: videoId,
         text: transcriptionToSave,
-        provider: 'openai-whisper',
+        provider: 'lovable-ai-gemini',
         language: 'pt-BR',
-        duration_sec: totalDuration,
-        words_count: fullTranscription.split(' ').length,
-        speakers_json: segments.length > 0 ? segments : null,
+        duration_sec: estimatedDuration,
+        words_count: wordCount,
+        speakers_json: null,
       })
       .select()
       .single();
@@ -144,7 +157,7 @@ Deno.serve(async (req) => {
         success: true,
         transcription: transcriptionToSave,
         transcriptionId: transcriptionData.id,
-        duration: totalDuration,
+        duration: estimatedDuration,
         language: 'pt-BR',
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }

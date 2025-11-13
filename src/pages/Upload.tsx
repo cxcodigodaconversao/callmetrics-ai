@@ -59,13 +59,13 @@ const Upload = () => {
     
     if (e.dataTransfer.files && e.dataTransfer.files[0]) {
       const file = e.dataTransfer.files[0];
-      const maxSize = 1 * 1024 * 1024 * 1024; // 1GB
+      const maxSize = 200 * 1024 * 1024; // 200MB
       
       if (file.size > maxSize) {
         const fileSizeMB = (file.size / (1024 * 1024)).toFixed(0);
         toast.error(
-          `Arquivo muito grande (${fileSizeMB}MB). Recomendamos até 1GB.\n\n` +
-          `💡 Dica: Extraia apenas o áudio em MP3 para análises mais rápidas`,
+          `Arquivo muito grande (${fileSizeMB}MB). O limite é 200MB.\n\n` +
+          `💡 Dica: Comprima o vídeo ou extraia apenas o áudio em MP3`,
           { duration: 6000 }
         );
         return;
@@ -78,13 +78,13 @@ const Upload = () => {
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
-      const maxSize = 1 * 1024 * 1024 * 1024; // 1GB
+      const maxSize = 200 * 1024 * 1024; // 200MB
       
       if (file.size > maxSize) {
         const fileSizeMB = (file.size / (1024 * 1024)).toFixed(0);
         toast.error(
-          `Arquivo muito grande (${fileSizeMB}MB). Recomendamos até 1GB.\n\n` +
-          `💡 Dica: Extraia apenas o áudio em MP3 para análises mais rápidas`,
+          `Arquivo muito grande (${fileSizeMB}MB). O limite é 200MB.\n\n` +
+          `💡 Dica: Comprima o vídeo ou extraia apenas o áudio em MP3`,
           { duration: 6000 }
         );
         return;

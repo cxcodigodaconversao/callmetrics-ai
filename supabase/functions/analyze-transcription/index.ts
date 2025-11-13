@@ -262,23 +262,23 @@ Deno.serve(async (req) => {
       ? `\n\n**INFORMAÇÃO IMPORTANTE:** A duração total desta gravação é de ${Math.floor(videoData.duration_sec / 60)} minutos e ${videoData.duration_sec % 60} segundos (${videoData.duration_sec}s total). Todos os timestamps na sua análise devem estar dentro deste intervalo.`
       : '';
 
-    const lovableApiKey = Deno.env.get('LOVABLE_API_KEY');
-    if (!lovableApiKey) {
-      throw new Error('LOVABLE_API_KEY not configured');
+    const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
+    if (!openAIApiKey) {
+      throw new Error('OPENAI_API_KEY not configured');
     }
 
-    // Call Lovable AI for analysis
-    console.log('Calling Lovable AI...');
+    // Call OpenAI for analysis
+    console.log('Calling OpenAI...');
     const startTime = Date.now();
     
-    const aiResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+    const aiResponse = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${lovableApiKey}`,
+        'Authorization': `Bearer ${openAIApiKey}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'google/gemini-2.5-flash',
+        model: 'gpt-4o-mini',
         messages: [
           { role: 'system', content: ANALYSIS_PROMPT },
           { role: 'user', content: `Transcrição da ligação (formatada com timestamps [MM:SS] antes de cada fala):${durationInfo}\n\n${transcription}` }
@@ -289,8 +289,8 @@ Deno.serve(async (req) => {
 
     if (!aiResponse.ok) {
       const errorText = await aiResponse.text();
-      console.error('Lovable AI error:', errorText);
-      throw new Error(`Lovable AI error: ${errorText}`);
+      console.error('OpenAI API error:', errorText);
+      throw new Error(`OpenAI API error: ${errorText}`);
     }
 
     const aiData = await aiResponse.json();
@@ -323,7 +323,7 @@ Deno.serve(async (req) => {
         score_fechamento: analysisData.scores.fechamento,
         score_objecoes: analysisData.scores.objecoes,
         score_compromisso_pagamento: analysisData.scores.compromisso_pagamento,
-        model: 'google/gemini-2.5-flash',
+        model: 'gpt-4o-mini',
         processing_time_sec: processingTime,
         insights_json: analysisData.insights,
       })

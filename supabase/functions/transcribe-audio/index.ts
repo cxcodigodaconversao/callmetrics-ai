@@ -20,9 +20,9 @@ Deno.serve(async (req) => {
 
     console.log(`Transcribing audio for video: ${videoId}`);
 
-    const groqApiKey = Deno.env.get('GROQ_API_KEY');
-    if (!groqApiKey) {
-      throw new Error('GROQ_API_KEY not configured');
+    const openaiApiKey = Deno.env.get('OPENAI_API_KEY');
+    if (!openaiApiKey) {
+      throw new Error('OPENAI_API_KEY not configured');
     }
 
     // Check file size
@@ -48,32 +48,35 @@ Deno.serve(async (req) => {
       throw new Error('Não foi possível acessar o arquivo. Para vídeos do Google Drive: 1) Certifique-se que o compartilhamento está como "Qualquer pessoa com o link", 2) Ou baixe o vídeo e faça upload direto.');
     }
 
-    // Groq free tier supports up to 25MB
-    if (fileSizeInMB > 25) {
-      throw new Error('Arquivo muito grande. O limite da API Groq é de 25MB. Por favor, comprima o arquivo de áudio ou vídeo antes de fazer upload.');
+    // OpenAI Whisper supports larger files
+    console.log('Sending audio to OpenAI Whisper API...');
+    
+    // Download the audio file
+    const audioResponse = await fetch(audioUrl);
+    if (!audioResponse.ok) {
+      throw new Error(`Failed to download audio: ${audioResponse.status}`);
     }
-
-    // Send URL directly to Groq - NO DOWNLOAD!
-    console.log('Sending audio URL to Groq Whisper API...');
+    
+    const audioBlob = await audioResponse.blob();
     
     const formData = new FormData();
-    formData.append('url', audioUrl);
-    formData.append('model', 'whisper-large-v3-turbo');
+    formData.append('file', audioBlob, 'audio.mp4');
+    formData.append('model', 'whisper-1');
     formData.append('language', 'pt');
     formData.append('response_format', 'verbose_json');
 
-    const response = await fetch('https://api.groq.com/openai/v1/audio/transcriptions', {
+    const response = await fetch('https://api.openai.com/v1/audio/transcriptions', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${groqApiKey}`,
+        'Authorization': `Bearer ${openaiApiKey}`,
       },
       body: formData,
     });
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error(`Groq API error:`, errorText);
-      throw new Error(`Groq API failed: ${errorText}`);
+      console.error(`OpenAI API error:`, errorText);
+      throw new Error(`OpenAI API failed: ${errorText}`);
     }
 
     const result = await response.json();
@@ -93,7 +96,7 @@ Deno.serve(async (req) => {
       .insert({
         video_id: videoId,
         text: transcriptionText,
-        provider: 'groq-whisper',
+        provider: 'openai-whisper',
         language: 'pt-BR',
         duration_sec: Math.round(duration),
         words_count: wordCount,

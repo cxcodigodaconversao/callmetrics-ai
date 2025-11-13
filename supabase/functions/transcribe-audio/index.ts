@@ -20,9 +20,9 @@ Deno.serve(async (req) => {
 
     console.log(`Transcribing audio for video: ${videoId}`);
 
-    const assemblyAIKey = Deno.env.get('ASSEMBLYAI_API_KEY');
-    if (!assemblyAIKey) {
-      throw new Error('ASSEMBLYAI_API_KEY not configured');
+    const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
+    if (!openAIApiKey) {
+      throw new Error('OPENAI_API_KEY not configured');
     }
 
     // Check file size
@@ -47,84 +47,72 @@ Deno.serve(async (req) => {
       throw new Error('Não foi possível acessar o arquivo. Para vídeos do Google Drive: 1) Certifique-se que o compartilhamento está como "Qualquer pessoa com o link", 2) Ou baixe o vídeo e faça upload direto.');
     }
 
+    // Whisper API has a 25MB limit
+    if (fileSizeInMB > 25) {
+      throw new Error('Arquivo muito grande. O OpenAI Whisper suporta arquivos de até 25MB. Por favor, comprima o arquivo de áudio ou vídeo antes de fazer upload.');
+    }
+
     // Initialize Supabase client
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    // Step 1: Create transcription job with AssemblyAI
-    console.log('Creating AssemblyAI transcription job...');
-    const createResponse = await fetch('https://api.assemblyai.com/v2/transcript', {
+    // Download the audio file
+    console.log('Downloading audio file...');
+    const audioResponse = await fetch(audioUrl);
+    if (!audioResponse.ok) {
+      throw new Error(`Failed to download audio file: ${audioResponse.status}`);
+    }
+    
+    const audioBlob = await audioResponse.blob();
+    console.log('Audio file downloaded');
+
+    // Prepare form data for Whisper API
+    const formData = new FormData();
+    formData.append('file', audioBlob, 'audio.mp3');
+    formData.append('model', 'whisper-1');
+    formData.append('language', 'pt');
+    formData.append('response_format', 'verbose_json');
+    formData.append('timestamp_granularities[]', 'segment');
+
+    // Call OpenAI Whisper API
+    console.log('Calling OpenAI Whisper API...');
+    const whisperResponse = await fetch('https://api.openai.com/v1/audio/transcriptions', {
       method: 'POST',
       headers: {
-        'Authorization': assemblyAIKey,
-        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${openAIApiKey}`,
       },
-      body: JSON.stringify({
-        audio_url: audioUrl,
-        language_code: 'pt',
-        speaker_labels: true,
-      }),
+      body: formData,
     });
 
-    if (!createResponse.ok) {
-      const errorText = await createResponse.text();
-      throw new Error(`AssemblyAI error: ${errorText}`);
+    if (!whisperResponse.ok) {
+      const errorText = await whisperResponse.text();
+      console.error('OpenAI Whisper error:', errorText);
+      throw new Error(`OpenAI Whisper error: ${errorText}`);
     }
 
-    const { id: transcriptId } = await createResponse.json();
-    console.log(`Transcription job created: ${transcriptId}`);
+    const whisperData = await whisperResponse.json();
+    console.log('Transcription completed');
 
-    // Step 2: Poll for completion
-    console.log('Polling for transcription completion...');
-    let transcript;
-    let attempts = 0;
-    const maxAttempts = 120; // 10 minutes max (5s intervals)
-
-    while (attempts < maxAttempts) {
-      const pollResponse = await fetch(`https://api.assemblyai.com/v2/transcript/${transcriptId}`, {
-        headers: {
-          'Authorization': assemblyAIKey,
-        },
-      });
-
-      if (!pollResponse.ok) {
-        throw new Error(`Failed to poll transcription status: ${pollResponse.status}`);
-      }
-
-      transcript = await pollResponse.json();
-      console.log(`Status: ${transcript.status} (attempt ${attempts + 1}/${maxAttempts})`);
-
-      if (transcript.status === 'completed') {
-        break;
-      } else if (transcript.status === 'error') {
-        throw new Error(`Transcription failed: ${transcript.error}`);
-      }
-
-      // Wait 5 seconds before next poll
-      await new Promise(resolve => setTimeout(resolve, 5000));
-      attempts++;
-    }
-
-    if (transcript.status !== 'completed') {
-      throw new Error('Transcription timeout: demorou mais de 10 minutos');
-    }
-
-    const fullTranscription = transcript.text || '';
-    const totalDuration = Math.round((transcript.audio_duration || 0));
-    const utterances = transcript.utterances || [];
+    const fullTranscription = whisperData.text || '';
+    const totalDuration = Math.round(whisperData.duration || 0);
+    const segments = whisperData.segments || [];
     
-    console.log(`Transcription complete. Length: ${fullTranscription.length} characters, Duration: ${totalDuration}s, Utterances: ${utterances.length}`);
+    console.log(`Transcription complete. Length: ${fullTranscription.length} characters, Duration: ${totalDuration}s, Segments: ${segments.length}`);
 
     // Format transcription with timestamps for AI analysis
+    // Since Whisper doesn't provide speaker diarization, we'll alternate speakers by segment
     let formattedTranscription = '';
-    for (const utterance of utterances) {
-      const startMs = utterance.start;
-      const minutes = Math.floor(startMs / 60000);
-      const seconds = Math.floor((startMs % 60000) / 1000);
+    for (let i = 0; i < segments.length; i++) {
+      const segment = segments[i];
+      const startSeconds = Math.floor(segment.start);
+      const minutes = Math.floor(startSeconds / 60);
+      const seconds = startSeconds % 60;
       const timestamp = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
-      const speaker = utterance.speaker === 'A' ? 'vendedor' : 'cliente';
-      formattedTranscription += `[${timestamp}] ${speaker}: ${utterance.text}\n\n`;
+      
+      // Alternate between vendedor and cliente for basic speaker identification
+      const speaker = i % 2 === 0 ? 'vendedor' : 'cliente';
+      formattedTranscription += `[${timestamp}] ${speaker}: ${segment.text}\n\n`;
     }
 
     // Use formatted transcription if available, otherwise fallback to plain text
@@ -136,11 +124,11 @@ Deno.serve(async (req) => {
       .insert({
         video_id: videoId,
         text: transcriptionToSave,
-        provider: 'assemblyai',
+        provider: 'openai-whisper',
         language: 'pt-BR',
         duration_sec: totalDuration,
         words_count: fullTranscription.split(' ').length,
-        speakers_json: utterances.length > 0 ? utterances : null,
+        speakers_json: segments.length > 0 ? segments : null,
       })
       .select()
       .single();

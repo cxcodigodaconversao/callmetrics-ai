@@ -9,8 +9,6 @@ import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Progress } from "@/components/ui/progress";
-import { FFmpeg } from '@ffmpeg/ffmpeg';
-import { fetchFile, toBlobURL } from '@ffmpeg/util';
 
 const Upload = () => {
   const navigate = useNavigate();
@@ -21,9 +19,6 @@ const Upload = () => {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
-  const [isCompressing, setIsCompressing] = useState(false);
-  const [compressionProgress, setCompressionProgress] = useState(0);
-  const ffmpegRef = useRef(new FFmpeg());
 
   // Redirect to auth if not logged in
   useEffect(() => {
@@ -64,23 +59,15 @@ const Upload = () => {
     
     if (e.dataTransfer.files && e.dataTransfer.files[0]) {
       const file = e.dataTransfer.files[0];
-      const maxSize = 500 * 1024 * 1024; // 500MB (will auto-compress)
+      const maxSize = 200 * 1024 * 1024; // 200MB
       
       if (file.size > maxSize) {
         const fileSizeMB = (file.size / (1024 * 1024)).toFixed(0);
         toast.error(
-          `Arquivo muito grande (${fileSizeMB}MB). O limite é 500MB.`,
+          `Arquivo muito grande (${fileSizeMB}MB). O limite é 200MB.`,
           { duration: 5000 }
         );
         return;
-      }
-      
-      const fileSizeMB = (file.size / (1024 * 1024)).toFixed(1);
-      if (file.size > 25 * 1024 * 1024) {
-        toast.info(
-          `Arquivo de ${fileSizeMB}MB será comprimido automaticamente para otimizar a transcrição.`,
-          { duration: 5000 }
-        );
       }
       
       setSelectedFile(file);
@@ -90,89 +77,21 @@ const Upload = () => {
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
-      const maxSize = 500 * 1024 * 1024; // 500MB (will auto-compress)
+      const maxSize = 200 * 1024 * 1024; // 200MB
       
       if (file.size > maxSize) {
         const fileSizeMB = (file.size / (1024 * 1024)).toFixed(0);
         toast.error(
-          `Arquivo muito grande (${fileSizeMB}MB). O limite é 500MB.`,
+          `Arquivo muito grande (${fileSizeMB}MB). O limite é 200MB.`,
           { duration: 5000 }
         );
         return;
-      }
-      
-      const fileSizeMB = (file.size / (1024 * 1024)).toFixed(1);
-      if (file.size > 25 * 1024 * 1024) {
-        toast.info(
-          `Arquivo de ${fileSizeMB}MB será comprimido automaticamente para otimizar a transcrição.`,
-          { duration: 5000 }
-        );
       }
       
       setSelectedFile(file);
     }
   };
 
-  const compressAudio = async (file: File): Promise<File> => {
-    const ffmpeg = ffmpegRef.current;
-    
-    try {
-      setIsCompressing(true);
-      setCompressionProgress(0);
-      
-      // Load FFmpeg (only once)
-      if (!ffmpeg.loaded) {
-        toast.info("Carregando compressor de áudio...", { duration: 2000 });
-        const baseURL = 'https://unpkg.com/@ffmpeg/core@0.12.6/dist/umd';
-        await ffmpeg.load({
-          coreURL: await toBlobURL(`${baseURL}/ffmpeg-core.js`, 'text/javascript'),
-          wasmURL: await toBlobURL(`${baseURL}/ffmpeg-core.wasm`, 'application/wasm'),
-        });
-      }
-      
-      // Progress tracking
-      ffmpeg.on('progress', ({ progress }) => {
-        setCompressionProgress(Math.round(progress * 100));
-      });
-      
-      toast.info("Comprimindo áudio para otimizar a transcrição...");
-      
-      // Write input file
-      await ffmpeg.writeFile('input', await fetchFile(file));
-      
-      // Compress: 96kbps, 16kHz (optimal for voice transcription)
-      await ffmpeg.exec([
-        '-i', 'input',
-        '-b:a', '96k',
-        '-ar', '16000',
-        '-ac', '1', // mono
-        'output.mp3'
-      ]);
-      
-      // Read compressed file
-      const data = await ffmpeg.readFile('output.mp3');
-      // FileData from ffmpeg can be Uint8Array or string, we need Uint8Array for blob
-      const buffer = typeof data === 'string' ? new TextEncoder().encode(data) : new Uint8Array(data);
-      const compressedFile = new File(
-        [buffer], 
-        file.name.replace(/\.[^/.]+$/, '') + '_compressed.mp3',
-        { type: 'audio/mpeg' }
-      );
-      
-      const originalSizeMB = (file.size / (1024 * 1024)).toFixed(1);
-      const compressedSizeMB = (compressedFile.size / (1024 * 1024)).toFixed(1);
-      
-      toast.success(
-        `Compressão concluída! ${originalSizeMB}MB → ${compressedSizeMB}MB`,
-        { duration: 3000 }
-      );
-      
-      return compressedFile;
-    } finally {
-      setIsCompressing(false);
-      setCompressionProgress(0);
-    }
-  };
 
   const handleFileSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -186,17 +105,8 @@ const Upload = () => {
     setUploadProgress(0);
 
     try {
-      // Check if compression is needed
-      let fileToUpload = selectedFile;
-      const fileSizeMB = selectedFile.size / (1024 * 1024);
-      
-      if (fileSizeMB > 25) {
-        toast.info("Arquivo acima de 25MB. Iniciando compressão automática...");
-        fileToUpload = await compressAudio(selectedFile);
-      }
-      
       // Upload file to Supabase Storage
-      const fileExt = fileToUpload.name.split('.').pop();
+      const fileExt = selectedFile.name.split('.').pop();
       const fileName = `${user.id}/${Date.now()}.${fileExt}`;
       
       // Simulate progress
@@ -212,7 +122,7 @@ const Upload = () => {
 
       const { data: uploadData, error: uploadError } = await supabase.storage
         .from('uploads')
-        .upload(fileName, fileToUpload, {
+        .upload(fileName, selectedFile, {
           cacheControl: '3600',
           upsert: false
         });
@@ -233,8 +143,8 @@ const Upload = () => {
           title: videoTitle,
           mode: 'upload',
           storage_path: fileName,
-          mime_type: fileToUpload.type,
-          file_size_bytes: fileToUpload.size,
+          mime_type: selectedFile.type,
+          file_size_bytes: selectedFile.size,
           status: 'queued'
         })
         .select()
@@ -393,16 +303,6 @@ const Upload = () => {
                 )}
               </div>
 
-              {isCompressing && compressionProgress > 0 && (
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-muted-foreground">Comprimindo áudio...</span>
-                    <span className="text-primary font-semibold">{compressionProgress}%</span>
-                  </div>
-                  <Progress value={compressionProgress} className="w-full" />
-                </div>
-              )}
-
               {isProcessing && uploadProgress > 0 && (
                 <div className="space-y-2">
                   <div className="flex items-center justify-between text-sm">
@@ -417,14 +317,9 @@ const Upload = () => {
                 <Button 
                   type="submit" 
                   className="w-full btn-primary text-lg py-6" 
-                  disabled={isProcessing || isCompressing}
+                  disabled={isProcessing}
                 >
-                  {isCompressing ? (
-                    <>
-                      <Music className="w-5 h-5 mr-2 animate-pulse" />
-                      Comprimindo...
-                    </>
-                  ) : isProcessing ? (
+                  {isProcessing ? (
                     <>
                       <UploadIcon className="w-5 h-5 mr-2 animate-spin" />
                       Enviando...

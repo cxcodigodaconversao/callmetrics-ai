@@ -48,9 +48,9 @@ Deno.serve(async (req) => {
       throw new Error('Não foi possível acessar o arquivo. Para vídeos do Google Drive: 1) Certifique-se que o compartilhamento está como "Qualquer pessoa com o link", 2) Ou baixe o vídeo e faça upload direto.');
     }
 
-    // Groq free tier supports up to 100MB
-    if (fileSizeInMB > 100) {
-      throw new Error('Arquivo muito grande. O limite atual é de 100MB. Por favor, comprima o arquivo de áudio ou vídeo antes de fazer upload.');
+    // Groq free tier supports up to 25MB
+    if (fileSizeInMB > 25) {
+      throw new Error('Arquivo muito grande. O limite da API Groq é de 25MB. Por favor, comprima o arquivo de áudio ou vídeo antes de fazer upload.');
     }
 
     // Send URL directly to Groq - NO DOWNLOAD!

@@ -121,24 +121,33 @@ Deno.serve(async (req) => {
       // Try to get error from context body first (most detailed)
       if (transcribeResponse.error.context?.body) {
         try {
-          // Handle both string and ReadableStream types
-          let bodyText = transcribeResponse.error.context.body;
-          if (typeof bodyText !== 'string') {
-            // If it's a ReadableStream or other object, try to extract readable content
-            bodyText = JSON.stringify(bodyText);
+          // Handle ReadableStream properly
+          const body = transcribeResponse.error.context.body;
+          
+          if (body instanceof ReadableStream) {
+            const reader = body.getReader();
+            const chunks: Uint8Array[] = [];
+            
+            while (true) {
+              const { done, value } = await reader.read();
+              if (done) break;
+              if (value) chunks.push(value);
+            }
+            
+            const bodyText = new TextDecoder().decode(
+              new Uint8Array(chunks.flatMap(chunk => Array.from(chunk)))
+            );
+            
+            const errorBody = JSON.parse(bodyText);
+            errorMsg = errorBody.error || errorMsg;
+            console.error('Transcription error from ReadableStream body:', errorMsg);
+          } else if (typeof body === 'string') {
+            const errorBody = JSON.parse(body);
+            errorMsg = errorBody.error || errorMsg;
+            console.error('Transcription error from string body:', errorMsg);
           }
-          const errorBody = JSON.parse(bodyText);
-          errorMsg = errorBody.error || errorMsg;
-          console.error('Transcription error from body:', errorMsg);
         } catch (e) {
           console.error('Failed to parse error body:', e);
-          // If parsing fails, try to use the raw body as string
-          if (transcribeResponse.error.context?.body) {
-            const rawBody = String(transcribeResponse.error.context.body);
-            if (rawBody && rawBody !== '[object Object]') {
-              errorMsg = rawBody;
-            }
-          }
         }
       }
       
@@ -150,7 +159,7 @@ Deno.serve(async (req) => {
       
       // If still generic, add more context
       if (errorMsg === 'Erro na transcrição' || errorMsg.includes('Edge Function returned a non-2xx status code')) {
-        errorMsg = 'Erro na transcrição: A API da OpenAI pode estar temporariamente indisponível ou a chave API não está configurada. Tente novamente em alguns minutos.';
+        errorMsg = 'Erro na transcrição. Verifique se o arquivo está acessível e dentro do limite de 25MB.';
       }
       
       throw new Error(errorMsg);

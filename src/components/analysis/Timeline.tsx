@@ -1,9 +1,11 @@
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Play, FileText } from "lucide-react";
+import { Play, FileText, Loader2 } from "lucide-react";
 import { useState } from "react";
 import { AudioPlayer } from "./AudioPlayer";
 import { TranscriptionDialog } from "./TranscriptionDialog";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "@/hooks/use-toast";
 
 interface TimelineProps {
   analysis: any;
@@ -14,14 +16,50 @@ export function Timeline({ analysis }: TimelineProps) {
   const [audioPlayerOpen, setAudioPlayerOpen] = useState(false);
   const [transcriptionOpen, setTranscriptionOpen] = useState(false);
   const [selectedMoment, setSelectedMoment] = useState<any>(null);
+  const [isLoadingAudio, setIsLoadingAudio] = useState(false);
 
   if (moments.length === 0) {
     return null;
   }
 
-  const handlePlayAudio = (moment: any) => {
+  const handlePlayAudio = async (moment: any) => {
     setSelectedMoment(moment);
-    setAudioPlayerOpen(true);
+    
+    // Verificar se temos storage_path
+    if (!analysis?.video?.storage_path) {
+      toast({
+        title: "Erro ao carregar áudio",
+        description: "Caminho do arquivo não encontrado.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    setIsLoadingAudio(true);
+    
+    try {
+      // Gerar URL fresca (válida por 2 horas)
+      const { data, error } = await supabase.storage
+        .from("uploads")
+        .createSignedUrl(analysis.video.storage_path, 7200);
+      
+      if (error) throw error;
+      
+      // Atualizar URL no objeto analysis
+      analysis.video.videoUrl = data.signedUrl;
+      
+      // Abrir player com URL fresca
+      setAudioPlayerOpen(true);
+    } catch (error: any) {
+      console.error("Error generating video URL:", error);
+      toast({
+        title: "Erro ao carregar áudio",
+        description: "Não foi possível gerar o link do vídeo. Tente novamente.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoadingAudio(false);
+    }
   };
 
   const handleViewTranscription = (moment: any) => {
@@ -143,10 +181,19 @@ export function Timeline({ analysis }: TimelineProps) {
                     size="sm" 
                     className="gap-2"
                     onClick={() => handlePlayAudio(moment)}
-                    disabled={!analysis?.video?.videoUrl}
+                    disabled={isLoadingAudio || !analysis?.video?.storage_path}
                   >
-                    <Play className="w-3 h-3" />
-                    Ouvir trecho
+                    {isLoadingAudio ? (
+                      <>
+                        <Loader2 className="w-3 h-3 animate-spin" />
+                        Carregando...
+                      </>
+                    ) : (
+                      <>
+                        <Play className="w-3 h-3" />
+                        Ouvir trecho
+                      </>
+                    )}
                   </Button>
                   <Button 
                     variant="ghost" 

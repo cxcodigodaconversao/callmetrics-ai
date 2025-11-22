@@ -225,6 +225,124 @@ export type Database = {
           },
         ]
       }
+      crm_activities: {
+        Row: {
+          activity_type: string
+          created_at: string
+          description: string | null
+          id: string
+          lead_id: string
+          metadata: Json | null
+          new_stage: Database["public"]["Enums"]["crm_stage"] | null
+          old_stage: Database["public"]["Enums"]["crm_stage"] | null
+          user_id: string
+        }
+        Insert: {
+          activity_type: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          lead_id: string
+          metadata?: Json | null
+          new_stage?: Database["public"]["Enums"]["crm_stage"] | null
+          old_stage?: Database["public"]["Enums"]["crm_stage"] | null
+          user_id: string
+        }
+        Update: {
+          activity_type?: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          lead_id?: string
+          metadata?: Json | null
+          new_stage?: Database["public"]["Enums"]["crm_stage"] | null
+          old_stage?: Database["public"]["Enums"]["crm_stage"] | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "crm_activities_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "crm_leads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      crm_leads: {
+        Row: {
+          call_scheduled_at: string | null
+          campaign_source: string | null
+          connection_id: string | null
+          contact_email: string | null
+          contact_name: string
+          contact_number: string | null
+          created_at: string
+          disc_profile: Database["public"]["Enums"]["disc_profile"] | null
+          id: string
+          last_contact_at: string | null
+          lost_at: string | null
+          lost_reason: string | null
+          metadata: Json | null
+          notes: string | null
+          stage: Database["public"]["Enums"]["crm_stage"]
+          team: string | null
+          updated_at: string
+          user_id: string
+          won_at: string | null
+        }
+        Insert: {
+          call_scheduled_at?: string | null
+          campaign_source?: string | null
+          connection_id?: string | null
+          contact_email?: string | null
+          contact_name: string
+          contact_number?: string | null
+          created_at?: string
+          disc_profile?: Database["public"]["Enums"]["disc_profile"] | null
+          id?: string
+          last_contact_at?: string | null
+          lost_at?: string | null
+          lost_reason?: string | null
+          metadata?: Json | null
+          notes?: string | null
+          stage?: Database["public"]["Enums"]["crm_stage"]
+          team?: string | null
+          updated_at?: string
+          user_id: string
+          won_at?: string | null
+        }
+        Update: {
+          call_scheduled_at?: string | null
+          campaign_source?: string | null
+          connection_id?: string | null
+          contact_email?: string | null
+          contact_name?: string
+          contact_number?: string | null
+          created_at?: string
+          disc_profile?: Database["public"]["Enums"]["disc_profile"] | null
+          id?: string
+          last_contact_at?: string | null
+          lost_at?: string | null
+          lost_reason?: string | null
+          metadata?: Json | null
+          notes?: string | null
+          stage?: Database["public"]["Enums"]["crm_stage"]
+          team?: string | null
+          updated_at?: string
+          user_id?: string
+          won_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "crm_leads_connection_id_fkey"
+            columns: ["connection_id"]
+            isOneToOne: false
+            referencedRelation: "whatsapp_connections"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           avatar_url: string | null
@@ -491,6 +609,107 @@ export type Database = {
           },
         ]
       }
+      whatsapp_connections: {
+        Row: {
+          connection_type: Database["public"]["Enums"]["whatsapp_connection_type"]
+          created_at: string
+          display_name: string | null
+          error_message: string | null
+          id: string
+          last_connected_at: string | null
+          phone_number: string | null
+          qr_code: string | null
+          session_data: Json | null
+          status: Database["public"]["Enums"]["whatsapp_status"]
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          connection_type?: Database["public"]["Enums"]["whatsapp_connection_type"]
+          created_at?: string
+          display_name?: string | null
+          error_message?: string | null
+          id?: string
+          last_connected_at?: string | null
+          phone_number?: string | null
+          qr_code?: string | null
+          session_data?: Json | null
+          status?: Database["public"]["Enums"]["whatsapp_status"]
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          connection_type?: Database["public"]["Enums"]["whatsapp_connection_type"]
+          created_at?: string
+          display_name?: string | null
+          error_message?: string | null
+          id?: string
+          last_connected_at?: string | null
+          phone_number?: string | null
+          qr_code?: string | null
+          session_data?: Json | null
+          status?: Database["public"]["Enums"]["whatsapp_status"]
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      whatsapp_messages: {
+        Row: {
+          chat_id: string
+          connection_id: string
+          contact_name: string | null
+          contact_number: string | null
+          created_at: string
+          id: string
+          is_from_me: boolean | null
+          media_url: string | null
+          message_body: string | null
+          message_id: string
+          message_type: string | null
+          metadata: Json | null
+          timestamp: string
+        }
+        Insert: {
+          chat_id: string
+          connection_id: string
+          contact_name?: string | null
+          contact_number?: string | null
+          created_at?: string
+          id?: string
+          is_from_me?: boolean | null
+          media_url?: string | null
+          message_body?: string | null
+          message_id: string
+          message_type?: string | null
+          metadata?: Json | null
+          timestamp: string
+        }
+        Update: {
+          chat_id?: string
+          connection_id?: string
+          contact_name?: string | null
+          contact_number?: string | null
+          created_at?: string
+          id?: string
+          is_from_me?: boolean | null
+          media_url?: string | null
+          message_body?: string | null
+          message_id?: string
+          message_type?: string | null
+          metadata?: Json | null
+          timestamp?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "whatsapp_messages_connection_id_fkey"
+            columns: ["connection_id"]
+            isOneToOne: false
+            referencedRelation: "whatsapp_connections"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
@@ -509,6 +728,28 @@ export type Database = {
     }
     Enums: {
       app_role: "admin" | "user"
+      crm_stage:
+        | "conversa_iniciada"
+        | "contactado"
+        | "pre_qualificacao"
+        | "agendamento_call"
+        | "call_marcada"
+        | "ganho"
+        | "perdido"
+        | "no_show"
+      disc_profile:
+        | "dominance"
+        | "influence"
+        | "steadiness"
+        | "compliance"
+        | "unknown"
+      whatsapp_connection_type: "web" | "api"
+      whatsapp_status:
+        | "disconnected"
+        | "connecting"
+        | "qr_code"
+        | "connected"
+        | "error"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -637,6 +878,31 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["admin", "user"],
+      crm_stage: [
+        "conversa_iniciada",
+        "contactado",
+        "pre_qualificacao",
+        "agendamento_call",
+        "call_marcada",
+        "ganho",
+        "perdido",
+        "no_show",
+      ],
+      disc_profile: [
+        "dominance",
+        "influence",
+        "steadiness",
+        "compliance",
+        "unknown",
+      ],
+      whatsapp_connection_type: ["web", "api"],
+      whatsapp_status: [
+        "disconnected",
+        "connecting",
+        "qr_code",
+        "connected",
+        "error",
+      ],
     },
   },
 } as const

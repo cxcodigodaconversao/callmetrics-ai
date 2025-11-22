@@ -23,6 +23,8 @@ export default function WhatsAppConnection({ userId }: WhatsAppConnectProps) {
   const [phoneNumber, setPhoneNumber] = useState<string>('');
   const [displayName, setDisplayName] = useState<string>('');
   const [errorMessage, setErrorMessage] = useState<string>('');
+  const [serverStatus, setServerStatus] = useState<string>('');
+  const [showDiagnostics, setShowDiagnostics] = useState(false);
   
   const { toast } = useToast();
 
@@ -122,10 +124,21 @@ export default function WhatsAppConnection({ userId }: WhatsAppConnectProps) {
     
     try {
       // Verificar se servidor está online
-      const isOnline = await whatsappService.healthCheck();
-      if (!isOnline) {
-        throw new Error('Servidor offline. Tente novamente em alguns instantes.');
+      console.log('🔍 Verificando servidor WhatsApp...');
+      const healthResult = await whatsappService.healthCheck();
+      
+      if (!healthResult.online) {
+        const errorDetails = healthResult.status 
+          ? `Servidor retornou status ${healthResult.status} (${healthResult.statusText})`
+          : `Servidor inacessível: ${healthResult.error || 'Verifique a URL no config'}`;
+        
+        setServerStatus(errorDetails);
+        setErrorMessage(errorDetails);
+        throw new Error(`❌ ${errorDetails}`);
       }
+      
+      setServerStatus('✅ Servidor online');
+      console.log('✅ Servidor WhatsApp está online');
 
       // Criar ou buscar conexão
       let connection;
@@ -356,6 +369,61 @@ export default function WhatsAppConnection({ userId }: WhatsAppConnectProps) {
             </Button>
           </div>
         )}
+
+        {/* PAINEL DE DIAGNÓSTICO */}
+        <div className="mt-6 pt-4 border-t">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setShowDiagnostics(!showDiagnostics)}
+            className="w-full text-xs text-muted-foreground hover:text-foreground"
+          >
+            {showDiagnostics ? '▼' : '▶'} Diagnóstico da Conexão
+          </Button>
+          
+          {showDiagnostics && (
+            <div className="mt-3 p-4 bg-muted/50 rounded-lg space-y-2 text-xs font-mono">
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Status atual:</span>
+                <span className="font-semibold">{status}</span>
+              </div>
+              
+              {connectionId && (
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Connection ID:</span>
+                  <span className="truncate ml-2 max-w-[200px]" title={connectionId}>
+                    {connectionId.slice(0, 8)}...
+                  </span>
+                </div>
+              )}
+              
+              {serverStatus && (
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Servidor:</span>
+                  <span className={serverStatus.includes('✅') ? 'text-green-600' : 'text-destructive'}>
+                    {serverStatus}
+                  </span>
+                </div>
+              )}
+              
+              {errorMessage && (
+                <div className="pt-2 border-t border-border">
+                  <span className="text-muted-foreground block mb-1">Último erro:</span>
+                  <span className="text-destructive break-words">{errorMessage}</span>
+                </div>
+              )}
+              
+              <div className="pt-2 border-t border-border">
+                <span className="text-muted-foreground block mb-1">Config:</span>
+                <span className="break-all text-[10px]">
+                  {import.meta.env.MODE === 'development' 
+                    ? 'https://whatsapp-server-crm-production.up.railway.app'
+                    : 'Servidor configurado'}
+                </span>
+              </div>
+            </div>
+          )}
+        </div>
       </CardContent>
     </Card>
   );

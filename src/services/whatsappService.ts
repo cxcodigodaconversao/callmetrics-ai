@@ -17,13 +17,9 @@ class WhatsAppService {
    */
   async connect(userId: string, connectionId: string) {
     try {
-      console.log('➡️ [WhatsApp] Chamando /connect', {
-        url: `${this.serverUrl}/connect`,
-        userId,
-        connectionId
-      });
+      console.log('📱 Iniciando conexão WhatsApp...', { userId, connectionId });
 
-      const response = await fetch(`${this.serverUrl}/api/connect`, {
+      const response = await fetch(`${this.serverUrl}/connect`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -31,35 +27,17 @@ class WhatsAppService {
         body: JSON.stringify({ userId, connectionId }),
       });
 
-      console.log('📡 [WhatsApp] Resposta /connect', {
-        status: response.status,
-        statusText: response.statusText,
-        ok: response.ok
-      });
-
       if (!response.ok) {
-        const errorText = await response.text();
-        let errorMsg = `Erro ${response.status}: ${response.statusText}`;
-        try {
-          const errorJson = JSON.parse(errorText);
-          errorMsg = errorJson.error || errorMsg;
-        } catch {
-          errorMsg = errorText || errorMsg;
-        }
-        console.error('❌ [WhatsApp] Erro na resposta:', errorMsg);
-        throw new Error(errorMsg);
+        const error = await response.json();
+        throw new Error(error.error || 'Erro ao conectar WhatsApp');
       }
 
       const data = await response.json();
-      console.log('✅ [WhatsApp] Conexão iniciada com sucesso:', data);
+      console.log('✅ Conexão iniciada:', data);
       return data;
       
-    } catch (error: any) {
-      console.error('❌ [WhatsApp] Falha ao conectar:', {
-        message: error.message,
-        type: error.name,
-        stack: error.stack
-      });
+    } catch (error) {
+      console.error('❌ Erro ao conectar:', error);
       throw error;
     }
   }
@@ -71,7 +49,7 @@ class WhatsAppService {
     try {
       console.log('🔌 Desconectando WhatsApp...', connectionId);
 
-      const response = await fetch(`${this.serverUrl}/api/disconnect`, {
+      const response = await fetch(`${this.serverUrl}/disconnect`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -98,7 +76,7 @@ class WhatsAppService {
    */
   async getStatus(connectionId: string) {
     try {
-      const response = await fetch(`${this.serverUrl}/api/status/${connectionId}`);
+      const response = await fetch(`${this.serverUrl}/status/${connectionId}`);
       
       if (!response.ok) {
         throw new Error('Erro ao buscar status');
@@ -119,7 +97,7 @@ class WhatsAppService {
     try {
       console.log('📤 Enviando mensagem...', { connectionId, phoneNumber });
 
-      const response = await fetch(`${this.serverUrl}/api/send-message`, {
+      const response = await fetch(`${this.serverUrl}/send-message`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -147,35 +125,19 @@ class WhatsAppService {
    */
   async healthCheck() {
     try {
-      console.log('➡️ [WhatsApp] Verificando servidor', {
-        url: `${this.serverUrl}/health`
-      });
-
-      const response = await fetch(`${this.serverUrl}/health`, {
-        method: 'GET',
-      });
+      const response = await fetch(`${this.serverUrl}/health`);
       
-      console.log('📡 [WhatsApp] Resposta /health', {
-        status: response.status,
-        statusText: response.statusText,
-        ok: response.ok
-      });
-
       if (response.ok) {
         const data = await response.json();
-        console.log('✅ [WhatsApp] Servidor online:', data);
-        return { online: true, data };
+        console.log('💚 Servidor online:', data);
+        return true;
       }
       
-      console.warn('⚠️ [WhatsApp] Servidor respondeu com erro:', response.status);
-      return { online: false, status: response.status, statusText: response.statusText };
+      return false;
       
-    } catch (error: any) {
-      console.error('❌ [WhatsApp] Servidor offline ou inacessível:', {
-        message: error.message,
-        type: error.name
-      });
-      return { online: false, error: error.message };
+    } catch (error) {
+      console.error('💔 Servidor offline:', error);
+      return false;
     }
   }
 
@@ -236,8 +198,6 @@ class WhatsAppService {
    */
   async createConnection(userId: string) {
     try {
-      console.log('➡️ [Supabase] Criando nova conexão para userId:', userId);
-
       const { data, error } = await supabase
         .from('whatsapp_connections')
         .insert({
@@ -247,16 +207,13 @@ class WhatsAppService {
         .select()
         .single();
 
-      if (error) {
-        console.error('❌ [Supabase] Erro ao criar conexão:', error);
-        throw error;
-      }
+      if (error) throw error;
 
-      console.log('✅ [Supabase] Conexão criada com ID:', data.id);
+      console.log('✅ Conexão criada no Supabase:', data.id);
       return data;
       
-    } catch (error: any) {
-      console.error('❌ [Supabase] Falha ao criar conexão:', error.message);
+    } catch (error) {
+      console.error('❌ Erro ao criar conexão:', error);
       throw error;
     }
   }

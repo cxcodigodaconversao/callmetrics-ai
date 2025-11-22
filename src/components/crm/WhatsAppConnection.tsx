@@ -1,333 +1,362 @@
-import { useState, useEffect } from "react";
-import { useAuth } from "@/hooks/useAuth";
-import { supabase } from "@/integrations/supabase/client";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Card } from "@/components/ui/card";
-import { Smartphone, QrCode, Link2, CheckCircle2, XCircle, Loader2 } from "lucide-react";
-import { useToast } from "@/hooks/use-toast";
-import QRCodeDialog from "./QRCodeDialog";
+// src/components/WhatsAppConnect.tsx
+// Componente para conectar WhatsApp Web via QR Code
 
-interface WhatsAppConnectionData {
-  id: string;
-  connection_type: 'web' | 'api';
-  phone_number: string | null;
-  display_name: string | null;
-  status: 'disconnected' | 'connecting' | 'qr_code' | 'connected' | 'error';
-  qr_code: string | null;
-  last_connected_at: string | null;
-  error_message: string | null;
+import { useState, useEffect } from 'react';
+import { whatsappService } from '@/services/whatsappService';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { useToast } from '@/hooks/use-toast';
+import { Loader2, Smartphone, QrCode, CheckCircle2, XCircle, AlertCircle } from 'lucide-react';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+
+interface WhatsAppConnectProps {
+  userId: string;
 }
 
-const WhatsAppConnection = () => {
-  const { user } = useAuth();
+type ConnectionStatus = 'disconnected' | 'initializing' | 'qr_code' | 'connected' | 'connecting' | 'error';
+
+export default function WhatsAppConnection({ userId }: WhatsAppConnectProps) {
+  const [status, setStatus] = useState<ConnectionStatus>('disconnected');
+  const [qrCode, setQrCode] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [connectionId, setConnectionId] = useState<string | null>(null);
+  const [phoneNumber, setPhoneNumber] = useState<string>('');
+  const [displayName, setDisplayName] = useState<string>('');
+  const [errorMessage, setErrorMessage] = useState<string>('');
+  
   const { toast } = useToast();
-  const [connections, setConnections] = useState<WhatsAppConnectionData[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [showQRDialog, setShowQRDialog] = useState(false);
-  const [currentQRCode, setCurrentQRCode] = useState<string | null>(null);
-  const [selectedConnectionId, setSelectedConnectionId] = useState<string | null>(null);
 
+  // Verificar se já existe uma conexão ao carregar
   useEffect(() => {
-    if (user) {
-      fetchConnections();
-      subscribeToConnections();
-    }
-  }, [user]);
+    checkExistingConnection();
+  }, [userId]);
 
-  const fetchConnections = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('whatsapp_connections')
-        .select('*')
-        .eq('user_id', user?.id)
-        .order('created_at', { ascending: false });
+  // Inscrever em atualizações quando tiver connectionId
+  useEffect(() => {
+    if (!connectionId) return;
 
-      if (error) throw error;
-      setConnections(data || []);
-    } catch (error) {
-      console.error('Error fetching connections:', error);
-      toast({
-        title: "Erro ao carregar conexões",
-        description: "Não foi possível carregar suas conexões WhatsApp",
-        variant: "destructive",
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
+    console.log('🔌 Conectando aos canais Realtime...');
 
-  const subscribeToConnections = () => {
-    const channel = supabase
-      .channel('whatsapp_connections_changes')
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'whatsapp_connections',
-          filter: `user_id=eq.${user?.id}`,
-        },
-        (payload) => {
-          console.log('Connection update:', payload);
-          fetchConnections();
-          
-          // Show QR code if status changed to qr_code
-          if (payload.eventType === 'UPDATE' && 
-              payload.new.status === 'qr_code' && 
-              payload.new.qr_code) {
-            setCurrentQRCode(payload.new.qr_code);
-            setSelectedConnectionId(payload.new.id);
-            setShowQRDialog(true);
-          }
-        }
-      )
-      .subscribe();
+    // Escutar mudanças no QR Code
+    const qrChannel = whatsappService.subscribeToQRCode(connectionId, (newQrCode) => {
+      console.log('📸 QR Code atualizado');
+      setQrCode(newQrCode);
+      if (newQrCode) {
+        setStatus('qr_code');
+      }
+    });
 
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  };
-
-  const handleConnectWeb = async () => {
-    try {
-      setLoading(true);
+    // Escutar mudanças no status
+    const statusChannel = whatsappService.subscribeToStatus(connectionId, (newStatus) => {
+      console.log('🔄 Status atualizado:', newStatus);
+      setStatus(newStatus as ConnectionStatus);
       
-      // Create a new connection entry
-      const { data, error } = await supabase
-        .from('whatsapp_connections')
-        .insert({
-          user_id: user?.id,
-          connection_type: 'web',
-          status: 'connecting',
-        })
-        .select()
-        .single();
+      if (newStatus === 'connected') {
+        toast({
+          title: '✅ WhatsApp Conectado!',
+          description: 'Seu WhatsApp foi conectado com sucesso.',
+        });
+        setQrCode(null);
+        fetchConnectionDetails();
+      } else if (newStatus === 'error') {
+        toast({
+          title: '❌ Erro na conexão',
+          description: 'Houve um problema ao conectar. Tente novamente.',
+          variant: 'destructive',
+        });
+      }
+    });
 
-      if (error) throw error;
+    // Cleanup ao desmontar
+    return () => {
+      console.log('🔌 Desconectando dos canais Realtime...');
+      qrChannel.unsubscribe();
+      statusChannel.unsubscribe();
+    };
+  }, [connectionId]);
 
-      toast({
-        title: "Iniciando conexão",
-        description: "Aguarde o QR Code aparecer...",
-      });
+  /**
+   * Verificar se já existe conexão
+   */
+  const checkExistingConnection = async () => {
+    try {
+      const connection = await whatsappService.getUserConnection(userId);
+      
+      if (connection) {
+        console.log('✅ Conexão existente encontrada:', connection);
+        setConnectionId(connection.id);
+        setStatus(connection.status);
+        setPhoneNumber(connection.phone_number || '');
+        setDisplayName(connection.display_name || '');
+        
+        if (connection.status === 'qr_code' && connection.qr_code) {
+          setQrCode(connection.qr_code);
+        }
+      }
+    } catch (error) {
+      console.error('Erro ao verificar conexão:', error);
+    }
+  };
 
-      // Call the Node.js server to initiate connection
-      // This will be handled by the external server
-      const response = await fetch(`${import.meta.env.VITE_WHATSAPP_SERVER_URL}/api/connect`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          userId: user?.id,
-          connectionId: data.id,
-        }),
-      });
+  /**
+   * Buscar detalhes da conexão
+   */
+  const fetchConnectionDetails = async () => {
+    if (!connectionId) return;
+    
+    try {
+      const statusData = await whatsappService.getStatus(connectionId);
+      setPhoneNumber(statusData.phoneNumber || '');
+      setDisplayName(statusData.displayName || '');
+    } catch (error) {
+      console.error('Erro ao buscar detalhes:', error);
+    }
+  };
 
-      if (!response.ok) {
-        throw new Error('Failed to initiate connection');
+  /**
+   * Iniciar conexão WhatsApp
+   */
+  const handleConnect = async () => {
+    setIsLoading(true);
+    setErrorMessage('');
+    
+    try {
+      // Verificar se servidor está online
+      const isOnline = await whatsappService.healthCheck();
+      if (!isOnline) {
+        throw new Error('Servidor offline. Tente novamente em alguns instantes.');
       }
 
-    } catch (error) {
-      console.error('Error connecting WhatsApp:', error);
+      // Criar ou buscar conexão
+      let connection;
+      if (connectionId) {
+        connection = { id: connectionId };
+      } else {
+        connection = await whatsappService.createConnection(userId);
+        setConnectionId(connection.id);
+      }
+
+      // Iniciar processo de conexão
+      await whatsappService.connect(userId, connection.id);
+      setStatus('initializing');
+      
       toast({
-        title: "Erro ao conectar",
-        description: "Não foi possível iniciar a conexão com WhatsApp",
-        variant: "destructive",
+        title: '🔄 Conectando...',
+        description: 'Aguarde o QR Code aparecer.',
+      });
+      
+    } catch (error: any) {
+      console.error('Erro ao conectar:', error);
+      setErrorMessage(error.message || 'Erro ao conectar');
+      setStatus('error');
+      
+      toast({
+        title: '❌ Erro ao conectar',
+        description: error.message || 'Não foi possível conectar ao WhatsApp.',
+        variant: 'destructive',
       });
     } finally {
-      setLoading(false);
+      setIsLoading(false);
     }
   };
 
-  const handleConnectAPI = () => {
-    toast({
-      title: "Em desenvolvimento",
-      description: "A conexão via API oficial estará disponível em breve",
-    });
-  };
-
-  const handleDisconnect = async (connectionId: string) => {
+  /**
+   * Desconectar WhatsApp
+   */
+  const handleDisconnect = async () => {
+    if (!connectionId) return;
+    
+    setIsLoading(true);
+    
     try {
-      const { error } = await supabase
-        .from('whatsapp_connections')
-        .update({ status: 'disconnected' })
-        .eq('id', connectionId);
-
-      if (error) throw error;
-
+      await whatsappService.disconnect(connectionId);
+      setStatus('disconnected');
+      setQrCode(null);
+      setPhoneNumber('');
+      setDisplayName('');
+      
       toast({
-        title: "Desconectado",
-        description: "WhatsApp desconectado com sucesso",
+        title: '🔌 Desconectado',
+        description: 'WhatsApp desconectado com sucesso.',
       });
-
-      // Call server to cleanup session
-      fetch(`${import.meta.env.VITE_WHATSAPP_SERVER_URL}/api/disconnect`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ connectionId }),
-      });
-
-    } catch (error) {
-      console.error('Error disconnecting:', error);
+      
+    } catch (error: any) {
       toast({
-        title: "Erro ao desconectar",
-        variant: "destructive",
+        title: '❌ Erro ao desconectar',
+        description: error.message || 'Não foi possível desconectar.',
+        variant: 'destructive',
       });
+    } finally {
+      setIsLoading(false);
     }
   };
-
-  const getStatusBadge = (status: WhatsAppConnectionData['status']) => {
-    const statusConfig = {
-      connected: { icon: CheckCircle2, label: 'Conectado', variant: 'default' as const },
-      connecting: { icon: Loader2, label: 'Conectando...', variant: 'secondary' as const },
-      qr_code: { icon: QrCode, label: 'Aguardando QR Code', variant: 'secondary' as const },
-      disconnected: { icon: XCircle, label: 'Desconectado', variant: 'outline' as const },
-      error: { icon: XCircle, label: 'Erro', variant: 'destructive' as const },
-    };
-
-    const config = statusConfig[status];
-    const Icon = config.icon;
-
-    return (
-      <Badge variant={config.variant} className="gap-1">
-        <Icon className={`w-3 h-3 ${status === 'connecting' ? 'animate-spin' : ''}`} />
-        {config.label}
-      </Badge>
-    );
-  };
-
-  if (loading && connections.length === 0) {
-    return (
-      <div className="flex items-center justify-center py-12">
-        <Loader2 className="w-8 h-8 animate-spin text-primary" />
-      </div>
-    );
-  }
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-2xl font-bold text-foreground flex items-center gap-2">
-            <Smartphone className="w-6 h-6" />
-            Conexões WhatsApp
-          </h2>
-          <p className="text-sm text-muted-foreground mt-1">
-            Conecte seu WhatsApp para sincronizar conversas
-          </p>
+    <Card className="w-full max-w-2xl">
+      <CardHeader>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-green-100 rounded-lg">
+              <Smartphone className="h-6 w-6 text-green-600" />
+            </div>
+            <div>
+              <CardTitle>WhatsApp Web</CardTitle>
+              <CardDescription>
+                Conecte seu WhatsApp para sincronizar mensagens
+              </CardDescription>
+            </div>
+          </div>
+          
+          {status === 'connected' && (
+            <div className="flex items-center gap-2 text-green-600 bg-green-50 px-3 py-1.5 rounded-full">
+              <div className="h-2 w-2 rounded-full bg-green-600 animate-pulse" />
+              <span className="text-sm font-medium">Conectado</span>
+            </div>
+          )}
         </div>
-        <div className="flex gap-2">
-          <Button
-            onClick={handleConnectWeb}
-            disabled={loading}
-            className="gap-2"
-          >
-            <QrCode className="w-4 h-4" />
-            WhatsApp Web
-          </Button>
-          <Button
-            onClick={handleConnectAPI}
-            variant="outline"
-            disabled={loading}
-            className="gap-2"
-          >
-            <Link2 className="w-4 h-4" />
-            API Oficial
-          </Button>
-        </div>
-      </div>
+      </CardHeader>
 
-      {/* Active Connections */}
-      {connections.length > 0 && (
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {connections.map((connection) => (
-            <Card key={connection.id} className="p-4 border-primary/20">
-              <div className="space-y-3">
-                <div className="flex items-start justify-between">
-                  <div>
-                    <p className="font-semibold">
-                      {connection.display_name || connection.phone_number || 'WhatsApp'}
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      {connection.connection_type === 'web' ? 'WhatsApp Web' : 'API Oficial'}
-                    </p>
-                  </div>
-                  {getStatusBadge(connection.status)}
-                </div>
-
-                {connection.phone_number && (
-                  <p className="text-sm text-muted-foreground">
-                    {connection.phone_number}
-                  </p>
-                )}
-
-                {connection.error_message && (
-                  <p className="text-xs text-destructive">
-                    {connection.error_message}
-                  </p>
-                )}
-
-                {connection.status === 'connected' && (
-                  <Button
-                    onClick={() => handleDisconnect(connection.id)}
-                    variant="outline"
-                    size="sm"
-                    className="w-full"
-                  >
-                    Desconectar
-                  </Button>
-                )}
-
-                {connection.status === 'qr_code' && connection.qr_code && (
-                  <Button
-                    onClick={() => {
-                      setCurrentQRCode(connection.qr_code);
-                      setSelectedConnectionId(connection.id);
-                      setShowQRDialog(true);
-                    }}
-                    size="sm"
-                    className="w-full"
-                  >
-                    Ver QR Code
-                  </Button>
-                )}
-              </div>
-            </Card>
-          ))}
-        </div>
-      )}
-
-      {connections.length === 0 && (
-        <Card className="p-12 text-center border-dashed">
-          <Smartphone className="w-12 h-12 mx-auto mb-4 text-muted-foreground" />
-          <h3 className="text-lg font-semibold mb-2">Nenhuma conexão ativa</h3>
-          <p className="text-sm text-muted-foreground mb-6">
-            Conecte seu WhatsApp para começar a sincronizar suas conversas
-          </p>
-          <div className="flex gap-2 justify-center">
-            <Button onClick={handleConnectWeb} className="gap-2">
-              <QrCode className="w-4 h-4" />
-              Conectar WhatsApp Web
-            </Button>
-            <Button onClick={handleConnectAPI} variant="outline" className="gap-2">
-              <Link2 className="w-4 h-4" />
-              API Oficial
+      <CardContent className="space-y-4">
+        {/* DESCONECTADO */}
+        {status === 'disconnected' && (
+          <div className="space-y-4">
+            <Alert>
+              <AlertCircle className="h-4 w-4" />
+              <AlertDescription>
+                Para conectar seu WhatsApp, clique no botão abaixo e escaneie o QR Code que aparecerá.
+              </AlertDescription>
+            </Alert>
+            
+            <Button 
+              onClick={handleConnect} 
+              disabled={isLoading}
+              className="w-full"
+              size="lg"
+            >
+              {isLoading ? (
+                <>
+                  <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                  Conectando...
+                </>
+              ) : (
+                <>
+                  <Smartphone className="mr-2 h-5 w-5" />
+                  Conectar WhatsApp
+                </>
+              )}
             </Button>
           </div>
-        </Card>
-      )}
+        )}
 
-      <QRCodeDialog
-        open={showQRDialog}
-        onOpenChange={setShowQRDialog}
-        qrCode={currentQRCode}
-        connectionId={selectedConnectionId}
-      />
-    </div>
+        {/* INICIALIZANDO */}
+        {status === 'initializing' && (
+          <div className="flex flex-col items-center justify-center py-12 space-y-4">
+            <Loader2 className="h-12 w-12 animate-spin text-primary" />
+            <p className="text-sm text-muted-foreground">
+              Inicializando conexão... Aguarde o QR Code.
+            </p>
+          </div>
+        )}
+
+        {/* QR CODE */}
+        {status === 'qr_code' && qrCode && (
+          <div className="space-y-4">
+            <Alert className="bg-blue-50 border-blue-200">
+              <QrCode className="h-4 w-4 text-blue-600" />
+              <AlertDescription className="text-blue-900">
+                <strong>Escaneie o QR Code com seu WhatsApp</strong>
+                <br />
+                Abra o WhatsApp no celular → Configurações → Aparelhos conectados → Conectar aparelho
+              </AlertDescription>
+            </Alert>
+            
+            <div className="bg-white p-6 rounded-xl border-2 border-gray-200 shadow-sm">
+              <img 
+                src={qrCode} 
+                alt="QR Code WhatsApp" 
+                className="w-full max-w-sm mx-auto rounded-lg"
+              />
+            </div>
+            
+            <p className="text-xs text-center text-muted-foreground">
+              O QR Code expira após alguns minutos. Se expirar, reconecte.
+            </p>
+          </div>
+        )}
+
+        {/* CONECTADO */}
+        {status === 'connected' && (
+          <div className="space-y-4">
+            <Alert className="bg-green-50 border-green-200">
+              <CheckCircle2 className="h-4 w-4 text-green-600" />
+              <AlertDescription className="text-green-900">
+                <strong>WhatsApp conectado com sucesso!</strong>
+                <br />
+                Suas mensagens estão sendo sincronizadas automaticamente.
+              </AlertDescription>
+            </Alert>
+            
+            {(phoneNumber || displayName) && (
+              <div className="bg-gray-50 p-4 rounded-lg space-y-2">
+                {displayName && (
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-muted-foreground">Nome:</span>
+                    <span className="font-medium">{displayName}</span>
+                  </div>
+                )}
+                {phoneNumber && (
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-muted-foreground">Número:</span>
+                    <span className="font-medium">+{phoneNumber}</span>
+                  </div>
+                )}
+              </div>
+            )}
+            
+            <Button 
+              onClick={handleDisconnect} 
+              variant="outline"
+              disabled={isLoading}
+              className="w-full"
+            >
+              {isLoading ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Desconectando...
+                </>
+              ) : (
+                <>
+                  <XCircle className="mr-2 h-4 w-4" />
+                  Desconectar WhatsApp
+                </>
+              )}
+            </Button>
+          </div>
+        )}
+
+        {/* ERRO */}
+        {status === 'error' && (
+          <div className="space-y-4">
+            <Alert variant="destructive">
+              <XCircle className="h-4 w-4" />
+              <AlertDescription>
+                <strong>Erro ao conectar</strong>
+                <br />
+                {errorMessage || 'Houve um problema na conexão. Tente novamente.'}
+              </AlertDescription>
+            </Alert>
+            
+            <Button 
+              onClick={handleConnect} 
+              disabled={isLoading}
+              className="w-full"
+            >
+              <Smartphone className="mr-2 h-4 w-4" />
+              Tentar Novamente
+            </Button>
+          </div>
+        )}
+      </CardContent>
+    </Card>
   );
-};
-
-export default WhatsAppConnection;
+}

@@ -1,8 +1,10 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card } from "@/components/ui/card";
-import { MessageSquare, BarChart3, Users, Settings } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { MessageSquare, BarChart3, Users, Settings, ArrowLeft } from "lucide-react";
 import WhatsAppConnection from "@/components/crm/WhatsAppConnection";
 import CRMDashboard from "@/components/crm/CRMDashboard";
 import CRMKanban from "@/components/crm/CRMKanban";
@@ -10,6 +12,7 @@ import CRMMessages from "@/components/crm/CRMMessages";
 
 const CRMConversao = () => {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState("dashboard");
 
   return (
@@ -17,6 +20,16 @@ const CRMConversao = () => {
       <div className="container mx-auto px-4 py-8">
         {/* Header */}
         <div className="mb-8">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => navigate("/dashboard")}
+            className="mb-4 text-muted-foreground hover:text-foreground"
+          >
+            <ArrowLeft className="mr-2 h-4 w-4" />
+            Voltar
+          </Button>
+          
           <h1 className="text-4xl font-bold text-foreground mb-2">
             CRM da Conversão
           </h1>

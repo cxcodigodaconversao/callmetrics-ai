@@ -87,7 +87,13 @@ export default function WhatsAppConnection({ userId }: WhatsAppConnectProps) {
       if (connection) {
         console.log('✅ Conexão existente encontrada:', connection);
         setConnectionId(connection.id);
-        setStatus(connection.status);
+        
+        // Se estava em 'connecting', resetar para 'disconnected' para não travar a UI
+        const connectionStatus = connection.status === 'connecting' 
+          ? 'disconnected' 
+          : connection.status;
+        
+        setStatus(connectionStatus);
         setPhoneNumber(connection.phone_number || '');
         setDisplayName(connection.display_name || '');
         
@@ -261,13 +267,24 @@ export default function WhatsAppConnection({ userId }: WhatsAppConnectProps) {
           </div>
         )}
 
-        {/* INICIALIZANDO */}
-        {status === 'initializing' && (
+        {/* INICIALIZANDO / CONECTANDO */}
+        {(status === 'initializing' || status === 'connecting') && (
           <div className="flex flex-col items-center justify-center py-12 space-y-4">
             <Loader2 className="h-12 w-12 animate-spin text-primary" />
             <p className="text-sm text-muted-foreground">
-              Inicializando conexão... Aguarde o QR Code.
+              Conectando ao WhatsApp... Aguarde o QR Code.
             </p>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => {
+                setStatus('disconnected');
+                setQrCode(null);
+              }}
+              className="text-xs"
+            >
+              Cancelar
+            </Button>
           </div>
         )}
 

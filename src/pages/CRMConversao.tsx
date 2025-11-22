@@ -26,9 +26,11 @@ const CRMConversao = () => {
         </div>
 
         {/* WhatsApp Connection Card */}
-        <Card className="mb-8 p-6 border-primary/20 bg-card/50 backdrop-blur">
-          <WhatsAppConnection />
-        </Card>
+        {user && (
+          <Card className="mb-8 p-6 border-primary/20 bg-card/50 backdrop-blur">
+            <WhatsAppConnection userId={user.id} />
+          </Card>
+        )}
 
         {/* Main Content Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">

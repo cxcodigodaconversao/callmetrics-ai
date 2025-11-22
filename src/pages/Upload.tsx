@@ -15,6 +15,8 @@ const Upload = () => {
   const { user, loading } = useAuth();
 
   const [videoTitle, setVideoTitle] = useState("");
+  const [sellerName, setSellerName] = useState("");
+  const [productName, setProductName] = useState("");
   const [dragActive, setDragActive] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -141,6 +143,8 @@ const Upload = () => {
         .insert({
           user_id: user.id,
           title: videoTitle,
+          seller_name: sellerName,
+          product_name: productName,
           mode: 'upload',
           storage_path: fileName,
           mime_type: selectedFile.type,
@@ -224,7 +228,43 @@ const Upload = () => {
                   required
                 />
                 <p className="text-sm text-muted-foreground">
-                  Identifique quem fez a call e com qual cliente
+                  Identifique a call e o cliente
+                </p>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="seller-name" className="text-lg">
+                  Vendedor Responsável *
+                </Label>
+                <Input
+                  id="seller-name"
+                  type="text"
+                  placeholder="Ex: João Silva"
+                  value={sellerName}
+                  onChange={(e) => setSellerName(e.target.value)}
+                  className="input-field text-lg"
+                  required
+                />
+                <p className="text-sm text-muted-foreground">
+                  Nome do vendedor que realizou a call
+                </p>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="product-name" className="text-lg">
+                  Produto/Serviço *
+                </Label>
+                <Input
+                  id="product-name"
+                  type="text"
+                  placeholder="Ex: Plano Premium"
+                  value={productName}
+                  onChange={(e) => setProductName(e.target.value)}
+                  className="input-field text-lg"
+                  required
+                />
+                <p className="text-sm text-muted-foreground">
+                  Produto ou serviço oferecido na call
                 </p>
               </div>
 

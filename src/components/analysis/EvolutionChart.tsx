@@ -1,24 +1,129 @@
 import { Card } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { AlertCircle } from "lucide-react";
+import { useEffect, useState } from "react";
+import { supabase } from "@/integrations/supabase/client";
 
 interface EvolutionChartProps {
   videoId: string;
+  sellerName?: string;
 }
 
-export function EvolutionChart({ videoId }: EvolutionChartProps) {
-  // Mock data - in real implementation, fetch last 5 analyses
-  const historicalScores = [45, 58, 62, 70, 47]; // Last 5 calls
+export function EvolutionChart({ videoId, sellerName }: EvolutionChartProps) {
+  const [historicalScores, setHistoricalScores] = useState<number[]>([]);
+  const [categoryScores, setCategoryScores] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetchHistoricalAnalyses();
+  }, [videoId, sellerName]);
+
+  const fetchHistoricalAnalyses = async () => {
+    try {
+      const { data: currentVideo } = await supabase
+        .from("videos")
+        .select("seller_name, user_id")
+        .eq("id", videoId)
+        .single();
+
+      if (!currentVideo?.seller_name) {
+        setLoading(false);
+        return;
+      }
+
+      const { data, error } = await supabase
+        .from("videos")
+        .select(`
+          id,
+          created_at,
+          analyses!inner (
+            score_global,
+            score_conexao,
+            score_spin_s,
+            score_spin_p,
+            score_apresentacao,
+            score_fechamento,
+            created_at
+          )
+        `)
+        .eq("user_id", currentVideo.user_id)
+        .eq("seller_name", currentVideo.seller_name)
+        .eq("status", "completed")
+        .order("created_at", { ascending: false })
+        .limit(5);
+
+      if (error) throw error;
+
+      const scores = data
+        ?.flatMap(v => v.analyses.map(a => a.score_global))
+        .slice(0, 5)
+        .reverse() || [];
+
+      // Get category scores from the latest analysis
+      if (data && data.length > 0 && data[0].analyses.length > 0) {
+        const latest = data[0].analyses[0];
+        const categoryData: Array<{ name: string; current: number; average?: number }> = [
+          { name: "Conexão", current: latest.score_conexao || 0 },
+          { name: "SPIN-S", current: latest.score_spin_s || 0 },
+          { name: "SPIN-P", current: latest.score_spin_p || 0 },
+          { name: "Apresentação", current: latest.score_apresentacao || 0 },
+          { name: "Fechamento", current: latest.score_fechamento || 0 },
+        ];
+
+        // Calculate averages from all historical data
+        const allAnalyses = data.flatMap(v => v.analyses);
+        const avgConexao = Math.round(allAnalyses.reduce((sum, a) => sum + (a.score_conexao || 0), 0) / allAnalyses.length);
+        const avgSpinS = Math.round(allAnalyses.reduce((sum, a) => sum + (a.score_spin_s || 0), 0) / allAnalyses.length);
+        const avgSpinP = Math.round(allAnalyses.reduce((sum, a) => sum + (a.score_spin_p || 0), 0) / allAnalyses.length);
+        const avgApresentacao = Math.round(allAnalyses.reduce((sum, a) => sum + (a.score_apresentacao || 0), 0) / allAnalyses.length);
+        const avgFechamento = Math.round(allAnalyses.reduce((sum, a) => sum + (a.score_fechamento || 0), 0) / allAnalyses.length);
+
+        categoryData[0].average = avgConexao;
+        categoryData[1].average = avgSpinS;
+        categoryData[2].average = avgSpinP;
+        categoryData[3].average = avgApresentacao;
+        categoryData[4].average = avgFechamento;
+
+        setCategoryScores(categoryData);
+      }
+
+      setHistoricalScores(scores);
+    } catch (error) {
+      console.error("Error fetching historical analyses:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <Card className="p-6">
+        <p className="text-center text-muted-foreground">Carregando histórico...</p>
+      </Card>
+    );
+  }
+
+  if (historicalScores.length === 0) {
+    return (
+      <Card className="p-6">
+        <h2 className="text-xl font-bold mb-4">📈 Sua Evolução</h2>
+        <p className="text-muted-foreground text-center py-8">
+          Sem histórico disponível. Faça mais calls para ver sua evolução!
+        </p>
+      </Card>
+    );
+  }
+
   const currentScore = historicalScores[historicalScores.length - 1];
   const previousScore = historicalScores[historicalScores.length - 2];
   const scoreDiff = currentScore - previousScore;
 
-  const categoryComparison = [
-    { name: "Conexão", current: 80, average: 65 },
-    { name: "SPIN-S", current: 0, average: 45 },
-    { name: "SPIN-P", current: 0, average: 38 },
-    { name: "Apresentação", current: 0, average: 52 },
-    { name: "Fechamento", current: 0, average: 41 },
+  const categoryComparison = categoryScores.length > 0 ? categoryScores : [
+    { name: "Conexão", current: 0, average: 0 },
+    { name: "SPIN-S", current: 0, average: 0 },
+    { name: "SPIN-P", current: 0, average: 0 },
+    { name: "Apresentação", current: 0, average: 0 },
+    { name: "Fechamento", current: 0, average: 0 },
   ];
 
   return (

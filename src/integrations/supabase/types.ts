@@ -436,6 +436,8 @@ export type Database = {
           id: string
           mime_type: string | null
           mode: string
+          product_name: string | null
+          seller_name: string | null
           source_url: string | null
           status: string | null
           storage_path: string | null
@@ -452,6 +454,8 @@ export type Database = {
           id?: string
           mime_type?: string | null
           mode: string
+          product_name?: string | null
+          seller_name?: string | null
           source_url?: string | null
           status?: string | null
           storage_path?: string | null
@@ -468,6 +472,8 @@ export type Database = {
           id?: string
           mime_type?: string | null
           mode?: string
+          product_name?: string | null
+          seller_name?: string | null
           source_url?: string | null
           status?: string | null
           storage_path?: string | null

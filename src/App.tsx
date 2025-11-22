@@ -13,6 +13,7 @@ import Settings from "./pages/Settings";
 import RadarConversao from "./pages/RadarConversao";
 import CalculadoraTimeComercial from "./pages/CalculadoraTimeComercial";
 import AcademiaComercial from "./pages/AcademiaComercial";
+import CRMConversao from "./pages/CRMConversao";
 import DISCConversao from "./pages/DISCConversao";
 import SellerMetrics from "./pages/SellerMetrics";
 import TeamMetrics from "./pages/TeamMetrics";
@@ -41,6 +42,7 @@ const App = () => (
           <Route path="/dashboard/disc-radar" element={<RadarConversao />} />
           <Route path="/dashboard/calculadora" element={<CalculadoraTimeComercial />} />
           <Route path="/dashboard/academia" element={<AcademiaComercial />} />
+          <Route path="/dashboard/crm" element={<CRMConversao />} />
           <Route path="/dashboard/disc" element={<DISCConversao />} />
           <Route path="/dashboard/settings" element={<Settings />} />
           <Route path="/admin" element={<AdminDashboard />} />

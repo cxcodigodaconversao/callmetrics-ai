@@ -15,6 +15,8 @@ import CalculadoraTimeComercial from "./pages/CalculadoraTimeComercial";
 import AcademiaComercial from "./pages/AcademiaComercial";
 import CRMConversao from "./pages/CRMConversao";
 import DISCConversao from "./pages/DISCConversao";
+import SellerMetrics from "./pages/SellerMetrics";
+import TeamMetrics from "./pages/TeamMetrics";
 import NotFound from "./pages/NotFound";
 import AdminDashboard from "./pages/admin/AdminDashboard";
 import AdminUsers from "./pages/admin/AdminUsers";
@@ -35,6 +37,8 @@ const App = () => (
           <Route path="/dashboard/upload" element={<Upload />} />
           <Route path="/dashboard/analyses" element={<Analyses />} />
           <Route path="/dashboard/analyses/:id" element={<AnalysisDetail />} />
+          <Route path="/dashboard/seller-metrics" element={<SellerMetrics />} />
+          <Route path="/dashboard/team-metrics" element={<TeamMetrics />} />
           <Route path="/dashboard/disc-radar" element={<RadarConversao />} />
           <Route path="/dashboard/calculadora" element={<CalculadoraTimeComercial />} />
           <Route path="/dashboard/academia" element={<AcademiaComercial />} />

@@ -23,7 +23,7 @@ class WhatsAppService {
         connectionId
       });
 
-      const response = await fetch(`${this.serverUrl}/connect`, {
+      const response = await fetch(`${this.serverUrl}/api/connect`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -71,7 +71,7 @@ class WhatsAppService {
     try {
       console.log('🔌 Desconectando WhatsApp...', connectionId);
 
-      const response = await fetch(`${this.serverUrl}/disconnect`, {
+      const response = await fetch(`${this.serverUrl}/api/disconnect`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -98,7 +98,7 @@ class WhatsAppService {
    */
   async getStatus(connectionId: string) {
     try {
-      const response = await fetch(`${this.serverUrl}/status/${connectionId}`);
+      const response = await fetch(`${this.serverUrl}/api/status/${connectionId}`);
       
       if (!response.ok) {
         throw new Error('Erro ao buscar status');
@@ -119,7 +119,7 @@ class WhatsAppService {
     try {
       console.log('📤 Enviando mensagem...', { connectionId, phoneNumber });
 
-      const response = await fetch(`${this.serverUrl}/send-message`, {
+      const response = await fetch(`${this.serverUrl}/api/send-message`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

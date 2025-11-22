@@ -7,10 +7,10 @@ export const WHATSAPP_CONFIG = {
   
   // Endpoints disponíveis
   ENDPOINTS: {
-    CONNECT: '/connect',
-    DISCONNECT: '/disconnect',
-    STATUS: '/status',
-    SEND_MESSAGE: '/send-message',
+    CONNECT: '/api/connect',
+    DISCONNECT: '/api/disconnect',
+    STATUS: '/api/status',
+    SEND_MESSAGE: '/api/send-message',
     HEALTH: '/health'
   },
   

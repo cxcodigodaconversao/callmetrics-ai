@@ -14,6 +14,7 @@ interface WhatsAppConnectProps {
 }
 
 type ConnectionStatus = 'disconnected' | 'initializing' | 'qr_code' | 'connected' | 'connecting' | 'error';
+type DbConnectionStatus = 'disconnected' | 'connecting' | 'qr_code' | 'connected' | 'error';
 
 export default function WhatsAppConnection({ userId }: WhatsAppConnectProps) {
   const [status, setStatus] = useState<ConnectionStatus>('disconnected');

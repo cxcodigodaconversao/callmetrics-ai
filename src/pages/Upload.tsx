@@ -1,14 +1,15 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Upload as UploadIcon, FileVideo, ArrowLeft, Brain, Music } from "lucide-react";
+import { Upload as UploadIcon, FileVideo, ArrowLeft, Brain, Music, Loader2 } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Progress } from "@/components/ui/progress";
+import { useAudioCompression } from "@/hooks/useAudioCompression";
 
 const Upload = () => {
   const navigate = useNavigate();
@@ -21,6 +22,10 @@ const Upload = () => {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
+  const { compressAudio, isCompressing, compressionProgress } = useAudioCompression();
+  
+  const MAX_FILE_SIZE_MB = 500; // Permite arquivos até 500MB (serão comprimidos)
+  const COMPRESSION_THRESHOLD_MB = 40; // Comprime arquivos maiores que 40MB
 
   // Redirect to auth if not logged in
   useEffect(() => {
@@ -61,36 +66,54 @@ const Upload = () => {
     
     if (e.dataTransfer.files && e.dataTransfer.files[0]) {
       const file = e.dataTransfer.files[0];
-      const maxSize = 200 * 1024 * 1024; // 200MB
+      const maxSize = MAX_FILE_SIZE_MB * 1024 * 1024;
       
       if (file.size > maxSize) {
         const fileSizeMB = (file.size / (1024 * 1024)).toFixed(0);
         toast.error(
-          `Arquivo muito grande (${fileSizeMB}MB). O limite é 200MB.`,
+          `Arquivo muito grande (${fileSizeMB}MB). O limite é ${MAX_FILE_SIZE_MB}MB.`,
           { duration: 5000 }
         );
         return;
       }
       
       setSelectedFile(file);
+      
+      // Avisar se o arquivo será comprimido
+      const fileSizeMB = file.size / (1024 * 1024);
+      if (fileSizeMB > COMPRESSION_THRESHOLD_MB) {
+        toast.info(
+          `Arquivo grande (${fileSizeMB.toFixed(0)}MB). Será comprimido automaticamente antes do upload.`,
+          { duration: 4000 }
+        );
+      }
     }
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
-      const maxSize = 200 * 1024 * 1024; // 200MB
+      const maxSize = MAX_FILE_SIZE_MB * 1024 * 1024;
       
       if (file.size > maxSize) {
         const fileSizeMB = (file.size / (1024 * 1024)).toFixed(0);
         toast.error(
-          `Arquivo muito grande (${fileSizeMB}MB). O limite é 200MB.`,
+          `Arquivo muito grande (${fileSizeMB}MB). O limite é ${MAX_FILE_SIZE_MB}MB.`,
           { duration: 5000 }
         );
         return;
       }
       
       setSelectedFile(file);
+      
+      // Avisar se o arquivo será comprimido
+      const fileSizeMB = file.size / (1024 * 1024);
+      if (fileSizeMB > COMPRESSION_THRESHOLD_MB) {
+        toast.info(
+          `Arquivo grande (${fileSizeMB.toFixed(0)}MB). Será comprimido automaticamente antes do upload.`,
+          { duration: 4000 }
+        );
+      }
     }
   };
 
@@ -107,8 +130,31 @@ const Upload = () => {
     setUploadProgress(0);
 
     try {
+      let fileToUpload = selectedFile;
+      const originalSizeMB = selectedFile.size / (1024 * 1024);
+      
+      // Comprimir se arquivo for maior que 40MB
+      if (originalSizeMB > COMPRESSION_THRESHOLD_MB) {
+        toast.info("Comprimindo áudio para upload...");
+        try {
+          fileToUpload = await compressAudio(selectedFile, COMPRESSION_THRESHOLD_MB);
+          const compressedSizeMB = fileToUpload.size / (1024 * 1024);
+          toast.success(
+            `Áudio comprimido: ${originalSizeMB.toFixed(0)}MB → ${compressedSizeMB.toFixed(1)}MB`
+          );
+        } catch (compressionError: any) {
+          console.error('Erro na compressão:', compressionError);
+          toast.error(
+            "Não foi possível comprimir o áudio. Tente converter manualmente para MP3.",
+            { duration: 6000 }
+          );
+          setIsProcessing(false);
+          return;
+        }
+      }
+
       // Upload file to Supabase Storage
-      const fileExt = selectedFile.name.split('.').pop();
+      const fileExt = fileToUpload.name.split('.').pop();
       const fileName = `${user.id}/${Date.now()}.${fileExt}`;
       
       // Simulate progress
@@ -124,7 +170,7 @@ const Upload = () => {
 
       const { data: uploadData, error: uploadError } = await supabase.storage
         .from('uploads')
-        .upload(fileName, selectedFile, {
+        .upload(fileName, fileToUpload, {
           cacheControl: '3600',
           upsert: false
         });
@@ -147,8 +193,8 @@ const Upload = () => {
           product_name: productName,
           mode: 'upload',
           storage_path: fileName,
-          mime_type: selectedFile.type,
-          file_size_bytes: selectedFile.size,
+          mime_type: fileToUpload.type,
+          file_size_bytes: fileToUpload.size,
           status: 'queued'
         })
         .select()

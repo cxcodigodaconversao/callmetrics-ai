@@ -13,7 +13,7 @@ interface WhatsAppConnectProps {
   userId: string;
 }
 
-type ConnectionStatus = 'disconnected' | 'initializing' | 'qr_code' | 'connected' | 'error';
+type ConnectionStatus = 'disconnected' | 'initializing' | 'qr_code' | 'connected' | 'connecting' | 'error';
 
 export function WhatsAppConnect({ userId }: WhatsAppConnectProps) {
   const [status, setStatus] = useState<ConnectionStatus>('disconnected');

@@ -41,44 +41,16 @@ Deno.serve(async (req) => {
     }
 
     const fileSizeInMB = parseInt(contentLength) / (1024 * 1024);
-    console.log(`File size: ${fileSizeInMB.toFixed(2)}MB`);
+    console.log(`File size: ${fileSizeInMB.toFixed(2)}MB, Content-Type: ${contentType}`);
 
     // Validate it's not an HTML error page
     if (contentType.includes('text/html')) {
       throw new Error('Não foi possível acessar o arquivo. Para vídeos do Google Drive: 1) Certifique-se que o compartilhamento está como "Qualquer pessoa com o link", 2) Ou baixe o vídeo e faça upload direto.');
     }
 
-    // AssemblyAI supports files up to 5GB
-    console.log('Downloading audio file...');
-    const audioResponse = await fetch(audioUrl);
-    if (!audioResponse.ok) {
-      throw new Error(`Failed to download audio: ${audioResponse.status}`);
-    }
-    
-    const audioBlob = await audioResponse.blob();
-    console.log(`Audio downloaded: ${audioBlob.size} bytes`);
-
-    // Step 1: Upload audio to AssemblyAI
-    console.log('Uploading audio to AssemblyAI...');
-    const uploadResponse = await fetch('https://api.assemblyai.com/v2/upload', {
-      method: 'POST',
-      headers: {
-        'authorization': assemblyaiApiKey,
-      },
-      body: audioBlob,
-    });
-
-    if (!uploadResponse.ok) {
-      const errorText = await uploadResponse.text();
-      console.error(`AssemblyAI upload error:`, errorText);
-      throw new Error(`AssemblyAI upload failed: ${errorText}`);
-    }
-
-    const { upload_url } = await uploadResponse.json();
-    console.log('Audio uploaded to AssemblyAI:', upload_url);
-
-    // Step 2: Start transcription
-    console.log('Starting transcription...');
+    // Use the direct URL approach - AssemblyAI fetches the file directly
+    // This avoids downloading 100MB+ files into Edge Function memory
+    console.log('Starting AssemblyAI transcription with direct URL...');
     const transcriptResponse = await fetch('https://api.assemblyai.com/v2/transcript', {
       method: 'POST',
       headers: {
@@ -86,7 +58,7 @@ Deno.serve(async (req) => {
         'content-type': 'application/json',
       },
       body: JSON.stringify({
-        audio_url: upload_url,
+        audio_url: audioUrl,
         language_code: 'pt',
       }),
     });
@@ -100,10 +72,10 @@ Deno.serve(async (req) => {
     const { id: transcriptId } = await transcriptResponse.json();
     console.log('Transcription started with ID:', transcriptId);
 
-    // Step 3: Poll for completion (max 2 minutes)
+    // Poll for completion (max 10 minutes for large files)
     console.log('Polling for transcription completion...');
-    const maxPollingTime = 120000; // 2 minutes
-    const pollingInterval = 3000; // 3 seconds
+    const maxPollingTime = 600000; // 10 minutes for large files
+    const pollingInterval = 5000; // 5 seconds
     const startTime = Date.now();
     
     let transcriptData: any;
@@ -137,11 +109,11 @@ Deno.serve(async (req) => {
     }
 
     if (!transcriptData || transcriptData.status !== 'completed') {
-      throw new Error('Transcription timed out after 2 minutes. The file may be too large or the service is busy. Please try again.');
+      throw new Error('Transcription timed out. The file may be very large or the service is busy. Please try again.');
     }
 
     const transcriptionText = transcriptData.text || '';
-    const duration = Math.round((transcriptData.audio_duration || 0) / 1000); // AssemblyAI returns milliseconds
+    const duration = Math.round(transcriptData.audio_duration || 0); // AssemblyAI returns seconds
     const wordCount = transcriptData.words?.length || transcriptionText.split(/\s+/).length;
 
     console.log(`Transcription complete: ${transcriptionText.length} chars, ${wordCount} words, ${duration}s`);

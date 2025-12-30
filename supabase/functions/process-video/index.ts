@@ -5,6 +5,26 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+async function requireAuth(req: Request) {
+  const authHeader = req.headers.get('authorization') || req.headers.get('Authorization') || '';
+  if (!authHeader.toLowerCase().startsWith('bearer ')) {
+    return { user: null, error: 'missing_auth' as const };
+  }
+
+  const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+  const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+  const authClient = createClient(supabaseUrl, serviceRoleKey, {
+    global: { headers: { Authorization: authHeader } },
+  });
+
+  const { data, error } = await authClient.auth.getUser();
+  if (error || !data?.user) {
+    return { user: null, error: 'invalid_auth' as const };
+  }
+
+  return { user: data.user, error: null };
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -13,6 +33,14 @@ Deno.serve(async (req) => {
   let videoId: string | undefined;
   
   try {
+    const auth = await requireAuth(req);
+    if (!auth.user) {
+      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+        status: 401,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
     const body = await req.json();
     videoId = body.videoId;
     

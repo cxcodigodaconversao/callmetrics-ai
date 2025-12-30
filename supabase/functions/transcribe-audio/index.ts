@@ -46,15 +46,20 @@ Deno.serve(async (req) => {
       throw new Error('audioUrl and videoId are required');
     }
 
-    console.log(`Transcribing audio for video: ${videoId}`);
+    console.log(`Starting async transcription for video: ${videoId}`);
 
     const assemblyaiApiKey = Deno.env.get('ASSEMBLYAI_API_KEY');
     if (!assemblyaiApiKey) {
       throw new Error('ASSEMBLYAI_API_KEY not configured');
     }
 
-    // Check file size
-    console.log('Checking file size...');
+    const internalKey = Deno.env.get('INTERNAL_FUNCTION_KEY');
+    if (!internalKey) {
+      throw new Error('INTERNAL_FUNCTION_KEY not configured');
+    }
+
+    // Validate file is accessible
+    console.log('Checking file accessibility...');
     const headResponse = await fetch(audioUrl, { method: 'HEAD' });
     
     if (!headResponse.ok) {
@@ -64,21 +69,21 @@ Deno.serve(async (req) => {
     const contentType = headResponse.headers.get('content-type') || 'video/mp4';
     const contentLength = headResponse.headers.get('content-length');
     
-    if (!contentLength) {
-      throw new Error('Could not determine file size');
-    }
-
-    const fileSizeInMB = parseInt(contentLength) / (1024 * 1024);
-    console.log(`File size: ${fileSizeInMB.toFixed(2)}MB, Content-Type: ${contentType}`);
+    console.log(`File accessible - Content-Type: ${contentType}, Size: ${contentLength ? (parseInt(contentLength) / (1024 * 1024)).toFixed(2) + 'MB' : 'unknown'}`);
 
     // Validate it's not an HTML error page
     if (contentType.includes('text/html')) {
       throw new Error('Não foi possível acessar o arquivo. Para vídeos do Google Drive: 1) Certifique-se que o compartilhamento está como "Qualquer pessoa com o link", 2) Ou baixe o vídeo e faça upload direto.');
     }
 
-    // Use the direct URL approach - AssemblyAI fetches the file directly
-    // This avoids downloading 100MB+ files into Edge Function memory
-    console.log('Starting AssemblyAI transcription with direct URL...');
+    // Build webhook URL with videoId and internal key
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+    const webhookUrl = `${supabaseUrl}/functions/v1/assemblyai-webhook?videoId=${videoId}&key=${encodeURIComponent(internalKey)}`;
+    
+    console.log('Creating AssemblyAI transcription with webhook...');
+    console.log(`Webhook URL: ${webhookUrl.replace(internalKey, '[REDACTED]')}`);
+
+    // Start transcription with webhook - no polling!
     const transcriptResponse = await fetch('https://api.assemblyai.com/v2/transcript', {
       method: 'POST',
       headers: {
@@ -88,6 +93,7 @@ Deno.serve(async (req) => {
       body: JSON.stringify({
         audio_url: audioUrl,
         language_code: 'pt',
+        webhook_url: webhookUrl,
       }),
     });
 
@@ -97,89 +103,21 @@ Deno.serve(async (req) => {
       throw new Error(`AssemblyAI transcript start failed: ${errorText}`);
     }
 
-    const { id: transcriptId } = await transcriptResponse.json();
-    console.log('Transcription started with ID:', transcriptId);
+    const { id: transcriptId, status } = await transcriptResponse.json();
+    console.log(`Transcription started - ID: ${transcriptId}, Status: ${status}`);
 
-    // Poll for completion (max 10 minutes for large files)
-    console.log('Polling for transcription completion...');
-    const maxPollingTime = 600000; // 10 minutes for large files
-    const pollingInterval = 5000; // 5 seconds
-    const startTime = Date.now();
-    
-    let transcriptData: any;
-    
-    while (Date.now() - startTime < maxPollingTime) {
-      const pollingResponse = await fetch(`https://api.assemblyai.com/v2/transcript/${transcriptId}`, {
-        headers: {
-          'authorization': assemblyaiApiKey,
-        },
-      });
-
-      if (!pollingResponse.ok) {
-        const errorText = await pollingResponse.text();
-        console.error(`AssemblyAI polling error:`, errorText);
-        throw new Error(`AssemblyAI polling failed: ${errorText}`);
-      }
-
-      transcriptData = await pollingResponse.json();
-      console.log(`Transcription status: ${transcriptData.status}`);
-
-      if (transcriptData.status === 'completed') {
-        break;
-      }
-
-      if (transcriptData.status === 'error') {
-        throw new Error(`AssemblyAI transcription error: ${transcriptData.error}`);
-      }
-
-      // Wait before next poll
-      await new Promise(resolve => setTimeout(resolve, pollingInterval));
-    }
-
-    if (!transcriptData || transcriptData.status !== 'completed') {
-      throw new Error('Transcription timed out. The file may be very large or the service is busy. Please try again.');
-    }
-
-    const transcriptionText = transcriptData.text || '';
-    const duration = Math.round(transcriptData.audio_duration || 0); // AssemblyAI returns seconds
-    const wordCount = transcriptData.words?.length || transcriptionText.split(/\s+/).length;
-
-    console.log(`Transcription complete: ${transcriptionText.length} chars, ${wordCount} words, ${duration}s`);
-
-    // Save transcription to database
-    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-    const supabase = createClient(supabaseUrl, supabaseKey);
-
-    const { data: transcriptionDbData, error: transcriptionError } = await supabase
-      .from('transcriptions')
-      .insert({
-        video_id: videoId,
-        text: transcriptionText,
-        provider: 'assemblyai',
-        language: 'pt-BR',
-        duration_sec: duration,
-        words_count: wordCount,
-        speakers_json: null,
-      })
-      .select()
-      .single();
-
-    if (transcriptionError) {
-      throw new Error(`Failed to save transcription: ${transcriptionError.message}`);
-    }
-
-    console.log(`Transcription saved: ${transcriptionDbData.id}`);
-
+    // Return immediately with 202 Accepted - webhook will handle completion
     return new Response(
       JSON.stringify({
         success: true,
-        transcription: transcriptionText,
-        transcriptionId: transcriptionDbData.id,
-        duration: duration,
-        language: 'pt-BR',
+        status: 'processing',
+        message: 'Transcription started, webhook will handle completion',
+        transcriptId: transcriptId,
       }),
-      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      { 
+        status: 202,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+      }
     );
 
   } catch (error: any) {

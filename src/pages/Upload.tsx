@@ -214,7 +214,7 @@ const Upload = () => {
 
       console.log('Starting video processing for:', videoData.id);
       
-      const { error: processError } = await supabase.functions.invoke('process-video', {
+      const { data: processData, error: processError } = await supabase.functions.invoke('process-video', {
         body: { videoId: videoData.id }
       });
 
@@ -228,7 +228,12 @@ const Upload = () => {
         throw new Error(`Erro ao iniciar processamento: ${processError.message}`);
       }
 
-      toast.success("Upload realizado com sucesso! Processamento iniciado.");
+      // Handle async processing (202 Accepted)
+      if (processData?.status === 'processing') {
+        toast.success("Upload concluído! O processamento está em andamento e pode levar alguns minutos.", { duration: 8000 });
+      } else {
+        toast.success("Upload realizado com sucesso! Processamento iniciado.");
+      }
       navigate('/dashboard');
     } catch (error: any) {
       console.error('Error uploading file:', error);

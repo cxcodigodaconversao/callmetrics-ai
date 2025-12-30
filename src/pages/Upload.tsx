@@ -3,13 +3,14 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Upload as UploadIcon, FileVideo, ArrowLeft, Brain, Music, Loader2 } from "lucide-react";
+import { Upload as UploadIcon, FileVideo, ArrowLeft, Brain, Music } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Progress } from "@/components/ui/progress";
 import { useAudioCompression } from "@/hooks/useAudioCompression";
+import { resumableUpload, RESUMABLE_THRESHOLD_BYTES } from "@/lib/supabaseResumableUpload";
 
 const Upload = () => {
   const navigate = useNavigate();
@@ -114,30 +115,51 @@ const Upload = () => {
       const fileExt = selectedFile.name.split('.').pop();
       const fileName = `${user.id}/${Date.now()}.${fileExt}`;
       
-      // Simulate progress
-      const progressInterval = setInterval(() => {
-        setUploadProgress(prev => {
-          if (prev >= 90) {
-            clearInterval(progressInterval);
-            return prev;
+      // Use resumable upload (TUS) for large files, simple upload for small files
+      if (selectedFile.size > RESUMABLE_THRESHOLD_BYTES) {
+        // Resumable upload for files > 50MB
+        console.log('Using resumable upload (TUS) for large file:', selectedFile.size);
+        toast.info("Iniciando upload de arquivo grande...", { duration: 3000 });
+        
+        await resumableUpload({
+          bucketName: 'uploads',
+          objectName: fileName,
+          file: selectedFile,
+          onProgress: (percentage) => {
+            setUploadProgress(percentage);
+          },
+          onError: (error) => {
+            console.error('Resumable upload error:', error);
           }
-          return prev + 10;
         });
-      }, 200);
+        
+        setUploadProgress(100);
+      } else {
+        // Simple upload for files <= 50MB
+        const progressInterval = setInterval(() => {
+          setUploadProgress(prev => {
+            if (prev >= 90) {
+              clearInterval(progressInterval);
+              return prev;
+            }
+            return prev + 10;
+          });
+        }, 200);
 
-      const { data: uploadData, error: uploadError } = await supabase.storage
-        .from('uploads')
-        .upload(fileName, selectedFile, {
-          cacheControl: '3600',
-          upsert: false
-        });
+        const { error: uploadError } = await supabase.storage
+          .from('uploads')
+          .upload(fileName, selectedFile, {
+            cacheControl: '3600',
+            upsert: false
+          });
 
-      clearInterval(progressInterval);
-      setUploadProgress(100);
+        clearInterval(progressInterval);
+        setUploadProgress(100);
 
-      if (uploadError) {
-        console.error('Upload error:', uploadError);
-        throw new Error(uploadError.message);
+        if (uploadError) {
+          console.error('Upload error:', uploadError);
+          throw new Error(uploadError.message);
+        }
       }
 
       // Insert video record

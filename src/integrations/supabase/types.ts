@@ -564,10 +564,12 @@ export type Database = {
           mime_type: string | null
           mode: string
           product_name: string | null
+          project_name: string | null
           seller_name: string | null
           source_url: string | null
           status: string | null
           storage_path: string | null
+          team_name: string | null
           title: string | null
           updated_at: string | null
           user_id: string
@@ -582,10 +584,12 @@ export type Database = {
           mime_type?: string | null
           mode: string
           product_name?: string | null
+          project_name?: string | null
           seller_name?: string | null
           source_url?: string | null
           status?: string | null
           storage_path?: string | null
+          team_name?: string | null
           title?: string | null
           updated_at?: string | null
           user_id: string
@@ -600,10 +604,12 @@ export type Database = {
           mime_type?: string | null
           mode?: string
           product_name?: string | null
+          project_name?: string | null
           seller_name?: string | null
           source_url?: string | null
           status?: string | null
           storage_path?: string | null
+          team_name?: string | null
           title?: string | null
           updated_at?: string | null
           user_id?: string

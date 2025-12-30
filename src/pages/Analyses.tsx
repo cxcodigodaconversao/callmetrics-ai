@@ -25,6 +25,8 @@ interface Video {
     score_fechamento: number;
     score_objecoes: number;
     score_compromisso_pagamento: number;
+    sale_status: string | null;
+    scheduled_date: string | null;
     created_at: string;
   }>;
 }
@@ -74,6 +76,8 @@ export default function Analyses() {
             score_fechamento,
             score_objecoes,
             score_compromisso_pagamento,
+            sale_status,
+            scheduled_date,
             created_at
           )
         `)

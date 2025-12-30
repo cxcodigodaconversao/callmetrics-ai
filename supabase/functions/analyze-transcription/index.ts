@@ -176,6 +176,19 @@ Comunicação CORRETA do vendedor para perfil C:
     "compromisso_pagamento": número 0-100,
     "global": (média dos scores acima)
   },
+  "sale_result": {
+    "status": "closed" ou "not_closed" ou "promise" ou "unknown",
+    "status_description": "Descrição clara do resultado: 'Venda fechada', 'Venda não fechada', 'Promessa de venda agendada', ou 'Não foi possível identificar'",
+    "scheduled_date": "Data agendada no formato YYYY-MM-DD se houver promessa de follow-up, reunião ou fechamento marcado. null se não houver.",
+    "scheduled_time": "Horário agendado se mencionado, no formato HH:MM. null se não houver.",
+    "notes": "Detalhes importantes sobre o fechamento ou não fechamento. Cite exatamente o que foi dito sobre compromisso, próximos passos, ou motivo de não fechar.",
+    "next_steps": "O que foi combinado como próximo passo entre vendedor e cliente",
+    "closing_moment": {
+      "timestamp": "Timestamp [MM:SS] do momento de fechamento ou tentativa de fechamento",
+      "quote": "Citação exata do momento de fechamento ou tentativa",
+      "success": true ou false
+    }
+  },
   "insights": {
     "pontos_fortes": [
       "Descreva especificamente o que o vendedor fez bem, citando momentos reais"
@@ -252,6 +265,19 @@ const CHUNK_OVERLAP = 2000; // overlap between chunks
 
 interface ChunkAnalysis {
   scores: Record<string, number>;
+  sale_result?: {
+    status: 'closed' | 'not_closed' | 'promise' | 'unknown';
+    status_description: string;
+    scheduled_date: string | null;
+    scheduled_time: string | null;
+    notes: string;
+    next_steps: string;
+    closing_moment?: {
+      timestamp: string;
+      quote: string;
+      success: boolean;
+    };
+  };
   insights: {
     pontos_fortes: string[];
     pontos_fracos: string[];
@@ -322,6 +348,9 @@ function consolidateAnalyses(analyses: ChunkAnalysis[]): ChunkAnalysis {
 
   // Use the DISC profile from the first chunk (or aggregate if needed)
   const perfilDisc = analyses[0]?.insights.perfil_disc || null;
+  
+  // Use sale_result from the last chunk (most likely to contain closing info)
+  const saleResult = analyses[analyses.length - 1]?.sale_result || analyses[0]?.sale_result || null;
 
   // Deduplicate and limit items
   const uniquePontosFortes = [...new Set(allPontosFortes)].slice(0, 10);
@@ -342,6 +371,7 @@ function consolidateAnalyses(analyses: ChunkAnalysis[]): ChunkAnalysis {
 
   return {
     scores: avgScores,
+    sale_result: saleResult || undefined,
     insights: {
       pontos_fortes: uniquePontosFortes,
       pontos_fracos: uniquePontosFracos,
@@ -582,6 +612,27 @@ Deno.serve(async (req) => {
 
     console.log(`Analysis complete. Processing time: ${processingTime}s`);
 
+    // Prepare sale result data for database
+    const saleResult = analysisData.sale_result;
+    let scheduledDate: string | null = null;
+    if (saleResult?.scheduled_date) {
+      try {
+        // Try to parse the date - could be in various formats
+        const dateStr = saleResult.scheduled_date;
+        if (dateStr.match(/^\d{4}-\d{2}-\d{2}/)) {
+          scheduledDate = dateStr;
+        } else {
+          // Try to create a date object
+          const parsed = new Date(dateStr);
+          if (!isNaN(parsed.getTime())) {
+            scheduledDate = parsed.toISOString();
+          }
+        }
+      } catch (e) {
+        console.log('Could not parse scheduled date:', saleResult.scheduled_date);
+      }
+    }
+
     // Save analysis to database
     const { data: analysisRecord, error: analysisError } = await supabase
       .from('analyses')
@@ -599,7 +650,10 @@ Deno.serve(async (req) => {
         score_compromisso_pagamento: analysisData.scores.compromisso_pagamento,
         model: 'gpt-4o-mini',
         processing_time_sec: processingTime,
-        insights_json: analysisData.insights,
+        insights_json: { ...analysisData.insights, sale_result: saleResult },
+        sale_status: saleResult?.status || 'unknown',
+        scheduled_date: scheduledDate,
+        sale_notes: saleResult?.notes || null,
       })
       .select()
       .single();

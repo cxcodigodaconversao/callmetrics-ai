@@ -22,6 +22,8 @@ const Upload = () => {
   const [videoTitle, setVideoTitle] = useState("");
   const [sellerName, setSellerName] = useState("");
   const [productName, setProductName] = useState("");
+  const [projectName, setProjectName] = useState("");
+  const [teamName, setTeamName] = useState("");
   
   // File upload mode
   const [dragActive, setDragActive] = useState(false);
@@ -201,6 +203,8 @@ const Upload = () => {
           title: videoTitle,
           seller_name: sellerName,
           product_name: productName,
+          project_name: projectName || null,
+          team_name: teamName || null,
           mode: 'upload',
           storage_path: fileName,
           mime_type: fileToUpload.type,
@@ -276,6 +280,8 @@ const Upload = () => {
           title: videoTitle,
           seller_name: sellerName,
           product_name: productName,
+          project_name: projectName || null,
+          team_name: teamName || null,
           mode: 'transcript',
           status: 'processing'
         })
@@ -411,6 +417,32 @@ const Upload = () => {
                       className="input-field text-lg"
                       required
                     />
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="project-name-file" className="text-lg">Projeto</Label>
+                      <Input
+                        id="project-name-file"
+                        type="text"
+                        placeholder="Ex: Lançamento 2024"
+                        value={projectName}
+                        onChange={(e) => setProjectName(e.target.value)}
+                        className="input-field text-lg"
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="team-name-file" className="text-lg">Time</Label>
+                      <Input
+                        id="team-name-file"
+                        type="text"
+                        placeholder="Ex: Time A"
+                        value={teamName}
+                        onChange={(e) => setTeamName(e.target.value)}
+                        className="input-field text-lg"
+                      />
+                    </div>
                   </div>
 
                   <div
@@ -579,6 +611,32 @@ const Upload = () => {
                       className="input-field text-lg"
                       required
                     />
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="project-name-transcript" className="text-lg">Projeto</Label>
+                      <Input
+                        id="project-name-transcript"
+                        type="text"
+                        placeholder="Ex: Lançamento 2024"
+                        value={projectName}
+                        onChange={(e) => setProjectName(e.target.value)}
+                        className="input-field text-lg"
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="team-name-transcript" className="text-lg">Time</Label>
+                      <Input
+                        id="team-name-transcript"
+                        type="text"
+                        placeholder="Ex: Time A"
+                        value={teamName}
+                        onChange={(e) => setTeamName(e.target.value)}
+                        className="input-field text-lg"
+                      />
+                    </div>
                   </div>
 
                   <div className="space-y-2">

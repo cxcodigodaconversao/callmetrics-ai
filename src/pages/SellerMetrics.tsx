@@ -3,12 +3,13 @@ import { Card } from "@/components/ui/card";
 import { supabase } from "@/integrations/supabase/client";
 import { 
   TrendingUp, TrendingDown, Target, Award, 
-  AlertTriangle, BarChart3, ArrowLeft, Brain
+  AlertTriangle, BarChart3, ArrowLeft, Brain, Filter
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 interface SellerStats {
   seller_name: string;
@@ -30,6 +31,10 @@ export default function SellerMetrics() {
   const [sellers, setSellers] = useState<SellerStats[]>([]);
   const [loadingData, setLoadingData] = useState(true);
   const [selectedSeller, setSelectedSeller] = useState<string | null>(null);
+  const [availableTeams, setAvailableTeams] = useState<string[]>([]);
+  const [availableProjects, setAvailableProjects] = useState<string[]>([]);
+  const [selectedTeam, setSelectedTeam] = useState<string>("all");
+  const [selectedProject, setSelectedProject] = useState<string>("all");
 
   useEffect(() => {
     if (!loading && !user) {
@@ -37,17 +42,19 @@ export default function SellerMetrics() {
     } else if (user) {
       fetchSellerMetrics();
     }
-  }, [user, loading, navigate]);
+  }, [user, loading, navigate, selectedTeam, selectedProject]);
 
   const fetchSellerMetrics = async () => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
-      const { data, error } = await supabase
+      let query = supabase
         .from("videos")
         .select(`
           seller_name,
+          team_name,
+          project_name,
           analyses!inner (
             score_global,
             score_conexao,
@@ -64,12 +71,26 @@ export default function SellerMetrics() {
         .eq("status", "completed")
         .not("seller_name", "is", null);
 
+      if (selectedTeam !== "all") {
+        query = query.eq("team_name", selectedTeam);
+      }
+      if (selectedProject !== "all") {
+        query = query.eq("project_name", selectedProject);
+      }
+
+      const { data, error } = await query;
+
       if (error) throw error;
 
       const sellerMap = new Map<string, any>();
+      const teamsSet = new Set<string>();
+      const projectsSet = new Set<string>();
 
       data?.forEach(video => {
         if (!video.seller_name || !video.analyses) return;
+        
+        if (video.team_name) teamsSet.add(video.team_name);
+        if (video.project_name) projectsSet.add(video.project_name);
         
         const analyses = video.analyses;
         if (!sellerMap.has(video.seller_name)) {
@@ -148,6 +169,14 @@ export default function SellerMetrics() {
       });
 
       setSellers(sellersStats);
+
+      // Only update available filters on first load
+      if (availableTeams.length === 0) {
+        setAvailableTeams(Array.from(teamsSet).sort());
+      }
+      if (availableProjects.length === 0) {
+        setAvailableProjects(Array.from(projectsSet).sort());
+      }
     } catch (error) {
       console.error("Error fetching seller metrics:", error);
     } finally {
@@ -188,10 +217,48 @@ export default function SellerMetrics() {
         </Link>
 
         <div className="mb-8">
-          <h1 className="text-4xl font-bold mb-2">📊 Métricas por Vendedor</h1>
-          <p className="text-muted-foreground text-lg">
-            Performance individual e áreas de melhoria baseadas em dados reais
-          </p>
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-4">
+            <div>
+              <h1 className="text-4xl font-bold mb-2">📊 Métricas por Vendedor</h1>
+              <p className="text-muted-foreground text-lg">
+                Performance individual e áreas de melhoria baseadas em dados reais
+              </p>
+            </div>
+          </div>
+
+          {(availableTeams.length > 0 || availableProjects.length > 0) && (
+            <div className="flex flex-wrap items-center gap-4">
+              <Filter className="w-4 h-4 text-muted-foreground" />
+              
+              {availableTeams.length > 0 && (
+                <Select value={selectedTeam} onValueChange={setSelectedTeam}>
+                  <SelectTrigger className="w-[180px]">
+                    <SelectValue placeholder="Filtrar por time" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Todos os Times</SelectItem>
+                    {availableTeams.map(team => (
+                      <SelectItem key={team} value={team}>{team}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+
+              {availableProjects.length > 0 && (
+                <Select value={selectedProject} onValueChange={setSelectedProject}>
+                  <SelectTrigger className="w-[180px]">
+                    <SelectValue placeholder="Filtrar por projeto" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Todos os Projetos</SelectItem>
+                    {availableProjects.map(project => (
+                      <SelectItem key={project} value={project}>{project}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+            </div>
+          )}
         </div>
 
         {sellers.length === 0 ? (

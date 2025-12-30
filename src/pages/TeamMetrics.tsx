@@ -1,16 +1,19 @@
 import { useEffect, useState } from "react";
 import { Card } from "@/components/ui/card";
 import { supabase } from "@/integrations/supabase/client";
-import { Users, TrendingUp, AlertTriangle, ArrowLeft, Brain } from "lucide-react";
+import { Users, TrendingUp, AlertTriangle, ArrowLeft, Brain, Filter } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 export default function TeamMetrics() {
   const navigate = useNavigate();
   const { user, loading } = useAuth();
   const [teamStats, setTeamStats] = useState<any>(null);
   const [loadingData, setLoadingData] = useState(true);
+  const [availableTeams, setAvailableTeams] = useState<string[]>([]);
+  const [selectedTeam, setSelectedTeam] = useState<string>("all");
 
   useEffect(() => {
     if (!loading && !user) {
@@ -18,17 +21,18 @@ export default function TeamMetrics() {
     } else if (user) {
       fetchTeamMetrics();
     }
-  }, [user, loading, navigate]);
+  }, [user, loading, navigate, selectedTeam]);
 
   const fetchTeamMetrics = async () => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
-      const { data, error } = await supabase
+      let query = supabase
         .from("videos")
         .select(`
           seller_name,
+          team_name,
           analyses!inner (
             score_global,
             score_conexao,
@@ -45,6 +49,12 @@ export default function TeamMetrics() {
         .eq("status", "completed")
         .not("seller_name", "is", null);
 
+      if (selectedTeam !== "all") {
+        query = query.eq("team_name", selectedTeam);
+      }
+
+      const { data, error } = await query;
+
       if (error) throw error;
 
       // Calcular médias do time inteiro
@@ -58,9 +68,11 @@ export default function TeamMetrics() {
       };
 
       const sellerCount = new Set<string>();
+      const teamsSet = new Set<string>();
 
       data?.forEach(video => {
         if (video.seller_name) sellerCount.add(video.seller_name);
+        if (video.team_name) teamsSet.add(video.team_name);
         
         video.analyses?.forEach((analysis: any) => {
           allScores.global.push(analysis.score_global || 0);
@@ -105,6 +117,11 @@ export default function TeamMetrics() {
         averages: teamAvg,
         mainWeakness: weaknesses[0]
       });
+
+      // Only update available teams on first load
+      if (availableTeams.length === 0) {
+        setAvailableTeams(Array.from(teamsSet).sort());
+      }
 
     } catch (error) {
       console.error("Error fetching team metrics:", error);
@@ -158,11 +175,30 @@ export default function TeamMetrics() {
           Voltar ao Dashboard
         </Link>
 
-        <div className="mb-8">
-          <h1 className="text-4xl font-bold mb-2">👥 Métricas do Time</h1>
-          <p className="text-muted-foreground text-lg">
-            Visão consolidada da performance de todo o time comercial
-          </p>
+        <div className="mb-8 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+          <div>
+            <h1 className="text-4xl font-bold mb-2">👥 Métricas do Time</h1>
+            <p className="text-muted-foreground text-lg">
+              Visão consolidada da performance {selectedTeam !== "all" ? `do time "${selectedTeam}"` : "de todo o time comercial"}
+            </p>
+          </div>
+
+          {availableTeams.length > 0 && (
+            <div className="flex items-center gap-2">
+              <Filter className="w-4 h-4 text-muted-foreground" />
+              <Select value={selectedTeam} onValueChange={setSelectedTeam}>
+                <SelectTrigger className="w-[200px]">
+                  <SelectValue placeholder="Filtrar por time" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todos os Times</SelectItem>
+                  {availableTeams.map(team => (
+                    <SelectItem key={team} value={team}>{team}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">

@@ -123,21 +123,33 @@ class WhatsAppService {
   /**
    * Verificar se servidor está online
    */
-  async healthCheck() {
+  async healthCheck(): Promise<{
+    online: boolean;
+    status?: number;
+    statusText?: string;
+    error?: string;
+  }> {
     try {
       const response = await fetch(`${this.serverUrl}/health`);
       
       if (response.ok) {
         const data = await response.json();
         console.log('💚 Servidor online:', data);
-        return true;
+        return { online: true };
       }
       
-      return false;
+      return { 
+        online: false, 
+        status: response.status, 
+        statusText: response.statusText 
+      };
       
-    } catch (error) {
+    } catch (error: any) {
       console.error('💔 Servidor offline:', error);
-      return false;
+      return { 
+        online: false, 
+        error: error.message || 'Erro de conexão' 
+      };
     }
   }
 

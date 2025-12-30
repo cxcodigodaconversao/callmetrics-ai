@@ -1,7 +1,9 @@
 import * as tus from 'tus-js-client';
 import { supabase } from '@/integrations/supabase/client';
 
-const SUPABASE_URL = 'https://sqgwpenihrcdapptyltt.supabase.co';
+const SUPABASE_API_URL = 'https://sqgwpenihrcdapptyltt.supabase.co';
+// Use direct storage hostname for large/resumable uploads (bypasses proxy limits)
+const SUPABASE_STORAGE_URL = 'https://sqgwpenihrcdapptyltt.storage.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNxZ3dwZW5paHJjZGFwcHR5bHR0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjExOTIxOTksImV4cCI6MjA3Njc2ODE5OX0.e3d6uAxc8qnN7wQxPJa-GMaovashORvUosGi8Zu-uOI';
 
 interface UploadOptions {
@@ -34,11 +36,12 @@ export async function resumableUpload({
 
   return new Promise((resolve, reject) => {
     const upload = new tus.Upload(file, {
-      endpoint: `${SUPABASE_URL}/storage/v1/upload/resumable`,
+      endpoint: `${SUPABASE_STORAGE_URL}/storage/v1/upload/resumable`,
       retryDelays: [0, 3000, 5000, 10000, 20000],
       headers: {
         authorization: `Bearer ${accessToken}`,
         apikey: SUPABASE_ANON_KEY,
+        'x-upsert': 'false',
       },
       uploadDataDuringCreation: true,
       removeFingerprintOnSuccess: true,
@@ -48,7 +51,7 @@ export async function resumableUpload({
         contentType: file.type,
         cacheControl: '3600',
       },
-      chunkSize: 6 * 1024 * 1024, // 6MB chunks
+      chunkSize: 6 * 1024 * 1024, // 6MB chunks (required/recommended by Supabase)
       onError: (error) => {
         console.error('TUS upload error:', error);
         onError?.(error);
@@ -60,9 +63,9 @@ export async function resumableUpload({
         onProgress?.(percentage);
       },
       onSuccess: () => {
-        const publicUrl = `${SUPABASE_URL}/storage/v1/object/${bucketName}/${objectName}`;
-        console.log('TUS upload complete:', publicUrl);
-        onSuccess?.(publicUrl);
+        const objectUrl = `${SUPABASE_API_URL}/storage/v1/object/${bucketName}/${objectName}`;
+        console.log('TUS upload complete:', objectUrl);
+        onSuccess?.(objectUrl);
         resolve(objectName);
       },
     });

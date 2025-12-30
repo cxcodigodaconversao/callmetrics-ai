@@ -43,7 +43,7 @@ export async function resumableUpload({
         apikey: SUPABASE_ANON_KEY,
         'x-upsert': 'false',
       },
-      uploadDataDuringCreation: true,
+      uploadDataDuringCreation: false, // CRITICAL: false to avoid 413 on POST creation
       removeFingerprintOnSuccess: true,
       metadata: {
         bucketName: bucketName,
@@ -52,10 +52,18 @@ export async function resumableUpload({
         cacheControl: '3600',
       },
       chunkSize: 6 * 1024 * 1024, // 6MB chunks (required/recommended by Supabase)
-      onError: (error) => {
-        console.error('TUS upload error:', error);
+      onError: (error: any) => {
+        const status = error?.originalResponse?.getStatus?.() || 'unknown';
+        const body = error?.originalResponse?.getBody?.() || '';
+        console.error('TUS upload error:', { status, body, message: error.message });
         onError?.(error);
         reject(error);
+      },
+      onAfterResponse: (_req: any, res: any) => {
+        const status = res.getStatus();
+        if (status >= 400) {
+          console.warn('TUS response error:', { status, body: res.getBody() });
+        }
       },
       onProgress: (bytesUploaded, bytesTotal) => {
         const percentage = Math.round((bytesUploaded / bytesTotal) * 100);

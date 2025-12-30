@@ -405,19 +405,30 @@ Deno.serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
-  try {
-    const auth = await requireAuth(req);
-    if (!auth.user) {
+  // Check for internal key authentication (from webhook)
+  const internalKey = req.headers.get('x-internal-key');
+  const expectedKey = Deno.env.get('INTERNAL_FUNCTION_KEY');
+  
+  const isInternalAuth = internalKey && expectedKey && internalKey === expectedKey;
+
+  if (!isInternalAuth) {
+    // Fall back to regular user authentication
+    try {
+      const auth = await requireAuth(req);
+      if (!auth.user) {
+        return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+          status: 401,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+    } catch (_e) {
       return new Response(JSON.stringify({ error: 'Unauthorized' }), {
         status: 401,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
-  } catch (_e) {
-    return new Response(JSON.stringify({ error: 'Unauthorized' }), {
-      status: 401,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    });
+  } else {
+    console.log('Authenticated via internal key (webhook call)');
   }
 
   let videoId: string | undefined;

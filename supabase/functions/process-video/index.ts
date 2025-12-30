@@ -190,8 +190,8 @@ Deno.serve(async (req) => {
 
     console.log(`Audio URL obtained: ${audioUrl}`);
 
-    // Step 2: Transcribe audio (use client with user's auth)
-    console.log('Starting transcription...');
+    // Step 2: Start async transcription (use client with user's auth)
+    console.log('Starting async transcription...');
     const transcribeResponse = await supabaseWithAuth.functions.invoke('transcribe-audio', {
       body: { audioUrl, videoId }
     });
@@ -199,10 +199,10 @@ Deno.serve(async (req) => {
     console.log('Transcription response received:', {
       hasError: !!transcribeResponse.error,
       hasData: !!transcribeResponse.data,
-      errorType: transcribeResponse.error?.name,
-      errorMessage: transcribeResponse.error?.message
+      status: transcribeResponse.data?.status,
     });
 
+    // Check for errors
     if (transcribeResponse.error) {
       let errorMsg = 'Erro na transcrição';
       
@@ -249,56 +249,37 @@ Deno.serve(async (req) => {
       throw new Error(errorMsg);
     }
 
-    if (!transcribeResponse.data || !transcribeResponse.data.transcription) {
-      console.error('Invalid transcription response:', transcribeResponse.data);
-      throw new Error('Transcrição retornou dados inválidos');
-    }
-    
-    console.log('Transcription successful, length:', transcribeResponse.data.transcription.length);
-
-    const { transcription, transcriptionId } = transcribeResponse.data;
-    console.log(`Transcription completed: ${transcriptionId}`);
-
-    // Step 3: Analyze transcription (use client with user's auth)
-    console.log('Starting analysis...');
-    const analyzeResponse = await supabaseWithAuth.functions.invoke('analyze-transcription', {
-      body: { transcription, videoId, transcriptionId }
-    });
-
-    if (analyzeResponse.error) {
-      let errorMsg = 'Erro na análise';
-      if (analyzeResponse.error.message) {
-        errorMsg = analyzeResponse.error.message;
-      } else if (analyzeResponse.error.context?.body) {
-        try {
-          const errorBody = JSON.parse(analyzeResponse.error.context.body);
-          errorMsg = errorBody.error || errorMsg;
-        } catch (e) {
-          console.error('Failed to parse error body:', e);
+    // Handle 202 Accepted - transcription is processing async
+    if (transcribeResponse.data?.status === 'processing') {
+      console.log('Transcription started async - webhook will complete the process');
+      
+      // Return 202 to frontend - processing continues in background via webhook
+      return new Response(
+        JSON.stringify({ 
+          success: true, 
+          status: 'processing',
+          message: 'Processamento iniciado. A análise será concluída em alguns minutos.',
+        }),
+        { 
+          status: 202,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
         }
-      }
-      throw new Error(errorMsg);
+      );
     }
 
-    if (!analyzeResponse.data || !analyzeResponse.data.success) {
-      throw new Error('Análise retornou dados inválidos');
-    }
-
-    console.log(`Analysis completed for video: ${videoId}`);
-
-    // Update video status to completed
-    await supabase
-      .from('videos')
-      .update({ status: 'completed' })
-      .eq('id', videoId);
-
+    // Unexpected response - should not happen with new async flow
+    console.log('Unexpected transcription response:', transcribeResponse.data);
+    
     return new Response(
       JSON.stringify({ 
         success: true, 
-        message: 'Video processed successfully',
-        data: analyzeResponse.data
+        status: 'processing',
+        message: 'Processamento iniciado.',
       }),
-      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      { 
+        status: 202,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+      }
     );
 
   } catch (error: any) {

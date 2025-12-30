@@ -32,6 +32,9 @@ Deno.serve(async (req) => {
 
   let videoId: string | undefined;
   
+  // Capture auth header for forwarding to other functions
+  const authHeader = req.headers.get('authorization') || req.headers.get('Authorization') || '';
+  
   try {
     const auth = await requireAuth(req);
     if (!auth.user) {
@@ -50,10 +53,15 @@ Deno.serve(async (req) => {
 
     console.log(`Starting processing for video: ${videoId}`);
 
-    // Initialize Supabase client
+    // Initialize Supabase client for DB/Storage operations
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseKey);
+    
+    // Create client WITH user's auth header for invoking other functions
+    const supabaseWithAuth = createClient(supabaseUrl, supabaseKey, {
+      global: { headers: { Authorization: authHeader } }
+    });
 
     // Get video details
     const { data: video, error: videoError } = await supabase
@@ -182,9 +190,9 @@ Deno.serve(async (req) => {
 
     console.log(`Audio URL obtained: ${audioUrl}`);
 
-    // Step 2: Transcribe audio
+    // Step 2: Transcribe audio (use client with user's auth)
     console.log('Starting transcription...');
-    const transcribeResponse = await supabase.functions.invoke('transcribe-audio', {
+    const transcribeResponse = await supabaseWithAuth.functions.invoke('transcribe-audio', {
       body: { audioUrl, videoId }
     });
 
@@ -251,9 +259,9 @@ Deno.serve(async (req) => {
     const { transcription, transcriptionId } = transcribeResponse.data;
     console.log(`Transcription completed: ${transcriptionId}`);
 
-    // Step 3: Analyze transcription
+    // Step 3: Analyze transcription (use client with user's auth)
     console.log('Starting analysis...');
-    const analyzeResponse = await supabase.functions.invoke('analyze-transcription', {
+    const analyzeResponse = await supabaseWithAuth.functions.invoke('analyze-transcription', {
       body: { transcription, videoId, transcriptionId }
     });
 

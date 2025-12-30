@@ -333,51 +333,6 @@ const Upload = () => {
     }
   };
 
-  // Shared form fields component
-  const MetadataFields = () => (
-    <>
-      <div className="space-y-2">
-        <Label htmlFor="video-title" className="text-lg">Título *</Label>
-        <Input
-          id="video-title"
-          type="text"
-          placeholder="Ex: Call com Cliente Pedro - 23/10/2024"
-          value={videoTitle}
-          onChange={(e) => setVideoTitle(e.target.value)}
-          className="input-field text-lg"
-          required
-        />
-        <p className="text-sm text-muted-foreground">Identifique a call e o cliente</p>
-      </div>
-
-      <div className="space-y-2">
-        <Label htmlFor="seller-name" className="text-lg">Vendedor Responsável *</Label>
-        <Input
-          id="seller-name"
-          type="text"
-          placeholder="Ex: João Silva"
-          value={sellerName}
-          onChange={(e) => setSellerName(e.target.value)}
-          className="input-field text-lg"
-          required
-        />
-      </div>
-
-      <div className="space-y-2">
-        <Label htmlFor="product-name" className="text-lg">Produto/Serviço *</Label>
-        <Input
-          id="product-name"
-          type="text"
-          placeholder="Ex: Plano Premium"
-          value={productName}
-          onChange={(e) => setProductName(e.target.value)}
-          className="input-field text-lg"
-          required
-        />
-      </div>
-    </>
-  );
-
   return (
     <div className="min-h-screen bg-background py-12 px-4">
       <div className="max-w-4xl mx-auto">
@@ -418,7 +373,45 @@ const Upload = () => {
                 </p>
 
                 <form onSubmit={handleFileSubmit} className="space-y-6">
-                  <MetadataFields />
+                  <div className="space-y-2">
+                    <Label htmlFor="video-title-file" className="text-lg">Título *</Label>
+                    <Input
+                      id="video-title-file"
+                      type="text"
+                      placeholder="Ex: Call com Cliente Pedro - 23/10/2024"
+                      value={videoTitle}
+                      onChange={(e) => setVideoTitle(e.target.value)}
+                      className="input-field text-lg"
+                      required
+                    />
+                    <p className="text-sm text-muted-foreground">Identifique a call e o cliente</p>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="seller-name-file" className="text-lg">Vendedor Responsável *</Label>
+                    <Input
+                      id="seller-name-file"
+                      type="text"
+                      placeholder="Ex: João Silva"
+                      value={sellerName}
+                      onChange={(e) => setSellerName(e.target.value)}
+                      className="input-field text-lg"
+                      required
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="product-name-file" className="text-lg">Produto/Serviço *</Label>
+                    <Input
+                      id="product-name-file"
+                      type="text"
+                      placeholder="Ex: Plano Premium"
+                      value={productName}
+                      onChange={(e) => setProductName(e.target.value)}
+                      className="input-field text-lg"
+                      required
+                    />
+                  </div>
 
                   <div
                     className={`border-2 border-dashed rounded-lg p-12 text-center transition-colors ${
@@ -548,7 +541,45 @@ const Upload = () => {
                 </div>
 
                 <form onSubmit={handleTranscriptionSubmit} className="space-y-6">
-                  <MetadataFields />
+                  <div className="space-y-2">
+                    <Label htmlFor="video-title-transcript" className="text-lg">Título *</Label>
+                    <Input
+                      id="video-title-transcript"
+                      type="text"
+                      placeholder="Ex: Call com Cliente Pedro - 23/10/2024"
+                      value={videoTitle}
+                      onChange={(e) => setVideoTitle(e.target.value)}
+                      className="input-field text-lg"
+                      required
+                    />
+                    <p className="text-sm text-muted-foreground">Identifique a call e o cliente</p>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="seller-name-transcript" className="text-lg">Vendedor Responsável *</Label>
+                    <Input
+                      id="seller-name-transcript"
+                      type="text"
+                      placeholder="Ex: João Silva"
+                      value={sellerName}
+                      onChange={(e) => setSellerName(e.target.value)}
+                      className="input-field text-lg"
+                      required
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="product-name-transcript" className="text-lg">Produto/Serviço *</Label>
+                    <Input
+                      id="product-name-transcript"
+                      type="text"
+                      placeholder="Ex: Plano Premium"
+                      value={productName}
+                      onChange={(e) => setProductName(e.target.value)}
+                      className="input-field text-lg"
+                      required
+                    />
+                  </div>
 
                   <div className="space-y-2">
                     <Label htmlFor="transcription" className="text-lg">Transcrição da Call *</Label>

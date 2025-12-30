@@ -31,17 +31,33 @@ const ANALYSIS_PROMPT = `Você é um especialista em análise de vendas usando a
 
 Analise a transcrição da ligação de vendas abaixo e forneça uma análise DETALHADA E FIDEDIGNA baseada APENAS no que realmente aconteceu na conversa.
 
-**INSTRUÇÕES CRÍTICAS SOBRE TIMESTAMPS E ORDEM CRONOLÓGICA:**
-- A transcrição vem formatada com timestamps EXATOS no formato [MM:SS] ou [HH:MM:SS] antes de cada fala
-- Você DEVE usar EXATAMENTE esses timestamps que aparecem entre colchetes [MM:SS]
-- NUNCA invente timestamps - copie EXATAMENTE como aparecem na transcrição entre colchetes
-- Exemplo: se na transcrição está "[03:03] cliente: Mas eu fiquei com dúvida...", o timestamp é "03:03"
-- Formato do timestamp na sua resposta deve ser "MM:SS" ou "HH:MM:SS" (sem colchetes, sem milissegundos)
-- **ORDEM CRONOLÓGICA**: Mantenha ESTRITAMENTE a ordem dos eventos como aparecem na transcrição
+**🚨 REGRA CRÍTICA ABSOLUTA PARA TIMESTAMPS (LEIA COM ATENÇÃO):**
+
+A transcrição está formatada assim:
+[MM:SS] speaker: texto da fala
+
+VOCÊ DEVE SEGUIR ESTAS REGRAS SEM EXCEÇÃO:
+
+1. **EXTRAÇÃO DO TIMESTAMP**: O timestamp que você usar DEVE ser copiado EXATAMENTE da MESMA LINHA onde a citação aparece
+2. **VALIDAÇÃO OBRIGATÓRIA**: Antes de colocar um timestamp, CONFIRME que a citação está NAQUELA LINHA
+3. **EXEMPLO CORRETO**: Se na transcrição está:
+   [58:03] vendedor: O que funciona é consultoria, é acompanhamento.
+   
+   Então: timestamp = "58:03" e quote = "O que funciona é consultoria, é acompanhamento."
+   
+4. **EXEMPLO ERRADO**: NÃO pegue o timestamp de uma linha e a citação de outra linha
+5. **NUNCA APROXIME**: Se a citação está em [58:03], o timestamp DEVE ser exatamente "58:03", NUNCA "56:24" ou "58:00"
+6. **FORMATO**: Use MM:SS ou HH:MM:SS (sem colchetes, sem milissegundos)
+7. **ORDEM CRONOLÓGICA**: Mantenha ESTRITAMENTE a ordem dos eventos como aparecem na transcrição
+8. **CITAÇÃO EXATA**: Copie a citação LITERALMENTE como aparece na transcrição
+
+**VERIFICAÇÃO FINAL**: Para cada item da timeline e objeções, verifique:
+- A citação aparece EXATAMENTE após o timestamp [XX:XX] que você especificou?
+- Se não, corrija o timestamp para o correto
+
 - **SILÊNCIO INICIAL**: Se a primeira fala está em [03:00], significa que houve 3 minutos de silêncio/introdução antes
 - Cite APENAS frases que REALMENTE foram ditas (copie exatamente, incluindo contexto suficiente)
 - **CONTEXTO CORRETO**: Se mencionar uma frase específica na análise (campo "why"), ela DEVE estar presente na citação (campo "quote")
-- **VERIFICAÇÃO**: Antes de finalizar, verifique se a ordem dos eventos no campo "why" corresponde exatamente à ordem no campo "quote"
 - NÃO invente nomes de pessoas se não estiverem mencionados
 - NÃO invente momentos que não aconteceram
 - Se não houver informação suficiente para um critério, seja honesto e dê score baixo
@@ -383,6 +399,126 @@ function consolidateAnalyses(analyses: ChunkAnalysis[]): ChunkAnalysis {
   };
 }
 
+// Validate and correct timestamps by matching quotes in the original transcription
+function validateAndCorrectTimestamps(analysis: ChunkAnalysis, transcription: string): ChunkAnalysis {
+  console.log('Starting timestamp validation and correction...');
+  
+  // Parse transcription into lines with timestamps
+  const lines = transcription.split('\n').filter(line => line.trim());
+  const timestampedLines: { timestamp: string; text: string; fullLine: string }[] = [];
+  
+  for (const line of lines) {
+    const match = line.match(/^\[(\d{1,2}:\d{2}(?::\d{2})?)\]\s*(?:vendedor|cliente|speaker\s*\w*):\s*(.+)/i);
+    if (match) {
+      timestampedLines.push({
+        timestamp: match[1],
+        text: match[2].trim(),
+        fullLine: line
+      });
+    }
+  }
+  
+  console.log(`Parsed ${timestampedLines.length} timestamped lines from transcription`);
+  
+  // Function to find the correct timestamp for a quote
+  function findCorrectTimestamp(quote: string): string | null {
+    if (!quote || quote.length < 10) return null;
+    
+    // Normalize the quote for comparison
+    const normalizeText = (text: string) => text.toLowerCase().replace(/[.,!?;:'"]/g, '').replace(/\s+/g, ' ').trim();
+    const normalizedQuote = normalizeText(quote);
+    
+    // Try to find exact or partial match
+    let bestMatch: { timestamp: string; score: number } | null = null;
+    
+    for (const line of timestampedLines) {
+      const normalizedLine = normalizeText(line.text);
+      
+      // Check for exact match
+      if (normalizedLine === normalizedQuote) {
+        return line.timestamp;
+      }
+      
+      // Check if quote is contained in line or vice versa
+      if (normalizedLine.includes(normalizedQuote) || normalizedQuote.includes(normalizedLine)) {
+        const score = Math.min(normalizedQuote.length, normalizedLine.length) / Math.max(normalizedQuote.length, normalizedLine.length);
+        if (!bestMatch || score > bestMatch.score) {
+          bestMatch = { timestamp: line.timestamp, score };
+        }
+      }
+      
+      // Check for significant word overlap (at least 50% of words match)
+      const quoteWords = normalizedQuote.split(' ').filter(w => w.length > 3);
+      const lineWords = normalizedLine.split(' ').filter(w => w.length > 3);
+      
+      if (quoteWords.length >= 3) {
+        const matchingWords = quoteWords.filter(word => lineWords.includes(word));
+        const matchRatio = matchingWords.length / quoteWords.length;
+        
+        if (matchRatio >= 0.5) {
+          const score = matchRatio;
+          if (!bestMatch || score > bestMatch.score) {
+            bestMatch = { timestamp: line.timestamp, score };
+          }
+        }
+      }
+    }
+    
+    // Only return if we have a good match (score > 0.4)
+    if (bestMatch && bestMatch.score > 0.4) {
+      return bestMatch.timestamp;
+    }
+    
+    return null;
+  }
+  
+  // Correct timeline timestamps
+  if (analysis.insights?.timeline) {
+    let corrected = 0;
+    analysis.insights.timeline = analysis.insights.timeline.map(item => {
+      if (item.quote) {
+        const correctTimestamp = findCorrectTimestamp(item.quote);
+        if (correctTimestamp && correctTimestamp !== item.timestamp) {
+          console.log(`Timeline correction: "${item.timestamp}" -> "${correctTimestamp}" for quote: "${item.quote.substring(0, 50)}..."`);
+          corrected++;
+          return { ...item, timestamp: correctTimestamp };
+        }
+      }
+      return item;
+    });
+    console.log(`Corrected ${corrected} timeline timestamps`);
+  }
+  
+  // Correct objections timestamps
+  if (analysis.insights?.objecoes) {
+    let corrected = 0;
+    analysis.insights.objecoes = analysis.insights.objecoes.map(item => {
+      // Try to find timestamp from cliente_disse first
+      if (item.cliente_disse) {
+        const correctTimestamp = findCorrectTimestamp(item.cliente_disse);
+        if (correctTimestamp && correctTimestamp !== item.timestamp) {
+          console.log(`Objection correction: "${item.timestamp}" -> "${correctTimestamp}" for quote: "${item.cliente_disse.substring(0, 50)}..."`);
+          corrected++;
+          return { ...item, timestamp: correctTimestamp };
+        }
+      }
+      return item;
+    });
+    console.log(`Corrected ${corrected} objection timestamps`);
+  }
+  
+  // Correct sale_result closing_moment timestamp if present
+  if (analysis.sale_result?.closing_moment?.quote) {
+    const correctTimestamp = findCorrectTimestamp(analysis.sale_result.closing_moment.quote);
+    if (correctTimestamp && correctTimestamp !== analysis.sale_result.closing_moment.timestamp) {
+      console.log(`Closing moment correction: "${analysis.sale_result.closing_moment.timestamp}" -> "${correctTimestamp}"`);
+      analysis.sale_result.closing_moment.timestamp = correctTimestamp;
+    }
+  }
+  
+  return analysis;
+}
+
 // Robust JSON parsing with sanitization for GPT responses
 function sanitizeAndParseJSON(text: string): any {
   // Step 1: Try direct parse
@@ -607,10 +743,15 @@ Deno.serve(async (req) => {
     }
 
     // Consolidate all chunk analyses
-    const analysisData = consolidateAnalyses(chunkAnalyses);
+    let analysisData = consolidateAnalyses(chunkAnalyses);
+    
+    // Validate and correct timestamps by matching quotes in the transcription
+    console.log('Validating and correcting timestamps...');
+    analysisData = validateAndCorrectTimestamps(analysisData, transcription);
+    
     const processingTime = Math.round((Date.now() - startTime) / 1000);
 
-    console.log(`Analysis complete. Processing time: ${processingTime}s`);
+    console.log(`Analysis complete with validated timestamps. Processing time: ${processingTime}s`);
 
     // Prepare sale result data for database
     const saleResult = analysisData.sale_result;

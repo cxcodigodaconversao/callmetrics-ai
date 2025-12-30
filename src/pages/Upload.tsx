@@ -23,10 +23,11 @@ const Upload = () => {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
-  const { compressAudio, isCompressing, compressionProgress } = useAudioCompression();
+  const { compressAudio, isCompressing, compressionProgress, cancelCompression } = useAudioCompression();
   
   const MAX_FILE_SIZE_MB = 5000; // 5GB - Limite do Supabase Pro plan
-  const SHOW_CONVERTER_THRESHOLD_MB = 500; // Sugerir conversão apenas para arquivos muito grandes
+  const COMPRESSION_THRESHOLD_MB = 50; // Comprimir áudios maiores que 50MB para evitar erro 413
+  const COMPRESSION_TARGET_MB = 45; // Alvo de compressão para passar no upload simples
 
   // Redirect to auth if not logged in
   useEffect(() => {
@@ -111,47 +112,82 @@ const Upload = () => {
     setUploadProgress(0);
 
     try {
-      // Upload file to Supabase Storage
-      const fileExt = selectedFile.name.split('.').pop();
-      const fileName = `${user.id}/${Date.now()}.${fileExt}`;
+      let fileToUpload = selectedFile;
+      const fileSizeMB = selectedFile.size / (1024 * 1024);
+      const isAudio = selectedFile.type.startsWith('audio/');
       
-      // Use resumable upload (TUS) for large files, simple upload for small files
-      if (selectedFile.size > RESUMABLE_THRESHOLD_BYTES) {
-        // Resumable upload for files > 50MB
-        console.log('Using resumable upload (TUS) for large file:', selectedFile.size);
+      // Comprimir áudios grandes automaticamente para evitar erro 413 no TUS
+      if (isAudio && fileSizeMB > COMPRESSION_THRESHOLD_MB) {
+        toast.info(`Comprimindo áudio de ${fileSizeMB.toFixed(0)}MB para garantir o envio...`, { duration: 5000 });
+        
+        try {
+          fileToUpload = await compressAudio(selectedFile, COMPRESSION_TARGET_MB);
+          const compressedSizeMB = fileToUpload.size / (1024 * 1024);
+          toast.success(`Áudio comprimido: ${fileSizeMB.toFixed(0)}MB → ${compressedSizeMB.toFixed(0)}MB`);
+        } catch (compressionError: any) {
+          console.error('Compression failed:', compressionError);
+          toast.error("Falha na compressão. Tentando upload do arquivo original...");
+          fileToUpload = selectedFile; // Fallback para arquivo original
+        }
+      }
+
+      // Upload file to Supabase Storage
+      const fileExt = fileToUpload.name.split('.').pop() || 'mp3';
+      const fileName = `${user.id}/${Date.now()}.${fileExt}`;
+      const finalFileSizeMB = fileToUpload.size / (1024 * 1024);
+      
+      // Usar upload simples para arquivos <=50MB, TUS para maiores
+      if (fileToUpload.size > RESUMABLE_THRESHOLD_BYTES) {
+        // Tentar TUS para arquivos grandes
+        console.log('Using resumable upload (TUS) for file:', finalFileSizeMB.toFixed(1), 'MB');
         toast.info("Iniciando upload de arquivo grande...", { duration: 3000 });
         
-        await resumableUpload({
-          bucketName: 'uploads',
-          objectName: fileName,
-          file: selectedFile,
-          onProgress: (percentage) => {
-            setUploadProgress(percentage);
-          },
-          onError: (error) => {
-            console.error('Resumable upload error:', error);
-          }
-        });
-        
-        setUploadProgress(100);
-      } else {
-        // Simple upload for files <= 50MB
-        const progressInterval = setInterval(() => {
-          setUploadProgress(prev => {
-            if (prev >= 90) {
-              clearInterval(progressInterval);
-              return prev;
+        try {
+          await resumableUpload({
+            bucketName: 'uploads',
+            objectName: fileName,
+            file: fileToUpload,
+            onProgress: (percentage) => {
+              setUploadProgress(percentage);
+            },
+            onError: (error) => {
+              console.error('Resumable upload error:', error);
             }
-            return prev + 10;
           });
+          setUploadProgress(100);
+        } catch (tusError: any) {
+          console.error('TUS upload failed:', tusError);
+          
+          // Se TUS falhou com 413 e é áudio, tentar comprimir mais
+          if (tusError.message?.includes('413') && isAudio) {
+            toast.warning("Limite de upload atingido. Comprimindo mais o áudio...");
+            try {
+              fileToUpload = await compressAudio(selectedFile, 40); // Comprimir para 40MB
+              // Tentar upload simples com arquivo menor
+              const { error: uploadError } = await supabase.storage
+                .from('uploads')
+                .upload(fileName, fileToUpload, { cacheControl: '3600', upsert: false });
+              
+              if (uploadError) throw uploadError;
+              setUploadProgress(100);
+            } catch (fallbackError: any) {
+              throw new Error(`Upload falhou: ${fallbackError.message}. Tente um arquivo menor.`);
+            }
+          } else {
+            throw tusError;
+          }
+        }
+      } else {
+        // Upload simples para arquivos <= 50MB
+        console.log('Using simple upload for file:', finalFileSizeMB.toFixed(1), 'MB');
+        
+        const progressInterval = setInterval(() => {
+          setUploadProgress(prev => prev >= 90 ? prev : prev + 10);
         }, 200);
 
         const { error: uploadError } = await supabase.storage
           .from('uploads')
-          .upload(fileName, selectedFile, {
-            cacheControl: '3600',
-            upsert: false
-          });
+          .upload(fileName, fileToUpload, { cacheControl: '3600', upsert: false });
 
         clearInterval(progressInterval);
         setUploadProgress(100);
@@ -172,8 +208,8 @@ const Upload = () => {
           product_name: productName,
           mode: 'upload',
           storage_path: fileName,
-          mime_type: selectedFile.type,
-          file_size_bytes: selectedFile.size,
+          mime_type: fileToUpload.type,
+          file_size_bytes: fileToUpload.size,
           status: 'queued'
         })
         .select()
@@ -190,7 +226,6 @@ const Upload = () => {
 
       if (processError) {
         console.error('Error starting processing:', processError);
-        // Update status to failed
         await supabase
           .from('videos')
           .update({ 
@@ -365,7 +400,28 @@ const Upload = () => {
                 )}
               </div>
 
-              {isProcessing && uploadProgress > 0 && (
+              {/* Progresso de compressão */}
+              {isCompressing && compressionProgress && (
+                <div className="space-y-2 p-4 bg-primary/5 rounded-lg border border-primary/20">
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-primary font-medium">{compressionProgress.message}</span>
+                    <span className="text-primary font-semibold">{compressionProgress.progress}%</span>
+                  </div>
+                  <Progress value={compressionProgress.progress} className="w-full" />
+                  <Button 
+                    type="button" 
+                    variant="outline" 
+                    size="sm" 
+                    onClick={cancelCompression}
+                    className="mt-2"
+                  >
+                    Cancelar Compressão
+                  </Button>
+                </div>
+              )}
+
+              {/* Progresso de upload */}
+              {isProcessing && uploadProgress > 0 && !isCompressing && (
                 <div className="space-y-2">
                   <div className="flex items-center justify-between text-sm">
                     <span className="text-muted-foreground">Enviando arquivo...</span>

@@ -353,6 +353,68 @@ function consolidateAnalyses(analyses: ChunkAnalysis[]): ChunkAnalysis {
   };
 }
 
+// Robust JSON parsing with sanitization for GPT responses
+function sanitizeAndParseJSON(text: string): any {
+  // Step 1: Try direct parse
+  try {
+    return JSON.parse(text);
+  } catch (e) {
+    console.log('Direct JSON parse failed, attempting sanitization...');
+  }
+
+  // Step 2: Remove common issues that cause JSON parsing to fail
+  let sanitized = text
+    // Remove control characters except newlines and tabs
+    .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F]/g, '')
+    // Fix unescaped newlines inside JSON string values
+    .replace(/:\s*"([^"]*?)[\r\n]+([^"]*?)"/g, (match, p1, p2) => {
+      return `: "${p1}\\n${p2}"`;
+    })
+    // Fix trailing commas before } or ]
+    .replace(/,(\s*[}\]])/g, '$1')
+    // Remove any BOM or zero-width characters
+    .replace(/[\uFEFF\u200B-\u200D\u2060]/g, '');
+
+  try {
+    return JSON.parse(sanitized);
+  } catch (e) {
+    console.log('Sanitized parse failed, trying regex extraction...');
+  }
+
+  // Step 3: Try to extract just the JSON object with a more careful regex
+  const jsonMatch = text.match(/\{[\s\S]*\}/);
+  if (jsonMatch) {
+    let extracted = jsonMatch[0]
+      .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F]/g, '')
+      .replace(/,(\s*[}\]])/g, '$1');
+    
+    try {
+      return JSON.parse(extracted);
+    } catch (e) {
+      console.log('Extracted JSON parse failed, trying line-by-line fix...');
+    }
+
+    // Step 4: Try to fix common issues in a more aggressive way
+    // Replace problematic characters in string values
+    extracted = extracted.replace(/"([^"]*?)"/g, (match, content) => {
+      const fixed = content
+        .replace(/\n/g, '\\n')
+        .replace(/\r/g, '\\r')
+        .replace(/\t/g, '\\t');
+      return `"${fixed}"`;
+    });
+
+    try {
+      return JSON.parse(extracted);
+    } catch (e) {
+      console.error('All JSON parsing attempts failed');
+      throw new Error('Failed to parse AI response as valid JSON after multiple sanitization attempts');
+    }
+  }
+
+  throw new Error('No JSON object found in AI response');
+}
+
 async function analyzeChunk(
   chunk: string, 
   chunkIndex: number, 
@@ -364,40 +426,68 @@ async function analyzeChunk(
     ? `\n\n**NOTA**: Esta é a parte ${chunkIndex + 1} de ${totalChunks} da transcrição completa.`
     : '';
 
-  console.log(`Analyzing chunk ${chunkIndex + 1}/${totalChunks} (${chunk.length} chars)`);
+  let lastError: Error | null = null;
+  const maxAttempts = 2;
 
-  const aiResponse = await fetch('https://api.openai.com/v1/chat/completions', {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${openAIApiKey}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      model: 'gpt-4o-mini',
-      messages: [
-        { role: 'system', content: ANALYSIS_PROMPT },
-        { role: 'user', content: `Transcrição da ligação (formatada com timestamps [MM:SS] antes de cada fala):${durationInfo}${chunkContext}\n\n${chunk}` }
-      ],
-      temperature: 0.3,
-    }),
-  });
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    try {
+      console.log(`Analyzing chunk ${chunkIndex + 1}/${totalChunks} (${chunk.length} chars) - attempt ${attempt}`);
+      
+      // Use lower temperature on retry to get more consistent JSON
+      const temperature = attempt === 1 ? 0.3 : 0.1;
 
-  if (!aiResponse.ok) {
-    const errorText = await aiResponse.text();
-    console.error('OpenAI API error:', errorText);
-    throw new Error(`OpenAI API error: ${errorText}`);
+      const aiResponse = await fetch('https://api.openai.com/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${openAIApiKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          model: 'gpt-4o-mini',
+          messages: [
+            { role: 'system', content: ANALYSIS_PROMPT },
+            { role: 'user', content: `Transcrição da ligação (formatada com timestamps [MM:SS] antes de cada fala):${durationInfo}${chunkContext}\n\n${chunk}` }
+          ],
+          temperature,
+        }),
+      });
+
+      if (!aiResponse.ok) {
+        const errorText = await aiResponse.text();
+        console.error('OpenAI API error:', errorText);
+        throw new Error(`OpenAI API error: ${errorText}`);
+      }
+
+      const aiData = await aiResponse.json();
+      const responseText = aiData.choices[0].message.content;
+
+      // Log response length for debugging
+      console.log(`Received AI response: ${responseText.length} chars`);
+
+      // Try to extract JSON from response
+      const jsonMatch = responseText.match(/\{[\s\S]*\}/);
+      if (!jsonMatch) {
+        throw new Error('Failed to extract JSON from AI response - no JSON object found');
+      }
+
+      // Use robust JSON parsing with sanitization
+      const parsed = sanitizeAndParseJSON(jsonMatch[0]);
+      console.log(`Successfully parsed JSON for chunk ${chunkIndex + 1}`);
+      return parsed;
+
+    } catch (error: any) {
+      lastError = error;
+      console.error(`Chunk ${chunkIndex + 1} attempt ${attempt} failed: ${error.message}`);
+      
+      if (attempt < maxAttempts) {
+        console.log(`Retrying chunk ${chunkIndex + 1} with lower temperature...`);
+        // Small delay before retry
+        await new Promise(resolve => setTimeout(resolve, 1000));
+      }
+    }
   }
 
-  const aiData = await aiResponse.json();
-  const responseText = aiData.choices[0].message.content;
-
-  // Parse the JSON response
-  const jsonMatch = responseText.match(/\{[\s\S]*\}/);
-  if (!jsonMatch) {
-    throw new Error('Failed to extract JSON from AI response');
-  }
-
-  return JSON.parse(jsonMatch[0]);
+  throw lastError || new Error(`Analysis failed for chunk ${chunkIndex + 1} after ${maxAttempts} attempts`);
 }
 
 Deno.serve(async (req) => {

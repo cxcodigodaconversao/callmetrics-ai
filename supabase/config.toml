@@ -1,13 +1,13 @@
 project_id = "sqgwpenihrcdapptyltt"
 
 [functions.process-video]
-verify_jwt = true
+verify_jwt = false
 
 [functions.transcribe-audio]
-verify_jwt = true
+verify_jwt = false
 
 [functions.analyze-transcription]
-verify_jwt = true
+verify_jwt = false
 
 [functions.create-user]
 verify_jwt = true

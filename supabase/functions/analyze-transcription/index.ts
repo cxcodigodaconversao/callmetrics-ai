@@ -427,14 +427,14 @@ async function analyzeChunk(
     : '';
 
   let lastError: Error | null = null;
-  const maxAttempts = 2;
+  const maxAttempts = 3;
 
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
     try {
-      console.log(`Analyzing chunk ${chunkIndex + 1}/${totalChunks} (${chunk.length} chars) - attempt ${attempt}`);
+      console.log(`Analyzing chunk ${chunkIndex + 1}/${totalChunks} (${chunk.length} chars) - attempt ${attempt}/${maxAttempts}`);
       
       // Use lower temperature on retry to get more consistent JSON
-      const temperature = attempt === 1 ? 0.3 : 0.1;
+      const temperature = attempt === 1 ? 0.3 : attempt === 2 ? 0.1 : 0;
 
       const aiResponse = await fetch('https://api.openai.com/v1/chat/completions', {
         method: 'POST',
@@ -449,12 +449,13 @@ async function analyzeChunk(
             { role: 'user', content: `Transcrição da ligação (formatada com timestamps [MM:SS] antes de cada fala):${durationInfo}${chunkContext}\n\n${chunk}` }
           ],
           temperature,
+          response_format: { type: "json_object" }, // Force valid JSON output
         }),
       });
 
       if (!aiResponse.ok) {
         const errorText = await aiResponse.text();
-        console.error('OpenAI API error:', errorText);
+        console.error(`OpenAI API error (attempt ${attempt}):`, errorText);
         throw new Error(`OpenAI API error: ${errorText}`);
       }
 
@@ -462,27 +463,31 @@ async function analyzeChunk(
       const responseText = aiData.choices[0].message.content;
 
       // Log response length for debugging
-      console.log(`Received AI response: ${responseText.length} chars`);
+      console.log(`Received AI response (attempt ${attempt}): ${responseText.length} chars`);
 
-      // Try to extract JSON from response
+      // With response_format: json_object, the response should be valid JSON
+      // But still try to extract and sanitize just in case
+      let jsonToParse = responseText;
+      
+      // Try to extract JSON object if response has extra content
       const jsonMatch = responseText.match(/\{[\s\S]*\}/);
-      if (!jsonMatch) {
-        throw new Error('Failed to extract JSON from AI response - no JSON object found');
+      if (jsonMatch) {
+        jsonToParse = jsonMatch[0];
       }
 
       // Use robust JSON parsing with sanitization
-      const parsed = sanitizeAndParseJSON(jsonMatch[0]);
-      console.log(`Successfully parsed JSON for chunk ${chunkIndex + 1}`);
+      const parsed = sanitizeAndParseJSON(jsonToParse);
+      console.log(`Successfully parsed JSON for chunk ${chunkIndex + 1} on attempt ${attempt}`);
       return parsed;
 
     } catch (error: any) {
       lastError = error;
-      console.error(`Chunk ${chunkIndex + 1} attempt ${attempt} failed: ${error.message}`);
+      console.error(`Chunk ${chunkIndex + 1} attempt ${attempt}/${maxAttempts} failed: ${error.message}`);
       
       if (attempt < maxAttempts) {
-        console.log(`Retrying chunk ${chunkIndex + 1} with lower temperature...`);
-        // Small delay before retry
-        await new Promise(resolve => setTimeout(resolve, 1000));
+        const delay = attempt * 2000; // Increasing delay: 2s, 4s
+        console.log(`Retrying chunk ${chunkIndex + 1} in ${delay/1000}s with lower temperature...`);
+        await new Promise(resolve => setTimeout(resolve, delay));
       }
     }
   }

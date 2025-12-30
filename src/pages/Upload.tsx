@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Upload as UploadIcon, FileVideo, ArrowLeft, Brain, Music, Link2, FileText, ExternalLink } from "lucide-react";
+import { Upload as UploadIcon, FileVideo, ArrowLeft, Brain, Music, FileText } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
@@ -30,13 +30,10 @@ const Upload = () => {
   const [uploadProgress, setUploadProgress] = useState(0);
   const { compressAudio, isCompressing, compressionProgress, cancelCompression } = useAudioCompression();
   
-  // URL mode
-  const [audioUrl, setAudioUrl] = useState("");
-  
   // Transcription mode
   const [transcriptionText, setTranscriptionText] = useState("");
   
-  const MAX_FILE_SIZE_MB = 5000;
+  const MAX_FILE_SIZE_MB = 500;
   const COMPRESSION_THRESHOLD_MB = 50;
   const COMPRESSION_TARGET_MB = 45;
 
@@ -81,7 +78,7 @@ const Upload = () => {
       const fileSizeMB = file.size / (1024 * 1024);
       
       if (fileSizeMB > MAX_FILE_SIZE_MB) {
-        toast.error(`Arquivo muito grande (${fileSizeMB.toFixed(0)}MB). Limite: 5GB.`, { duration: 8000 });
+        toast.error(`Arquivo muito grande (${fileSizeMB.toFixed(0)}MB). Use a aba "Transcrição" para arquivos grandes.`, { duration: 8000 });
         return;
       }
       
@@ -95,7 +92,7 @@ const Upload = () => {
       const fileSizeMB = file.size / (1024 * 1024);
       
       if (fileSizeMB > MAX_FILE_SIZE_MB) {
-        toast.error(`Arquivo muito grande (${fileSizeMB.toFixed(0)}MB). Limite: 5GB.`, { duration: 8000 });
+        toast.error(`Arquivo muito grande (${fileSizeMB.toFixed(0)}MB). Use a aba "Transcrição" para arquivos grandes.`, { duration: 8000 });
         return;
       }
       
@@ -104,7 +101,7 @@ const Upload = () => {
   };
 
   // ===========================================
-  // OPÇÃO 1: Upload de Arquivo (original)
+  // OPÇÃO 1: Upload de Arquivo
   // ===========================================
   const handleFileSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -122,6 +119,7 @@ const Upload = () => {
       const fileSizeMB = selectedFile.size / (1024 * 1024);
       const isAudio = selectedFile.type.startsWith('audio/');
       
+      // Compress audio files larger than threshold
       if (isAudio && fileSizeMB > COMPRESSION_THRESHOLD_MB) {
         toast.info(`Comprimindo áudio de ${fileSizeMB.toFixed(0)}MB para garantir o envio...`, { duration: 5000 });
         
@@ -140,7 +138,27 @@ const Upload = () => {
       const fileName = `${user.id}/${Date.now()}.${fileExt}`;
       const finalFileSizeMB = fileToUpload.size / (1024 * 1024);
       
-      if (fileToUpload.size > RESUMABLE_THRESHOLD_BYTES) {
+      // Try simple upload first for smaller files
+      if (fileToUpload.size <= RESUMABLE_THRESHOLD_BYTES) {
+        console.log('Using simple upload for file:', finalFileSizeMB.toFixed(1), 'MB');
+        
+        const progressInterval = setInterval(() => {
+          setUploadProgress(prev => prev >= 90 ? prev : prev + 10);
+        }, 200);
+
+        const { error: uploadError } = await supabase.storage
+          .from('uploads')
+          .upload(fileName, fileToUpload, { cacheControl: '3600', upsert: false });
+
+        clearInterval(progressInterval);
+        setUploadProgress(100);
+
+        if (uploadError) {
+          console.error('Simple upload error:', uploadError);
+          throw new Error(uploadError.message);
+        }
+      } else {
+        // Use resumable upload for larger files
         console.log('Using resumable upload (TUS) for file:', finalFileSizeMB.toFixed(1), 'MB');
         toast.info("Iniciando upload de arquivo grande...", { duration: 3000 });
         
@@ -156,10 +174,11 @@ const Upload = () => {
         } catch (tusError: any) {
           console.error('TUS upload failed:', tusError);
           
-          if (tusError.message?.includes('413') && isAudio) {
-            toast.warning("Limite de upload atingido. Comprimindo mais o áudio...");
+          // Try compression as fallback for audio
+          if (isAudio && fileSizeMB > 40) {
+            toast.warning("Tentando comprimir mais o áudio...");
             try {
-              fileToUpload = await compressAudio(selectedFile, 40);
+              fileToUpload = await compressAudio(selectedFile, 35);
               const { error: uploadError } = await supabase.storage
                 .from('uploads')
                 .upload(fileName, fileToUpload, { cacheControl: '3600', upsert: false });
@@ -167,29 +186,11 @@ const Upload = () => {
               if (uploadError) throw uploadError;
               setUploadProgress(100);
             } catch (fallbackError: any) {
-              throw new Error(`Upload falhou: ${fallbackError.message}. Tente usar a opção "Link Externo" para arquivos grandes.`);
+              throw new Error(`Upload falhou: ${fallbackError.message}. Use a aba "Transcrição" para arquivos grandes.`);
             }
           } else {
-            throw tusError;
+            throw new Error(`Upload falhou: ${tusError.message}. Use a aba "Transcrição" para arquivos grandes.`);
           }
-        }
-      } else {
-        console.log('Using simple upload for file:', finalFileSizeMB.toFixed(1), 'MB');
-        
-        const progressInterval = setInterval(() => {
-          setUploadProgress(prev => prev >= 90 ? prev : prev + 10);
-        }, 200);
-
-        const { error: uploadError } = await supabase.storage
-          .from('uploads')
-          .upload(fileName, fileToUpload, { cacheControl: '3600', upsert: false });
-
-        clearInterval(progressInterval);
-        setUploadProgress(100);
-
-        if (uploadError) {
-          console.error('Upload error:', uploadError);
-          throw new Error(uploadError.message);
         }
       }
 
@@ -239,69 +240,7 @@ const Upload = () => {
   };
 
   // ===========================================
-  // OPÇÃO 2: Link Externo (Drive/URL)
-  // ===========================================
-  const handleUrlSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    if (!audioUrl.trim() || !user) {
-      toast.error("Por favor, insira uma URL válida");
-      return;
-    }
-
-    if (!videoTitle.trim() || !sellerName.trim() || !productName.trim()) {
-      toast.error("Preencha todos os campos obrigatórios");
-      return;
-    }
-
-    setIsProcessing(true);
-
-    try {
-      // Criar registro com mode='url'
-      const { data: videoData, error: videoError } = await supabase
-        .from('videos')
-        .insert({
-          user_id: user.id,
-          title: videoTitle,
-          seller_name: sellerName,
-          product_name: productName,
-          mode: 'url',
-          source_url: audioUrl.trim(),
-          status: 'queued'
-        })
-        .select()
-        .single();
-
-      if (videoError) throw videoError;
-
-      console.log('Starting processing for URL:', videoData.id);
-      
-      const { error: processError } = await supabase.functions.invoke('process-video', {
-        body: { videoId: videoData.id }
-      });
-
-      if (processError) {
-        console.error('Error starting processing:', processError);
-        await supabase.from('videos').update({ 
-          status: 'failed',
-          error_message: `Erro ao iniciar processamento: ${processError.message}` 
-        }).eq('id', videoData.id);
-        
-        throw new Error(`Erro ao iniciar processamento: ${processError.message}`);
-      }
-
-      toast.success("Análise iniciada! O áudio será baixado e processado.");
-      navigate('/dashboard');
-    } catch (error: any) {
-      console.error('Error processing URL:', error);
-      toast.error(error.message || "Erro ao processar URL");
-    } finally {
-      setIsProcessing(false);
-    }
-  };
-
-  // ===========================================
-  // OPÇÃO 3: Transcrição Direta
+  // OPÇÃO 2: Transcrição Direta
   // ===========================================
   const handleTranscriptionSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -324,7 +263,7 @@ const Upload = () => {
     setIsProcessing(true);
 
     try {
-      // Criar registro de vídeo com mode='transcript'
+      // Create video record with mode='transcript'
       const { data: videoData, error: videoError } = await supabase
         .from('videos')
         .insert({
@@ -340,7 +279,7 @@ const Upload = () => {
 
       if (videoError) throw videoError;
 
-      // Inserir a transcrição manual
+      // Insert manual transcription
       const { data: transcriptionData, error: transcriptionError } = await supabase
         .from('transcriptions')
         .insert({
@@ -357,7 +296,7 @@ const Upload = () => {
 
       console.log('Starting analysis for transcription:', videoData.id);
       
-      // Chamar analyze-transcription diretamente (pular transcribe-audio)
+      // Call analyze-transcription directly (skip transcribe-audio)
       const { error: analyzeError } = await supabase.functions.invoke('analyze-transcription', {
         body: { 
           videoId: videoData.id,
@@ -376,7 +315,7 @@ const Upload = () => {
         throw new Error(`Erro na análise: ${analyzeError.message}`);
       }
 
-      // Marcar como completo
+      // Mark as completed
       await supabase.from('videos').update({ status: 'completed' }).eq('id', videoData.id);
 
       toast.success("Transcrição analisada com sucesso!");
@@ -451,14 +390,10 @@ const Upload = () => {
 
         <Card className="p-8">
           <Tabs defaultValue="file" className="w-full">
-            <TabsList className="grid w-full grid-cols-3 mb-8">
+            <TabsList className="grid w-full grid-cols-2 mb-8">
               <TabsTrigger value="file" className="flex items-center gap-2">
                 <UploadIcon className="w-4 h-4" />
-                Upload
-              </TabsTrigger>
-              <TabsTrigger value="url" className="flex items-center gap-2">
-                <Link2 className="w-4 h-4" />
-                Link Externo
+                Upload de Arquivo
               </TabsTrigger>
               <TabsTrigger value="transcription" className="flex items-center gap-2">
                 <FileText className="w-4 h-4" />
@@ -474,7 +409,7 @@ const Upload = () => {
                   <h2 className="text-2xl font-bold">Upload de Arquivo</h2>
                 </div>
                 <p className="text-muted-foreground mb-6">
-                  Selecione um arquivo de vídeo ou áudio para análise
+                  Selecione um arquivo de vídeo ou áudio para análise (até 500MB)
                 </p>
 
                 <form onSubmit={handleFileSubmit} className="space-y-6">
@@ -534,8 +469,8 @@ const Upload = () => {
                           <p className="text-sm text-muted-foreground">
                             <strong>Vídeos ou Áudios</strong> - Formatos: MP4, MOV, AVI, MP3, WAV
                           </p>
-                          <p className="text-xs text-amber-600 font-medium">
-                            ⚠️ Para arquivos acima de 50MB, use a aba "Link Externo"
+                          <p className="text-xs text-muted-foreground">
+                            Limite: 500MB. Para arquivos maiores, use a aba "Transcrição"
                           </p>
                         </div>
                       </div>
@@ -584,66 +519,7 @@ const Upload = () => {
               </div>
             </TabsContent>
 
-            {/* TAB 2: Link Externo */}
-            <TabsContent value="url">
-              <div className="space-y-6">
-                <div className="flex items-center gap-3 mb-2">
-                  <Link2 className="w-6 h-6 text-primary" />
-                  <h2 className="text-2xl font-bold">Link Externo</h2>
-                </div>
-                <p className="text-muted-foreground mb-6">
-                  Cole o link de um áudio hospedado externamente (Google Drive, Dropbox, etc.)
-                </p>
-
-                <div className="p-4 bg-blue-50 dark:bg-blue-950/20 rounded-lg border border-blue-200 dark:border-blue-800 mb-6">
-                  <h4 className="font-semibold text-blue-800 dark:text-blue-300 mb-2 flex items-center gap-2">
-                    <ExternalLink className="w-4 h-4" />
-                    Ideal para arquivos grandes (acima de 50MB)
-                  </h4>
-                  <ul className="text-sm text-blue-700 dark:text-blue-400 space-y-1">
-                    <li>• <strong>Google Drive:</strong> Clique em "Compartilhar" → "Qualquer pessoa com o link"</li>
-                    <li>• <strong>Dropbox:</strong> Gere um link e troque <code>?dl=0</code> por <code>?dl=1</code></li>
-                    <li>• <strong>Outros:</strong> Use qualquer link direto para o arquivo de áudio</li>
-                  </ul>
-                </div>
-
-                <form onSubmit={handleUrlSubmit} className="space-y-6">
-                  <MetadataFields />
-
-                  <div className="space-y-2">
-                    <Label htmlFor="audio-url" className="text-lg">URL do Áudio *</Label>
-                    <Input
-                      id="audio-url"
-                      type="url"
-                      placeholder="https://drive.google.com/file/d/..."
-                      value={audioUrl}
-                      onChange={(e) => setAudioUrl(e.target.value)}
-                      className="input-field text-lg"
-                      required
-                    />
-                    <p className="text-sm text-muted-foreground">
-                      Cole o link completo do arquivo de áudio
-                    </p>
-                  </div>
-
-                  <Button type="submit" className="w-full btn-primary text-lg py-6" disabled={isProcessing || !audioUrl.trim()}>
-                    {isProcessing ? (
-                      <>
-                        <Brain className="w-5 h-5 mr-2 animate-pulse" />
-                        Processando...
-                      </>
-                    ) : (
-                      <>
-                        <Link2 className="w-5 h-5 mr-2" />
-                        Analisar via Link
-                      </>
-                    )}
-                  </Button>
-                </form>
-              </div>
-            </TabsContent>
-
-            {/* TAB 3: Transcrição */}
+            {/* TAB 2: Transcrição */}
             <TabsContent value="transcription">
               <div className="space-y-6">
                 <div className="flex items-center gap-3 mb-2">
@@ -651,7 +527,7 @@ const Upload = () => {
                   <h2 className="text-2xl font-bold">Análise por Transcrição</h2>
                 </div>
                 <p className="text-muted-foreground mb-6">
-                  Cole a transcrição da call diretamente para análise (sem áudio)
+                  Cole a transcrição da call diretamente para análise (sem limite de tamanho)
                 </p>
 
                 <div className="p-4 bg-green-50 dark:bg-green-950/20 rounded-lg border border-green-200 dark:border-green-800 mb-6">
@@ -662,6 +538,7 @@ const Upload = () => {
                     <li>• Você já tem a transcrição pronta de outra ferramenta</li>
                     <li>• O áudio é muito grande para upload</li>
                     <li>• Você quer analisar rapidamente sem esperar transcrição</li>
+                    <li>• Transcrições longas são analisadas automaticamente em partes</li>
                   </ul>
                 </div>
 
@@ -681,7 +558,7 @@ const Upload = () => {
                     <div className="flex justify-between text-sm text-muted-foreground">
                       <span>Mínimo: 500 caracteres</span>
                       <span className={transcriptionText.length >= 500 ? "text-green-600" : ""}>
-                        {transcriptionText.length} caracteres | {transcriptionText.trim().split(/\s+/).filter(w => w).length} palavras
+                        {transcriptionText.length.toLocaleString()} caracteres | {transcriptionText.trim().split(/\s+/).filter(w => w).length.toLocaleString()} palavras
                       </span>
                     </div>
                   </div>

@@ -225,6 +225,160 @@ Comunicação CORRETA do vendedor para perfil C:
 
 **IMPORTANTE:** Retorne APENAS o JSON, sem texto adicional antes ou depois.`;
 
+// Chunking configuration
+const CHUNK_SIZE = 25000; // ~25k characters per chunk
+const CHUNK_OVERLAP = 2000; // overlap between chunks
+
+interface ChunkAnalysis {
+  scores: Record<string, number>;
+  insights: {
+    pontos_fortes: string[];
+    pontos_fracos: string[];
+    recomendacoes: string[];
+    perfil_disc: any;
+    timeline: any[];
+    objecoes: any[];
+  };
+}
+
+function splitIntoChunks(text: string): string[] {
+  if (text.length <= CHUNK_SIZE) {
+    return [text];
+  }
+
+  const chunks: string[] = [];
+  let start = 0;
+
+  while (start < text.length) {
+    let end = start + CHUNK_SIZE;
+    
+    // Try to break at a natural point (newline or period)
+    if (end < text.length) {
+      const lastNewline = text.lastIndexOf('\n', end);
+      const lastPeriod = text.lastIndexOf('. ', end);
+      const breakPoint = Math.max(lastNewline, lastPeriod);
+      
+      if (breakPoint > start + CHUNK_SIZE / 2) {
+        end = breakPoint + 1;
+      }
+    }
+
+    chunks.push(text.slice(start, end));
+    start = end - CHUNK_OVERLAP; // overlap
+    
+    // Prevent infinite loop
+    if (start >= text.length - CHUNK_OVERLAP) {
+      break;
+    }
+  }
+
+  return chunks;
+}
+
+function consolidateAnalyses(analyses: ChunkAnalysis[]): ChunkAnalysis {
+  if (analyses.length === 1) {
+    return analyses[0];
+  }
+
+  // Average scores across all chunks
+  const scoreKeys = ['conexao', 'spin_s', 'spin_p', 'spin_i', 'spin_n', 'apresentacao', 'fechamento', 'objecoes', 'compromisso_pagamento'];
+  const avgScores: Record<string, number> = {};
+  
+  for (const key of scoreKeys) {
+    const validScores = analyses.map(a => a.scores[key]).filter(s => typeof s === 'number');
+    avgScores[key] = validScores.length > 0 
+      ? Math.round(validScores.reduce((a, b) => a + b, 0) / validScores.length)
+      : 0;
+  }
+  avgScores.global = Math.round(Object.values(avgScores).reduce((a, b) => a + b, 0) / scoreKeys.length);
+
+  // Combine insights from all chunks
+  const allPontosFortes = analyses.flatMap(a => a.insights.pontos_fortes || []);
+  const allPontosFracos = analyses.flatMap(a => a.insights.pontos_fracos || []);
+  const allRecomendacoes = analyses.flatMap(a => a.insights.recomendacoes || []);
+  const allTimeline = analyses.flatMap(a => a.insights.timeline || []);
+  const allObjecoes = analyses.flatMap(a => a.insights.objecoes || []);
+
+  // Use the DISC profile from the first chunk (or aggregate if needed)
+  const perfilDisc = analyses[0]?.insights.perfil_disc || null;
+
+  // Deduplicate and limit items
+  const uniquePontosFortes = [...new Set(allPontosFortes)].slice(0, 10);
+  const uniquePontosFracos = [...new Set(allPontosFracos)].slice(0, 10);
+  const uniqueRecomendacoes = [...new Set(allRecomendacoes)].slice(0, 10);
+
+  // Sort timeline by timestamp if possible
+  const sortedTimeline = allTimeline.sort((a, b) => {
+    const parseTime = (t: string) => {
+      if (!t) return 0;
+      const parts = t.split(':').map(Number);
+      if (parts.length === 3) return parts[0] * 3600 + parts[1] * 60 + parts[2];
+      if (parts.length === 2) return parts[0] * 60 + parts[1];
+      return 0;
+    };
+    return parseTime(a.timestamp) - parseTime(b.timestamp);
+  }).slice(0, 20);
+
+  return {
+    scores: avgScores,
+    insights: {
+      pontos_fortes: uniquePontosFortes,
+      pontos_fracos: uniquePontosFracos,
+      recomendacoes: uniqueRecomendacoes,
+      perfil_disc: perfilDisc,
+      timeline: sortedTimeline,
+      objecoes: allObjecoes.slice(0, 10)
+    }
+  };
+}
+
+async function analyzeChunk(
+  chunk: string, 
+  chunkIndex: number, 
+  totalChunks: number,
+  openAIApiKey: string,
+  durationInfo: string
+): Promise<ChunkAnalysis> {
+  const chunkContext = totalChunks > 1 
+    ? `\n\n**NOTA**: Esta é a parte ${chunkIndex + 1} de ${totalChunks} da transcrição completa.`
+    : '';
+
+  console.log(`Analyzing chunk ${chunkIndex + 1}/${totalChunks} (${chunk.length} chars)`);
+
+  const aiResponse = await fetch('https://api.openai.com/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${openAIApiKey}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      model: 'gpt-4o-mini',
+      messages: [
+        { role: 'system', content: ANALYSIS_PROMPT },
+        { role: 'user', content: `Transcrição da ligação (formatada com timestamps [MM:SS] antes de cada fala):${durationInfo}${chunkContext}\n\n${chunk}` }
+      ],
+      temperature: 0.3,
+    }),
+  });
+
+  if (!aiResponse.ok) {
+    const errorText = await aiResponse.text();
+    console.error('OpenAI API error:', errorText);
+    throw new Error(`OpenAI API error: ${errorText}`);
+  }
+
+  const aiData = await aiResponse.json();
+  const responseText = aiData.choices[0].message.content;
+
+  // Parse the JSON response
+  const jsonMatch = responseText.match(/\{[\s\S]*\}/);
+  if (!jsonMatch) {
+    throw new Error('Failed to extract JSON from AI response');
+  }
+
+  return JSON.parse(jsonMatch[0]);
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -241,7 +395,7 @@ Deno.serve(async (req) => {
       throw new Error('transcription and videoId are required');
     }
 
-    console.log(`Analyzing transcription for video: ${videoId}`);
+    console.log(`Analyzing transcription for video: ${videoId} (${transcription.length} chars)`);
 
     // Get video duration from database
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
@@ -267,46 +421,24 @@ Deno.serve(async (req) => {
       throw new Error('OPENAI_API_KEY not configured');
     }
 
-    // Call OpenAI for analysis
-    console.log('Calling OpenAI...');
     const startTime = Date.now();
     
-    const aiResponse = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${openAIApiKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: 'gpt-4o-mini',
-        messages: [
-          { role: 'system', content: ANALYSIS_PROMPT },
-          { role: 'user', content: `Transcrição da ligação (formatada com timestamps [MM:SS] antes de cada fala):${durationInfo}\n\n${transcription}` }
-        ],
-        temperature: 0.3,
-      }),
-    });
+    // Split transcription into chunks if needed
+    const chunks = splitIntoChunks(transcription);
+    console.log(`Transcription split into ${chunks.length} chunk(s)`);
 
-    if (!aiResponse.ok) {
-      const errorText = await aiResponse.text();
-      console.error('OpenAI API error:', errorText);
-      throw new Error(`OpenAI API error: ${errorText}`);
+    // Analyze all chunks
+    const chunkAnalyses: ChunkAnalysis[] = [];
+    for (let i = 0; i < chunks.length; i++) {
+      const analysis = await analyzeChunk(chunks[i], i, chunks.length, openAIApiKey, durationInfo);
+      chunkAnalyses.push(analysis);
     }
 
-    const aiData = await aiResponse.json();
-    const responseText = aiData.choices[0].message.content;
-    console.log('AI analysis received');
-
-    // Parse the JSON response
-    const jsonMatch = responseText.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) {
-      throw new Error('Failed to extract JSON from AI response');
-    }
-
-    const analysisData = JSON.parse(jsonMatch[0]);
+    // Consolidate all chunk analyses
+    const analysisData = consolidateAnalyses(chunkAnalyses);
     const processingTime = Math.round((Date.now() - startTime) / 1000);
 
-    // Save analysis using existing Supabase client
+    console.log(`Analysis complete. Processing time: ${processingTime}s`);
 
     // Save analysis to database
     const { data: analysisRecord, error: analysisError } = await supabase
@@ -334,6 +466,16 @@ Deno.serve(async (req) => {
       throw new Error(`Failed to save analysis: ${analysisError.message}`);
     }
 
+    // Update video status to completed
+    const { error: updateError } = await supabase
+      .from('videos')
+      .update({ status: 'completed' })
+      .eq('id', videoId);
+
+    if (updateError) {
+      console.error('Failed to update video status:', updateError);
+    }
+
     console.log(`Analysis saved: ${analysisRecord.id}`);
 
     return new Response(
@@ -341,6 +483,7 @@ Deno.serve(async (req) => {
         success: true,
         analysis: analysisRecord,
         insights: analysisData.insights,
+        chunksProcessed: chunks.length
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );

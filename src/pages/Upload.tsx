@@ -24,8 +24,8 @@ const Upload = () => {
   const [uploadProgress, setUploadProgress] = useState(0);
   const { compressAudio, isCompressing, compressionProgress } = useAudioCompression();
   
-  const MAX_FILE_SIZE_MB = 500; // Permite arquivos até 500MB (serão comprimidos)
-  const COMPRESSION_THRESHOLD_MB = 40; // Comprime arquivos maiores que 40MB
+  const MAX_FILE_SIZE_MB = 50; // Limite do Supabase free plan
+  const SHOW_CONVERTER_THRESHOLD_MB = 50; // Mostrar aviso de conversão para arquivos maiores
 
   // Redirect to auth if not logged in
   useEffect(() => {
@@ -66,54 +66,34 @@ const Upload = () => {
     
     if (e.dataTransfer.files && e.dataTransfer.files[0]) {
       const file = e.dataTransfer.files[0];
-      const maxSize = MAX_FILE_SIZE_MB * 1024 * 1024;
+      const fileSizeMB = file.size / (1024 * 1024);
       
-      if (file.size > maxSize) {
-        const fileSizeMB = (file.size / (1024 * 1024)).toFixed(0);
+      if (fileSizeMB > MAX_FILE_SIZE_MB) {
         toast.error(
-          `Arquivo muito grande (${fileSizeMB}MB). O limite é ${MAX_FILE_SIZE_MB}MB.`,
-          { duration: 5000 }
+          `Arquivo muito grande (${fileSizeMB.toFixed(0)}MB). Limite: ${MAX_FILE_SIZE_MB}MB. Por favor, converta para MP3 usando o link abaixo.`,
+          { duration: 8000 }
         );
         return;
       }
       
       setSelectedFile(file);
-      
-      // Avisar se o arquivo será comprimido
-      const fileSizeMB = file.size / (1024 * 1024);
-      if (fileSizeMB > COMPRESSION_THRESHOLD_MB) {
-        toast.info(
-          `Arquivo grande (${fileSizeMB.toFixed(0)}MB). Será comprimido automaticamente antes do upload.`,
-          { duration: 4000 }
-        );
-      }
     }
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
-      const maxSize = MAX_FILE_SIZE_MB * 1024 * 1024;
+      const fileSizeMB = file.size / (1024 * 1024);
       
-      if (file.size > maxSize) {
-        const fileSizeMB = (file.size / (1024 * 1024)).toFixed(0);
+      if (fileSizeMB > MAX_FILE_SIZE_MB) {
         toast.error(
-          `Arquivo muito grande (${fileSizeMB}MB). O limite é ${MAX_FILE_SIZE_MB}MB.`,
-          { duration: 5000 }
+          `Arquivo muito grande (${fileSizeMB.toFixed(0)}MB). Limite: ${MAX_FILE_SIZE_MB}MB. Por favor, converta para MP3 usando o link abaixo.`,
+          { duration: 8000 }
         );
         return;
       }
       
       setSelectedFile(file);
-      
-      // Avisar se o arquivo será comprimido
-      const fileSizeMB = file.size / (1024 * 1024);
-      if (fileSizeMB > COMPRESSION_THRESHOLD_MB) {
-        toast.info(
-          `Arquivo grande (${fileSizeMB.toFixed(0)}MB). Será comprimido automaticamente antes do upload.`,
-          { duration: 4000 }
-        );
-      }
     }
   };
 
@@ -130,31 +110,8 @@ const Upload = () => {
     setUploadProgress(0);
 
     try {
-      let fileToUpload = selectedFile;
-      const originalSizeMB = selectedFile.size / (1024 * 1024);
-      
-      // Comprimir se arquivo for maior que 40MB
-      if (originalSizeMB > COMPRESSION_THRESHOLD_MB) {
-        toast.info("Comprimindo áudio para upload...");
-        try {
-          fileToUpload = await compressAudio(selectedFile, COMPRESSION_THRESHOLD_MB);
-          const compressedSizeMB = fileToUpload.size / (1024 * 1024);
-          toast.success(
-            `Áudio comprimido: ${originalSizeMB.toFixed(0)}MB → ${compressedSizeMB.toFixed(1)}MB`
-          );
-        } catch (compressionError: any) {
-          console.error('Erro na compressão:', compressionError);
-          toast.error(
-            "Não foi possível comprimir o áudio. Tente converter manualmente para MP3.",
-            { duration: 6000 }
-          );
-          setIsProcessing(false);
-          return;
-        }
-      }
-
       // Upload file to Supabase Storage
-      const fileExt = fileToUpload.name.split('.').pop();
+      const fileExt = selectedFile.name.split('.').pop();
       const fileName = `${user.id}/${Date.now()}.${fileExt}`;
       
       // Simulate progress
@@ -170,7 +127,7 @@ const Upload = () => {
 
       const { data: uploadData, error: uploadError } = await supabase.storage
         .from('uploads')
-        .upload(fileName, fileToUpload, {
+        .upload(fileName, selectedFile, {
           cacheControl: '3600',
           upsert: false
         });
@@ -193,8 +150,8 @@ const Upload = () => {
           product_name: productName,
           mode: 'upload',
           storage_path: fileName,
-          mime_type: fileToUpload.type,
-          file_size_bytes: fileToUpload.size,
+          mime_type: selectedFile.type,
+          file_size_bytes: selectedFile.size,
           status: 'queued'
         })
         .select()
@@ -371,20 +328,25 @@ const Upload = () => {
                         className="hidden"
                       />
                     </div>
-                    <p className="text-sm text-muted-foreground">
-                      <strong>Vídeos ou Áudios</strong> - Formatos: MP4, MOV, AVI, MP3, WAV
-                    </p>
-                    <p className="text-xs text-muted-foreground mt-2">
-                      Recomendamos arquivos MP3 para análises mais rápidas
-                    </p>
-                    <a 
-                      href="https://www.freeconvert.com/pt/mp4-to-mp3" 
-                      target="_blank" 
-                      rel="noopener noreferrer"
-                      className="text-xs text-primary hover:underline mt-1 inline-block"
-                    >
-                      🔗 Converter vídeo para MP3 (grátis)
-                    </a>
+                    <div className="space-y-2">
+                      <p className="text-sm text-muted-foreground">
+                        <strong>Vídeos ou Áudios</strong> - Formatos: MP4, MOV, AVI, MP3, WAV
+                      </p>
+                      <p className="text-xs text-amber-600 font-medium">
+                        ⚠️ Limite máximo: 50MB por arquivo
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        Arquivos maiores? Converta para MP3 comprimido:
+                      </p>
+                      <a 
+                        href="https://www.freeconvert.com/pt/mp4-to-mp3" 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className="text-sm text-primary hover:underline font-medium inline-flex items-center gap-1"
+                      >
+                        🔗 Converter para MP3 (grátis)
+                      </a>
+                    </div>
                   </div>
                 )}
               </div>

@@ -399,6 +399,31 @@ function consolidateAnalyses(analyses: ChunkAnalysis[]): ChunkAnalysis {
   };
 }
 
+// Normalize timestamp to correct format (convert MM:SS where MM > 59 to HH:MM:SS)
+function normalizeTimestamp(ts: string): string {
+  if (!ts) return ts;
+  
+  const parts = ts.replace(/[\[\]]/g, '').split(':').map(Number);
+  
+  if (parts.length === 2) {
+    const [mins, secs] = parts;
+    // If minutes >= 60, convert to HH:MM:SS
+    if (mins >= 60) {
+      const hours = Math.floor(mins / 60);
+      const remainingMins = mins % 60;
+      return `${hours.toString().padStart(2, '0')}:${remainingMins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+    }
+    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+  }
+  
+  if (parts.length === 3) {
+    // Already in HH:MM:SS format, just normalize padding
+    return `${parts[0].toString().padStart(2, '0')}:${parts[1].toString().padStart(2, '0')}:${parts[2].toString().padStart(2, '0')}`;
+  }
+  
+  return ts;
+}
+
 // Validate and correct timestamps by matching quotes in the original transcription
 function validateAndCorrectTimestamps(analysis: ChunkAnalysis, transcription: string): ChunkAnalysis {
   console.log('Starting timestamp validation and correction...');
@@ -472,10 +497,19 @@ function validateAndCorrectTimestamps(analysis: ChunkAnalysis, transcription: st
     return null;
   }
   
-  // Correct timeline timestamps
+  // Correct timeline timestamps and normalize format
   if (analysis.insights?.timeline) {
     let corrected = 0;
     analysis.insights.timeline = analysis.insights.timeline.map(item => {
+      // First normalize the timestamp format
+      if (item.timestamp) {
+        const normalizedTs = normalizeTimestamp(item.timestamp);
+        if (normalizedTs !== item.timestamp) {
+          console.log(`Timeline format normalization: "${item.timestamp}" -> "${normalizedTs}"`);
+          item.timestamp = normalizedTs;
+        }
+      }
+      
       if (item.quote) {
         const correctTimestamp = findCorrectTimestamp(item.quote);
         if (correctTimestamp && correctTimestamp !== item.timestamp) {
@@ -489,10 +523,19 @@ function validateAndCorrectTimestamps(analysis: ChunkAnalysis, transcription: st
     console.log(`Corrected ${corrected} timeline timestamps`);
   }
   
-  // Correct objections timestamps
+  // Correct objections timestamps and normalize format
   if (analysis.insights?.objecoes) {
     let corrected = 0;
     analysis.insights.objecoes = analysis.insights.objecoes.map(item => {
+      // First normalize the timestamp format
+      if (item.timestamp) {
+        const normalizedTs = normalizeTimestamp(item.timestamp);
+        if (normalizedTs !== item.timestamp) {
+          console.log(`Objection format normalization: "${item.timestamp}" -> "${normalizedTs}"`);
+          item.timestamp = normalizedTs;
+        }
+      }
+      
       // Try to find timestamp from cliente_disse first
       if (item.cliente_disse) {
         const correctTimestamp = findCorrectTimestamp(item.cliente_disse);
@@ -508,11 +551,22 @@ function validateAndCorrectTimestamps(analysis: ChunkAnalysis, transcription: st
   }
   
   // Correct sale_result closing_moment timestamp if present
-  if (analysis.sale_result?.closing_moment?.quote) {
-    const correctTimestamp = findCorrectTimestamp(analysis.sale_result.closing_moment.quote);
-    if (correctTimestamp && correctTimestamp !== analysis.sale_result.closing_moment.timestamp) {
-      console.log(`Closing moment correction: "${analysis.sale_result.closing_moment.timestamp}" -> "${correctTimestamp}"`);
-      analysis.sale_result.closing_moment.timestamp = correctTimestamp;
+  if (analysis.sale_result?.closing_moment) {
+    // First normalize the timestamp format
+    if (analysis.sale_result.closing_moment.timestamp) {
+      const normalizedTs = normalizeTimestamp(analysis.sale_result.closing_moment.timestamp);
+      if (normalizedTs !== analysis.sale_result.closing_moment.timestamp) {
+        console.log(`Closing moment format normalization: "${analysis.sale_result.closing_moment.timestamp}" -> "${normalizedTs}"`);
+        analysis.sale_result.closing_moment.timestamp = normalizedTs;
+      }
+    }
+    
+    if (analysis.sale_result.closing_moment.quote) {
+      const correctTimestamp = findCorrectTimestamp(analysis.sale_result.closing_moment.quote);
+      if (correctTimestamp && correctTimestamp !== analysis.sale_result.closing_moment.timestamp) {
+        console.log(`Closing moment correction: "${analysis.sale_result.closing_moment.timestamp}" -> "${correctTimestamp}"`);
+        analysis.sale_result.closing_moment.timestamp = correctTimestamp;
+      }
     }
   }
   

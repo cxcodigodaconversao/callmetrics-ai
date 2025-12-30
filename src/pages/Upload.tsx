@@ -24,8 +24,8 @@ const Upload = () => {
   const [uploadProgress, setUploadProgress] = useState(0);
   const { compressAudio, isCompressing, compressionProgress } = useAudioCompression();
   
-  const MAX_FILE_SIZE_MB = 50; // Limite do Supabase free plan
-  const SHOW_CONVERTER_THRESHOLD_MB = 50; // Mostrar aviso de conversão para arquivos maiores
+  const MAX_FILE_SIZE_MB = 5000; // 5GB - Limite do Supabase Pro plan
+  const SHOW_CONVERTER_THRESHOLD_MB = 500; // Sugerir conversão apenas para arquivos muito grandes
 
   // Redirect to auth if not logged in
   useEffect(() => {
@@ -70,7 +70,7 @@ const Upload = () => {
       
       if (fileSizeMB > MAX_FILE_SIZE_MB) {
         toast.error(
-          `Arquivo muito grande (${fileSizeMB.toFixed(0)}MB). Limite: ${MAX_FILE_SIZE_MB}MB. Por favor, converta para MP3 usando o link abaixo.`,
+          `Arquivo muito grande (${fileSizeMB.toFixed(0)}MB). Limite: 5GB.`,
           { duration: 8000 }
         );
         return;
@@ -87,7 +87,7 @@ const Upload = () => {
       
       if (fileSizeMB > MAX_FILE_SIZE_MB) {
         toast.error(
-          `Arquivo muito grande (${fileSizeMB.toFixed(0)}MB). Limite: ${MAX_FILE_SIZE_MB}MB. Por favor, converta para MP3 usando o link abaixo.`,
+          `Arquivo muito grande (${fileSizeMB.toFixed(0)}MB). Limite: 5GB.`,
           { duration: 8000 }
         );
         return;
@@ -332,20 +332,12 @@ const Upload = () => {
                       <p className="text-sm text-muted-foreground">
                         <strong>Vídeos ou Áudios</strong> - Formatos: MP4, MOV, AVI, MP3, WAV
                       </p>
-                      <p className="text-xs text-amber-600 font-medium">
-                        ⚠️ Limite máximo: 50MB por arquivo
+                      <p className="text-xs text-green-600 font-medium">
+                        ✓ Limite: até 5GB por arquivo (Plano Pro)
                       </p>
                       <p className="text-xs text-muted-foreground">
-                        Arquivos maiores? Converta para MP3 comprimido:
+                        Dica: arquivos grandes podem demorar mais para processar
                       </p>
-                      <a 
-                        href="https://www.freeconvert.com/pt/mp4-to-mp3" 
-                        target="_blank" 
-                        rel="noopener noreferrer"
-                        className="text-sm text-primary hover:underline font-medium inline-flex items-center gap-1"
-                      >
-                        🔗 Converter para MP3 (grátis)
-                      </a>
                     </div>
                   </div>
                 )}

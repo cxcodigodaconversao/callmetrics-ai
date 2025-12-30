@@ -429,11 +429,13 @@ function validateAndCorrectTimestamps(analysis: ChunkAnalysis, transcription: st
   console.log('Starting timestamp validation and correction...');
   
   // Parse transcription into lines with timestamps
+  // IMPORTANT: Support timestamps like 109:46 (more than 60 minutes)
   const lines = transcription.split('\n').filter(line => line.trim());
   const timestampedLines: { timestamp: string; text: string; fullLine: string }[] = [];
   
   for (const line of lines) {
-    const match = line.match(/^\[(\d{1,2}:\d{2}(?::\d{2})?)\]\s*(?:vendedor|cliente|speaker\s*\w*):\s*(.+)/i);
+    // Updated regex to support timestamps like 109:46 or 01:49:46
+    const match = line.match(/^\[(\d{1,3}:\d{2}(?::\d{2})?)\]\s*(?:vendedor|cliente|speaker\s*\w*):\s*(.+)/i);
     if (match) {
       timestampedLines.push({
         timestamp: match[1],
@@ -445,55 +447,83 @@ function validateAndCorrectTimestamps(analysis: ChunkAnalysis, transcription: st
   
   console.log(`Parsed ${timestampedLines.length} timestamped lines from transcription`);
   
-  // Function to find the correct timestamp for a quote
+  // Normalize text for comparison - remove accents, punctuation, extra spaces
+  const normalizeText = (text: string): string => {
+    return text
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '') // Remove accents
+      .replace(/[.,!?;:'"()\[\]{}]/g, '') // Remove punctuation
+      .replace(/\s+/g, ' ')
+      .trim();
+  };
+  
+  // Get significant words from text (words with 3+ characters)
+  const getSignificantWords = (text: string): string[] => {
+    return normalizeText(text).split(' ').filter(w => w.length >= 3);
+  };
+  
+  // Function to find the correct timestamp for a quote using robust matching
   function findCorrectTimestamp(quote: string): string | null {
     if (!quote || quote.length < 10) return null;
     
-    // Normalize the quote for comparison
-    const normalizeText = (text: string) => text.toLowerCase().replace(/[.,!?;:'"]/g, '').replace(/\s+/g, ' ').trim();
     const normalizedQuote = normalizeText(quote);
+    const quoteWords = getSignificantWords(quote);
     
-    // Try to find exact or partial match
-    let bestMatch: { timestamp: string; score: number } | null = null;
+    console.log(`Searching for quote: "${quote.substring(0, 60)}..." (${quoteWords.length} significant words)`);
+    
+    let bestMatch: { timestamp: string; score: number; matchType: string } | null = null;
     
     for (const line of timestampedLines) {
       const normalizedLine = normalizeText(line.text);
+      const lineWords = getSignificantWords(line.text);
       
-      // Check for exact match
+      // Method 1: Exact match
       if (normalizedLine === normalizedQuote) {
+        console.log(`Exact match found at ${line.timestamp}`);
         return line.timestamp;
       }
       
-      // Check if quote is contained in line or vice versa
+      // Method 2: Quote contained in line or vice versa
       if (normalizedLine.includes(normalizedQuote) || normalizedQuote.includes(normalizedLine)) {
         const score = Math.min(normalizedQuote.length, normalizedLine.length) / Math.max(normalizedQuote.length, normalizedLine.length);
         if (!bestMatch || score > bestMatch.score) {
-          bestMatch = { timestamp: line.timestamp, score };
+          bestMatch = { timestamp: line.timestamp, score, matchType: 'contains' };
         }
       }
       
-      // Check for significant word overlap (at least 50% of words match)
-      const quoteWords = normalizedQuote.split(' ').filter(w => w.length > 3);
-      const lineWords = normalizedLine.split(' ').filter(w => w.length > 3);
-      
+      // Method 3: Word overlap - use first 10 significant words for matching
       if (quoteWords.length >= 3) {
-        const matchingWords = quoteWords.filter(word => lineWords.includes(word));
-        const matchRatio = matchingWords.length / quoteWords.length;
+        const searchWords = quoteWords.slice(0, 10);
+        let matchingWords = 0;
         
-        if (matchRatio >= 0.5) {
-          const score = matchRatio;
+        for (const word of searchWords) {
+          // Check if word exists in line (partial match allowed for longer words)
+          if (lineWords.some(lw => lw === word || (word.length >= 5 && lw.includes(word)) || (word.length >= 5 && word.includes(lw)))) {
+            matchingWords++;
+          }
+        }
+        
+        const matchRatio = matchingWords / searchWords.length;
+        
+        // If at least 60% of first 10 words match, this is likely the right line
+        if (matchRatio >= 0.6) {
+          // Weight longer matches higher
+          const score = matchRatio + (matchingWords * 0.05);
           if (!bestMatch || score > bestMatch.score) {
-            bestMatch = { timestamp: line.timestamp, score };
+            bestMatch = { timestamp: line.timestamp, score, matchType: `words(${matchingWords}/${searchWords.length})` };
           }
         }
       }
     }
     
-    // Only return if we have a good match (score > 0.4)
-    if (bestMatch && bestMatch.score > 0.4) {
+    // Return if we have a good match
+    if (bestMatch && bestMatch.score >= 0.5) {
+      console.log(`Best match found: ${bestMatch.timestamp} (score: ${bestMatch.score.toFixed(2)}, type: ${bestMatch.matchType})`);
       return bestMatch.timestamp;
     }
     
+    console.log(`No good match found for quote`);
     return null;
   }
   

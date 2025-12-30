@@ -80,6 +80,37 @@ Deno.serve(async (req) => {
       });
     }
 
+    // Check if already processed (prevent duplicate webhooks from creating multiple analyses)
+    const { data: existingTranscription } = await supabase
+      .from('transcriptions')
+      .select('id')
+      .eq('video_id', videoId)
+      .limit(1)
+      .maybeSingle();
+
+    if (existingTranscription) {
+      console.log(`Ignoring duplicate webhook - transcription already exists for video ${videoId}`);
+      return new Response(JSON.stringify({ 
+        success: true, 
+        message: 'Already processed - transcription exists' 
+      }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    }
+
+    // Also check if video is already completed
+    const { data: videoData } = await supabase
+      .from('videos')
+      .select('status')
+      .eq('id', videoId)
+      .single();
+
+    if (videoData?.status === 'completed') {
+      console.log(`Ignoring webhook - video ${videoId} already completed`);
+      return new Response(JSON.stringify({ 
+        success: true, 
+        message: 'Already completed' 
+      }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    }
+
     // Fetch full transcription from AssemblyAI
     const assemblyaiApiKey = Deno.env.get('ASSEMBLYAI_API_KEY');
     if (!assemblyaiApiKey) {

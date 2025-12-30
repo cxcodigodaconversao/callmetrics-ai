@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { Brain, ArrowLeft, Download, Eye } from "lucide-react";
+import { Brain, ArrowLeft, Download, Eye, RefreshCw } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
@@ -34,6 +34,7 @@ export default function Analyses() {
   const { toast } = useToast();
   const [loading, setLoading] = useState(true);
   const [videos, setVideos] = useState<Video[]>([]);
+  const [retryingVideoId, setRetryingVideoId] = useState<string | null>(null);
 
   useEffect(() => {
     checkAuth();
@@ -110,6 +111,84 @@ export default function Analyses() {
     
     const config = statusConfig[status] || statusConfig.pending;
     return <Badge variant={config.variant}>{config.label}</Badge>;
+  };
+
+  const handleRetryAnalysis = async (videoId: string) => {
+    setRetryingVideoId(videoId);
+    
+    try {
+      // Check if transcription exists for this video
+      const { data: transcription, error: transcriptionError } = await supabase
+        .from("transcriptions")
+        .select("id, text")
+        .eq("video_id", videoId)
+        .single();
+
+      if (transcriptionError || !transcription) {
+        // No transcription exists, need to reprocess from scratch
+        toast({
+          title: "Reprocessando vídeo",
+          description: "A transcrição será gerada novamente...",
+        });
+
+        // Update video status to pending and call process-video
+        await supabase
+          .from("videos")
+          .update({ status: "pending", error_message: null })
+          .eq("id", videoId);
+
+        const { error: processError } = await supabase.functions.invoke("process-video", {
+          body: { videoId },
+        });
+
+        if (processError) throw processError;
+
+        toast({
+          title: "Processamento iniciado",
+          description: "O vídeo está sendo processado. Atualize a página em alguns minutos.",
+        });
+      } else {
+        // Transcription exists, just rerun analysis
+        toast({
+          title: "Reanalisando",
+          description: "Usando a transcrição existente para nova análise...",
+        });
+
+        // Update video status
+        await supabase
+          .from("videos")
+          .update({ status: "processing", error_message: null })
+          .eq("id", videoId);
+
+        // Call analyze-transcription directly
+        const { error: analyzeError } = await supabase.functions.invoke("analyze-transcription", {
+          body: { 
+            videoId, 
+            transcription: transcription.text,
+            transcriptionId: transcription.id 
+          },
+        });
+
+        if (analyzeError) throw analyzeError;
+
+        toast({
+          title: "Análise concluída",
+          description: "A nova análise foi gerada com sucesso!",
+        });
+
+        // Refresh the list
+        fetchVideosWithAnalyses();
+      }
+    } catch (error: any) {
+      console.error("Retry error:", error);
+      toast({
+        title: "Erro ao tentar novamente",
+        description: error.message || "Ocorreu um erro ao reprocessar",
+        variant: "destructive",
+      });
+    } finally {
+      setRetryingVideoId(null);
+    }
   };
 
   if (loading) {
@@ -258,9 +337,34 @@ export default function Analyses() {
                       ))}
                     </div>
                   ) : (
-                    <p className="text-muted-foreground text-center py-8">
-                      Nenhuma análise disponível para este vídeo
-                    </p>
+                    <div className="text-center py-8 space-y-4">
+                      <p className="text-muted-foreground">
+                        {video.status === "failed" 
+                          ? "A análise falhou. Clique abaixo para tentar novamente."
+                          : video.status === "processing"
+                          ? "A análise está em andamento..."
+                          : "Nenhuma análise disponível para este vídeo"}
+                      </p>
+                      {(video.status === "failed" || (video.status !== "processing" && video.status !== "completed")) && (
+                        <Button
+                          onClick={() => handleRetryAnalysis(video.id)}
+                          disabled={retryingVideoId === video.id}
+                          variant="outline"
+                        >
+                          {retryingVideoId === video.id ? (
+                            <>
+                              <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+                              Processando...
+                            </>
+                          ) : (
+                            <>
+                              <RefreshCw className="w-4 h-4 mr-2" />
+                              Tentar Novamente
+                            </>
+                          )}
+                        </Button>
+                      )}
+                    </div>
                   )}
                 </CardContent>
               </Card>

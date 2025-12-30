@@ -94,6 +94,7 @@ Deno.serve(async (req) => {
         audio_url: audioUrl,
         language_code: 'pt',
         webhook_url: webhookUrl,
+        speaker_labels: true,
       }),
     });
 

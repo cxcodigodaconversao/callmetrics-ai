@@ -64,6 +64,9 @@ export type Database = {
           insights_json: Json
           model: string
           processing_time_sec: number | null
+          sale_notes: string | null
+          sale_status: string | null
+          scheduled_date: string | null
           score_apresentacao: number | null
           score_compromisso_pagamento: number | null
           score_conexao: number | null
@@ -84,6 +87,9 @@ export type Database = {
           insights_json: Json
           model: string
           processing_time_sec?: number | null
+          sale_notes?: string | null
+          sale_status?: string | null
+          scheduled_date?: string | null
           score_apresentacao?: number | null
           score_compromisso_pagamento?: number | null
           score_conexao?: number | null
@@ -104,6 +110,9 @@ export type Database = {
           insights_json?: Json
           model?: string
           processing_time_sec?: number | null
+          sale_notes?: string | null
+          sale_status?: string | null
+          scheduled_date?: string | null
           score_apresentacao?: number | null
           score_compromisso_pagamento?: number | null
           score_conexao?: number | null

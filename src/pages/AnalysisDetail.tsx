@@ -5,6 +5,7 @@ import { ArrowLeft, Download, MoreVertical, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ScoreHeader } from "@/components/analysis/ScoreHeader";
 import { ScoreGrid } from "@/components/analysis/ScoreGrid";
+import { SaleResult } from "@/components/analysis/SaleResult";
 import { CriticalPoints } from "@/components/analysis/CriticalPoints";
 import { StrongPoints } from "@/components/analysis/StrongPoints";
 import { DISCAnalysis } from "@/components/analysis/DISCAnalysis";
@@ -30,6 +31,9 @@ interface AnalysisData {
   score_fechamento: number;
   score_objecoes: number;
   score_compromisso_pagamento: number;
+  sale_status?: string;
+  scheduled_date?: string;
+  sale_notes?: string;
   insights_json: any;
   created_at: string;
   video: {
@@ -180,6 +184,7 @@ export default function AnalysisDetail() {
       {/* Main Content */}
       <div className="container mx-auto px-4 py-8 space-y-8">
         <ScoreHeader analysis={analysis} />
+        <SaleResult analysis={analysis} />
         <ScoreGrid analysis={analysis} />
         <CriticalPoints analysis={analysis} />
         <StrongPoints analysis={analysis} />

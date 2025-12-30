@@ -38,6 +38,18 @@ Deno.serve(async (req) => {
       throw new Error(`Video not found: ${videoError?.message}`);
     }
 
+    // If mode is 'transcript', skip transcription (already done on frontend)
+    if (video.mode === 'transcript') {
+      console.log('Mode is transcript - skipping process-video (already handled by frontend)');
+      return new Response(
+        JSON.stringify({ 
+          success: true, 
+          message: 'Transcript mode - processing handled by frontend'
+        }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     // Update status to processing
     await supabase
       .from('videos')
@@ -46,7 +58,7 @@ Deno.serve(async (req) => {
 
     console.log(`Video status updated to processing`);
 
-    // Step 1: Get video URL based on mode
+    // Step 1: Get audio URL based on mode
     let audioUrl = '';
     
     if (video.mode === 'upload') {
@@ -64,39 +76,80 @@ Deno.serve(async (req) => {
       }
       audioUrl = fileData.signedUrl;
       
+    } else if (video.mode === 'url') {
+      // Direct URL mode - use source_url directly
+      if (!video.source_url) {
+        throw new Error('URL do áudio não foi fornecida');
+      }
+      
+      audioUrl = video.source_url;
+      console.log(`Using direct URL: ${audioUrl}`);
+      
+      // Check if it's a Google Drive link and convert it
+      if (audioUrl.includes('drive.google.com')) {
+        const fileIdMatch = audioUrl.match(/\/d\/([^\/]+)/);
+        if (fileIdMatch) {
+          const fileId = fileIdMatch[1];
+          audioUrl = `https://drive.google.com/uc?export=download&id=${fileId}&confirm=t`;
+          console.log(`Converted Google Drive URL: ${audioUrl}`);
+        }
+      }
+      
+      // Check if it's a Dropbox link and convert it
+      if (audioUrl.includes('dropbox.com')) {
+        audioUrl = audioUrl.replace('dl=0', 'dl=1').replace('www.dropbox.com', 'dl.dropboxusercontent.com');
+        console.log(`Converted Dropbox URL: ${audioUrl}`);
+      }
+      
+      // Verify URL is accessible
+      try {
+        const headResponse = await fetch(audioUrl, { method: 'HEAD' });
+        console.log(`HEAD response status: ${headResponse.status}, content-type: ${headResponse.headers.get('content-type')}`);
+        
+        if (!headResponse.ok) {
+          throw new Error(`URL retornou status ${headResponse.status}. Verifique se o link está acessível publicamente.`);
+        }
+        
+        const contentType = headResponse.headers.get('content-type') || '';
+        if (contentType.includes('text/html')) {
+          throw new Error('O link retornou uma página HTML em vez do arquivo de áudio. Verifique se o link é um link direto para o arquivo e está compartilhado publicamente.');
+        }
+      } catch (fetchError: any) {
+        console.error('Error checking URL:', fetchError);
+        if (fetchError.message.includes('URL retornou') || fetchError.message.includes('link retornou')) {
+          throw fetchError;
+        }
+        throw new Error(`Não foi possível acessar a URL: ${fetchError.message}. Verifique se o link está correto e acessível publicamente.`);
+      }
+      
     } else if (video.mode === 'youtube') {
       throw new Error('YouTube processing not yet implemented. Please download the video and upload it directly.');
       
     } else if (video.mode === 'drive') {
-      // Convert Google Drive link to direct download link
+      // Legacy Google Drive mode
       if (!video.source_url) {
         throw new Error('Google Drive URL is missing');
       }
       
-      // Extract file ID from Google Drive URL
-      // Format: https://drive.google.com/file/d/{FILE_ID}/view
       const fileIdMatch = video.source_url.match(/\/d\/([^\/]+)/);
       if (!fileIdMatch) {
         throw new Error('Invalid Google Drive URL format. Please use a valid share link.');
       }
       
       const fileId = fileIdMatch[1];
-      
-      // Try to get direct download URL with virus scan bypass
-      // First attempt: standard download
       audioUrl = `https://drive.google.com/uc?export=download&id=${fileId}&confirm=t`;
       console.log(`Google Drive download URL: ${audioUrl}`);
       
-      // Make a HEAD request to check if file is accessible
       const headResponse = await fetch(audioUrl, { method: 'HEAD' });
       console.log(`HEAD response status: ${headResponse.status}`);
       console.log(`HEAD response content-type: ${headResponse.headers.get('content-type')}`);
       
-      // If we get HTML back, it means we need a different approach
       const contentType = headResponse.headers.get('content-type') || '';
       if (contentType.includes('text/html')) {
         throw new Error('Não foi possível acessar o arquivo do Google Drive. Por favor: 1) Verifique se o link está configurado como "Qualquer pessoa com o link pode visualizar", 2) Tente fazer o download do vídeo e fazer upload direto pela opção "Upload de Arquivo"');
       }
+    } else {
+      throw new Error(`Modo de vídeo não suportado: ${video.mode}`);
     }
 
     console.log(`Audio URL obtained: ${audioUrl}`);
@@ -115,13 +168,10 @@ Deno.serve(async (req) => {
     });
 
     if (transcribeResponse.error) {
-      // Extract error message from response
       let errorMsg = 'Erro na transcrição';
       
-      // Try to get error from context body first (most detailed)
       if (transcribeResponse.error.context?.body) {
         try {
-          // Handle ReadableStream properly
           const body = transcribeResponse.error.context.body;
           
           if (body instanceof ReadableStream) {
@@ -151,15 +201,13 @@ Deno.serve(async (req) => {
         }
       }
       
-      // Fallback to error message
       if (transcribeResponse.error.message && errorMsg === 'Erro na transcrição') {
         errorMsg = transcribeResponse.error.message;
         console.error('Transcription error from message:', errorMsg);
       }
       
-      // If still generic, add more context
       if (errorMsg === 'Erro na transcrição' || errorMsg.includes('Edge Function returned a non-2xx status code')) {
-        errorMsg = 'Erro na transcrição. Verifique se o arquivo está acessível e dentro do limite de 25MB.';
+        errorMsg = 'Erro na transcrição. Verifique se o arquivo está acessível e em formato suportado.';
       }
       
       throw new Error(errorMsg);
@@ -182,7 +230,6 @@ Deno.serve(async (req) => {
     });
 
     if (analyzeResponse.error) {
-      // Extract error message from response
       let errorMsg = 'Erro na análise';
       if (analyzeResponse.error.message) {
         errorMsg = analyzeResponse.error.message;
@@ -221,10 +268,8 @@ Deno.serve(async (req) => {
   } catch (error: any) {
     console.error('Error processing video:', error);
     
-    // Extract clean error message
     let errorMessage = error.message || 'Erro desconhecido no processamento';
     
-    // ALWAYS update video status to failed when there's an error
     if (videoId) {
       const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
       const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;

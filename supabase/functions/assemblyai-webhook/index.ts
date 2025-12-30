@@ -100,13 +100,45 @@ Deno.serve(async (req) => {
     }
 
     const transcriptData = await transcriptResponse.json();
-    console.log(`Transcription fetched: ${transcriptData.text?.length || 0} chars`);
+    console.log(`Transcription fetched: ${transcriptData.text?.length || 0} chars, utterances: ${transcriptData.utterances?.length || 0}`);
 
-    const transcriptionText = transcriptData.text || '';
+    const rawTranscriptionText = transcriptData.text || '';
     const duration = Math.round(transcriptData.audio_duration || 0);
-    const wordCount = transcriptData.words?.length || transcriptionText.split(/\s+/).length;
+    const utterances = transcriptData.utterances || [];
+    
+    // Format transcription with timestamps from utterances
+    let formattedTranscription = '';
+    let speakersJson = null;
+    
+    if (utterances.length > 0) {
+      // Map utterances to formatted text with timestamps
+      formattedTranscription = utterances.map((u: any) => {
+        const startMs = u.start || 0;
+        const mins = Math.floor(startMs / 60000);
+        const secs = Math.floor((startMs % 60000) / 1000);
+        const timestamp = `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+        const speaker = u.speaker === 'A' ? 'vendedor' : 'cliente';
+        return `[${timestamp}] ${speaker}: ${u.text}`;
+      }).join('\n');
+      
+      // Save structured speaker data
+      speakersJson = utterances.map((u: any) => ({
+        speaker: u.speaker,
+        start: u.start,
+        end: u.end,
+        text: u.text,
+      }));
+      
+      console.log(`Formatted ${utterances.length} utterances with timestamps`);
+    } else {
+      // Fallback: use raw text if no utterances
+      formattedTranscription = rawTranscriptionText;
+      console.log('No utterances found, using raw text without timestamps');
+    }
+    
+    const wordCount = transcriptData.words?.length || formattedTranscription.split(/\s+/).length;
 
-    if (!transcriptionText || transcriptionText.length < 50) {
+    if (!formattedTranscription || formattedTranscription.length < 50) {
       console.error('Transcription too short or empty');
       await supabase
         .from('videos')
@@ -136,12 +168,12 @@ Deno.serve(async (req) => {
       .from('transcriptions')
       .insert({
         video_id: videoId,
-        text: transcriptionText,
+        text: formattedTranscription,
         provider: 'assemblyai',
         language: 'pt-BR',
         duration_sec: duration,
         words_count: wordCount,
-        speakers_json: null,
+        speakers_json: speakersJson,
       })
       .select()
       .single();
@@ -164,7 +196,7 @@ Deno.serve(async (req) => {
         'x-internal-key': internalKey,
       },
       body: JSON.stringify({
-        transcription: transcriptionText,
+        transcription: formattedTranscription,
         videoId: videoId,
         transcriptionId: transcriptionDbData.id,
       }),

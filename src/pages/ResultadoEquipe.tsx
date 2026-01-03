@@ -21,7 +21,7 @@ const ResultadoEquipe = () => {
         
         <div className="w-full h-[calc(100vh-120px)] rounded-lg overflow-hidden border border-border shadow-lg">
           <iframe
-            src="https://resultado-equipe-comercial10x.netlify.app/auth"
+            src="https://resultado-equipe-comercial10x.netlify.app"
             className="w-full h-full"
             title="Resultado da Equipe"
             allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"

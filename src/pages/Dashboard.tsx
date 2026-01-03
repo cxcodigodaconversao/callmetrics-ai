@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { LayoutDashboard, Upload, FileText, Settings, LogOut, Brain, TrendingUp, Clock, Target, Plus, Play, Trash2, Calculator, GraduationCap, BarChart } from "lucide-react";
+import { LayoutDashboard, Upload, FileText, Settings, LogOut, Brain, TrendingUp, Clock, Target, Plus, Play, Trash2, Calculator, GraduationCap, BarChart, Users } from "lucide-react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
@@ -210,9 +210,9 @@ const Dashboard = () => {
     label: "Academia Comercial",
     path: "/dashboard/academia"
   }, {
-    icon: <FileText className="w-5 h-5" />,
-    label: "CRM da Conversão",
-    path: "/dashboard/crm"
+    icon: <Users className="w-5 h-5" />,
+    label: "Resultado da Equipe",
+    path: "/dashboard/resultado-equipe"
   }, {
     icon: <Settings className="w-5 h-5" />,
     label: "Configurações",

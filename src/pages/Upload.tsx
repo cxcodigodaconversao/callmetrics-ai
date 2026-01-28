@@ -14,6 +14,31 @@ import { Progress } from "@/components/ui/progress";
 import { useAudioCompression } from "@/hooks/useAudioCompression";
 import { resumableUpload, RESUMABLE_THRESHOLD_BYTES } from "@/lib/supabaseResumableUpload";
 
+// Função auxiliar para extrair mensagem de erro do TUS
+function extractTusErrorMessage(error: any): string {
+  // Tentar obter do originalResponse (formato TUS)
+  if (error?.originalResponse) {
+    const status = error.originalResponse.getStatus?.();
+    const body = error.originalResponse.getBody?.();
+    if (status && body) {
+      return `Erro ${status}: ${body}`;
+    }
+    if (status) {
+      return `Erro HTTP ${status}`;
+    }
+  }
+  // Tentar obter message direto (se não for undefined)
+  if (error?.message && error.message !== 'undefined' && error.message.trim() !== '') {
+    return error.message;
+  }
+  // Tentar converter para string
+  const str = error?.toString?.();
+  if (str && str !== '[object Object]' && str !== 'undefined') {
+    return str;
+  }
+  return 'Erro desconhecido no upload';
+}
+
 const Upload = () => {
   const navigate = useNavigate();
   const { user, loading } = useAuth();
@@ -170,11 +195,19 @@ const Upload = () => {
             objectName: fileName,
             file: fileToUpload,
             onProgress: (percentage) => setUploadProgress(percentage),
-            onError: (error) => console.error('Resumable upload error:', error)
+            onError: (error: any) => {
+              // Log detalhado para debug
+              console.error('Resumable upload error details:', {
+                message: error?.message,
+                status: error?.originalResponse?.getStatus?.(),
+                body: error?.originalResponse?.getBody?.()
+              });
+            }
           });
           setUploadProgress(100);
         } catch (tusError: any) {
           console.error('TUS upload failed:', tusError);
+          const errorMessage = extractTusErrorMessage(tusError);
           
           // Try compression as fallback for audio
           if (isAudio && fileSizeMB > 40) {
@@ -188,10 +221,11 @@ const Upload = () => {
               if (uploadError) throw uploadError;
               setUploadProgress(100);
             } catch (fallbackError: any) {
-              throw new Error(`Upload falhou: ${fallbackError.message}. Use a aba "Transcrição" para arquivos grandes.`);
+              const fallbackMsg = extractTusErrorMessage(fallbackError);
+              throw new Error(`Upload falhou: ${fallbackMsg}. Use a aba "Transcrição" para arquivos grandes.`);
             }
           } else {
-            throw new Error(`Upload falhou: ${tusError.message}. Use a aba "Transcrição" para arquivos grandes.`);
+            throw new Error(`Upload falhou: ${errorMessage}. Use a aba "Transcrição" para arquivos grandes.`);
           }
         }
       }

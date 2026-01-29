@@ -132,6 +132,25 @@ Comunicação CORRETA do vendedor para perfil C:
 ✅ Oferecer documentação e detalhes
 ❌ EVITAR: improviso, frases vagas, apelos emocionais sem lógica, falta de estrutura
 
+**🚨 REGRA CRÍTICA SOBRE O PROCESSO DE VENDAS - LEIA COM ATENÇÃO:**
+
+O vendedor SOMENTE deve tentar fechar a venda se:
+1. Completou a fase de SITUAÇÃO (SPIN-S): fez perguntas sobre o contexto atual
+2. Completou a fase de PROBLEMA (SPIN-P): identificou dores e desafios
+3. Completou a fase de IMPLICAÇÃO (SPIN-I): explorou consequências dos problemas
+4. Completou a fase de NECESSIDADE (SPIN-N): o cliente reconheceu que precisa da solução
+5. Fez a APRESENTAÇÃO: conectou a solução aos problemas identificados
+
+⚠️ NUNCA marque como NEGATIVO ou critique o vendedor por:
+- Não tentar fechar quando o processo SPIN ainda não foi completado
+- Não fazer proposta quando ainda está na fase de qualificação
+- Não pedir a venda quando ainda está construindo rapport ou explorando dores
+
+✅ É POSITIVO quando o vendedor NÃO tenta fechar prematuramente e continua explorando necessidades
+❌ É NEGATIVO apenas quando:
+- O vendedor tentou fechar ANTES de completar o SPIN (fechamento prematuro)
+- O vendedor completou todo o SPIN + Apresentação mas NÃO tentou fechar
+
 **CRITÉRIOS DE AVALIAÇÃO:**
 
 1. **Conexão (0-100)**: Rapport, empatia, construção de relacionamento
@@ -164,9 +183,12 @@ Comunicação CORRETA do vendedor para perfil C:
    - Foi claro e objetivo?
 
 7. **Fechamento (0-100)**: Condução para próximos passos
-   - Conduziu naturalmente para o fechamento?
-   - Pediu a venda ou próximo passo?
-   - Foi assertivo?
+   ⚠️ AVALIE COM CUIDADO - RESPEITE O PROCESSO:
+   - Se SPIN NÃO foi completado: score baixo é ESPERADO e ACEITÁVEL, NÃO critique por falta de fechamento
+   - Se SPIN foi completado + Apresentação feita, mas não tentou fechar: ponto NEGATIVO legítimo
+   - Se tentou fechar ANTES de completar SPIN: NEGATIVO por fechamento prematuro
+   - Conduziu naturalmente para o fechamento APÓS estabelecer necessidade?
+   - Pediu a venda ou próximo passo no MOMENTO CORRETO?
 
 8. **Objeções (0-100)**: Tratamento de objeções e dúvidas
    - Como tratou as objeções?
@@ -256,7 +278,14 @@ Comunicação CORRETA do vendedor para perfil C:
         "quote": "CITAÇÃO EXATA e COMPLETA da fala - copie literalmente pelo menos 2-3 frases do contexto. Esta citação DEVE conter todas as frases mencionadas no campo 'why'.",
         "speaker": "vendedor" ou "cliente" (use exatamente esses termos em minúsculas)",
         "why": "Explicação ESPECÍFICA e DETALHADA do porquê esse momento foi bom ou ruim (mínimo 50 palavras). CRÍTICO: Se mencionar frases específicas aqui, elas DEVEM aparecer no campo 'quote'. Mantenha a ordem cronológica EXATA dos eventos como aparecem na transcrição.",
-        "fix": "Como corrigir (APENAS para momentos negativos) - seja específico, prático e detalhado (mínimo 50 palavras)"
+        "fix": "Como corrigir (APENAS para momentos negativos) - seja específico, prático e detalhado (mínimo 50 palavras)",
+        
+        "⚠️ REGRA CRÍTICA PARA MARCAR NEGATIVO EM FECHAMENTO": "
+        - NÃO marque negativo por 'falta de fechamento' ou 'não fez proposta' se o vendedor ainda está no processo SPIN
+        - NÃO marque negativo se o cliente ainda está compartilhando contexto, problemas ou dúvidas
+        - SÓ marque negativo por fechamento se: (a) fechou prematuramente, ou (b) completou SPIN + Apresentação e não fechou
+        - É CORRETO e POSITIVO o vendedor continuar explorando quando o SPIN não está completo
+        "
       }
     ],
     "objecoes": [

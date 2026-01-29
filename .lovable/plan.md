@@ -1,98 +1,126 @@
 
-## Plano: Corrigir Erro "undefined" no Upload de Arquivos Grandes
+## Plano: Ajustar IA para Respeitar a Metodologia SPIN e Não Cobrar Fechamento Prematuro
 
 ### Problema Identificado
-O upload de um arquivo MP3 de 96.93 MB falha com a mensagem "Upload falhou: undefined". Isso acontece porque:
 
-1. O arquivo excede 50 MB, então usa o upload resumable (TUS)
-2. Quando o TUS falha, o erro pode não ter a propriedade `message` padrão
-3. O código tenta acessar `tusError.message` que é `undefined`
+Analisando a screenshot, a IA está marcando como **NEGATIVO** um momento onde:
+- O **cliente** está falando sobre o workshop
+- A IA critica: "não houve uma tentativa clara de fechamento ou convite para a próxima etapa"
+- A IA recomenda: "O vendedor deveria ter feito uma proposta clara para o próximo passo"
+
+**Isso está ERRADO** porque:
+1. A metodologia SPIN exige completar todas as 4 etapas antes de tentar fechar
+2. Se o SPIN não foi concluído, o vendedor NÃO deve tentar fechar ainda
+3. A IA não está respeitando a sequência do processo de vendas definido
 
 ### Causa Raiz
-Na linha 194 de `Upload.tsx`:
-```typescript
-throw new Error(`Upload falhou: ${tusError.message}. Use a aba "Transcrição"...`);
+
+No prompt em `supabase/functions/analyze-transcription/index.ts`, o critério de Fechamento (linhas 166-169) diz:
 ```
-O objeto de erro do TUS tem estrutura diferente: `error.message` pode estar vazio, e o erro real está em `error.originalResponse`.
+7. **Fechamento (0-100)**: Condução para próximos passos
+   - Conduziu naturalmente para o fechamento?
+   - Pediu a venda ou próximo passo?
+   - Foi assertivo?
+```
+
+Falta a instrução clara de que o fechamento só deve ser avaliado/criticado se:
+- As etapas SPIN (S, P, I, N) foram completadas
+- A apresentação foi feita
+- O cliente demonstrou necessidade
 
 ### Solução
 
-Modificar **`src/pages/Upload.tsx`** para:
+Modificar o prompt do `ANALYSIS_PROMPT` na edge function `analyze-transcription/index.ts` para:
 
-1. **Extrair mensagem de erro corretamente do TUS**:
-```typescript
-// Função auxiliar para extrair mensagem de erro do TUS
-function extractTusErrorMessage(error: any): string {
-  // Tentar obter do originalResponse
-  if (error?.originalResponse) {
-    const status = error.originalResponse.getStatus?.();
-    const body = error.originalResponse.getBody?.();
-    if (status && body) {
-      return `Erro ${status}: ${body}`;
-    }
-    if (status) {
-      return `Erro HTTP ${status}`;
-    }
-  }
-  // Tentar obter message direto
-  if (error?.message && error.message !== 'undefined') {
-    return error.message;
-  }
-  // Tentar converter para string
-  if (error?.toString && error.toString() !== '[object Object]') {
-    return error.toString();
-  }
-  return 'Erro desconhecido no upload';
-}
+---
+
+**1. Adicionar Regra Crítica sobre Processo de Vendas (antes dos critérios de avaliação)**
+
+```
+**🚨 REGRA CRÍTICA SOBRE O PROCESSO DE VENDAS - LEIA COM ATENÇÃO:**
+
+O vendedor SOMENTE deve tentar fechar a venda se:
+1. Completou a fase de SITUAÇÃO (SPIN-S): fez perguntas sobre o contexto atual
+2. Completou a fase de PROBLEMA (SPIN-P): identificou dores e desafios
+3. Completou a fase de IMPLICAÇÃO (SPIN-I): explorou consequências dos problemas
+4. Completou a fase de NECESSIDADE (SPIN-N): o cliente reconheceu que precisa da solução
+5. Fez a APRESENTAÇÃO: conectou a solução aos problemas identificados
+
+⚠️ NUNCA marque como NEGATIVO ou critique o vendedor por:
+- Não tentar fechar quando o processo SPIN ainda não foi completado
+- Não fazer proposta quando ainda está na fase de qualificação
+- Não pedir a venda quando ainda está construindo rapport ou explorando dores
+
+Se o vendedor tentou fechar ANTES de completar o SPIN, isso É um ponto negativo (fechamento prematuro).
+Se o vendedor NÃO tentou fechar porque ainda está no processo SPIN, isso NÃO é um ponto negativo.
 ```
 
-2. **Atualizar tratamento de erro no catch do TUS**:
-```typescript
-} catch (tusError: any) {
-  console.error('TUS upload failed:', tusError);
-  const errorMessage = extractTusErrorMessage(tusError);
-  
-  // Try compression as fallback for audio
-  if (isAudio && fileSizeMB > 40) {
-    toast.warning("Tentando comprimir mais o áudio...");
-    try {
-      fileToUpload = await compressAudio(selectedFile, 35);
-      // ... resto do fallback
-    } catch (fallbackError: any) {
-      throw new Error(`Upload falhou: ${fallbackError.message || 'Erro na compressão'}. Use a aba "Transcrição" para arquivos grandes.`);
-    }
-  } else {
-    throw new Error(`Upload falhou: ${errorMessage}. Use a aba "Transcrição" para arquivos grandes.`);
+---
+
+**2. Atualizar Critério de Fechamento (linha 166-169)**
+
+```
+7. **Fechamento (0-100)**: Condução para próximos passos
+   - ⚠️ IMPORTANTE: Só avalie fechamento se o processo SPIN foi completado!
+   - Se SPIN não foi completado → Score baixo é aceitável, NÃO critique
+   - Se SPIN foi completado mas não tentou fechar → Ponto negativo legítimo
+   - Se tentou fechar ANTES de completar SPIN → Fechamento prematuro (negativo)
+   - Conduziu naturalmente para o fechamento após estabelecer necessidade?
+   - Pediu a venda ou próximo passo no momento correto?
+```
+
+---
+
+**3. Atualizar Instruções da Timeline para Respeitar o Processo**
+
+```
+"timeline": [
+  {
+    ...
+    "type": "positive" ou "negative",
+    ⚠️ REGRA PARA MARCAR NEGATIVO EM FECHAMENTO:
+    - NÃO marque negativo por "falta de fechamento" se o vendedor ainda está no processo SPIN
+    - SÓ marque negativo por fechamento se: (a) fechou prematuramente, ou (b) completou SPIN e não fechou
+    ...
   }
-}
+]
 ```
 
-3. **Melhorar logs para debug**:
-```typescript
-onError: (error) => {
-  console.error('Resumable upload error details:', {
-    message: error?.message,
-    status: error?.originalResponse?.getStatus?.(),
-    body: error?.originalResponse?.getBody?.()
-  });
-}
+---
+
+**4. Adicionar Verificação de Contexto no Prompt**
+
+```
+Antes de marcar qualquer momento relacionado a fechamento como NEGATIVO, verifique:
+1. O SPIN já foi completado neste ponto da conversa?
+2. O cliente já demonstrou necessidade clara?
+3. A apresentação já foi feita?
+
+Se a resposta for NÃO para qualquer uma, NÃO critique a falta de fechamento.
 ```
 
-### Arquivos a Modificar
+---
 
-1. **`src/pages/Upload.tsx`**:
-   - Adicionar função `extractTusErrorMessage`
-   - Atualizar catch do TUS para usar a função
-   - Melhorar logging de erros
+### Arquivo a Ser Modificado
 
-### O que NÃO será alterado
-- Toda a lógica de análise
-- Edge functions
-- Componentes de análise
+1. **`supabase/functions/analyze-transcription/index.ts`**
+   - Adicionar regra crítica sobre processo de vendas no início do prompt
+   - Atualizar critério de avaliação de Fechamento
+   - Adicionar instruções específicas para a Timeline
+   - Incluir verificação de contexto antes de criticar fechamento
+
+### O que NÃO Será Alterado
+
+- Lógica de chunks e consolidação
+- Validação de timestamps
+- Componentes de visualização da análise
 - PDF e relatórios
-- Qualquer funcionalidade existente de análise
+- Edge functions de transcrição
+- Qualquer funcionalidade existente de interface
 
 ### Resultado Esperado
-- Mensagens de erro claras quando o upload falhar
-- Logs detalhados para diagnóstico
-- O usuário saberá exatamente o que aconteceu (ex: "Erro 413: Payload Too Large")
+
+- A IA só irá criticar a falta de fechamento quando o processo SPIN tiver sido completado
+- Momentos de qualificação (cliente falando sobre contexto) não serão marcados como negativos por "falta de fechamento"
+- O vendedor receberá feedback correto e alinhado com a metodologia SPIN
+- O score de fechamento será justo considerando o contexto da conversa

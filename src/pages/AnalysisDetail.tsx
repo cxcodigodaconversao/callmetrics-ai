@@ -10,6 +10,8 @@ import { CriticalPoints } from "@/components/analysis/CriticalPoints";
 import { StrongPoints } from "@/components/analysis/StrongPoints";
 import { DISCAnalysis } from "@/components/analysis/DISCAnalysis";
 import { SpinAnalysis } from "@/components/analysis/SpinAnalysis";
+import { MethodologyAnalysis } from "@/components/analysis/MethodologyAnalysis";
+import { LeadProfileAnalysis } from "@/components/analysis/LeadProfileAnalysis";
 import { Timeline } from "@/components/analysis/Timeline";
 import { ObjectionsSection } from "@/components/analysis/ObjectionsSection";
 import { ActionPlan } from "@/components/analysis/ActionPlan";
@@ -186,9 +188,11 @@ export default function AnalysisDetail() {
         <ScoreHeader analysis={analysis} />
         <SaleResult analysis={analysis} />
         <ScoreGrid analysis={analysis} />
+        <MethodologyAnalysis analysis={analysis} />
         <CriticalPoints analysis={analysis} />
         <StrongPoints analysis={analysis} />
         <DISCAnalysis analysis={analysis} />
+        <LeadProfileAnalysis analysis={analysis} />
         <SpinAnalysis analysis={analysis} />
         <Timeline analysis={analysis} />
         <ObjectionsSection analysis={analysis} />

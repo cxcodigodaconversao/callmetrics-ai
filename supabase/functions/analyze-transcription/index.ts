@@ -27,7 +27,7 @@ async function requireAuth(req: Request) {
 }
 
 
-const ANALYSIS_PROMPT = `Você é um especialista em análise de vendas usando a metodologia SPIN Selling e perfis comportamentais DISC.
+const ANALYSIS_PROMPT = `Você é um especialista em análise de vendas usando o **Método Chave Mestra** (5 Etapas) e perfis comportamentais DISC.
 
 Analise a transcrição da ligação de vendas abaixo e forneça uma análise DETALHADA E FIDEDIGNA baseada APENAS no que realmente aconteceu na conversa.
 
@@ -61,6 +61,47 @@ VOCÊ DEVE SEGUIR ESTAS REGRAS SEM EXCEÇÃO:
 - NÃO invente nomes de pessoas se não estiverem mencionados
 - NÃO invente momentos que não aconteceram
 - Se não houver informação suficiente para um critério, seja honesto e dê score baixo
+
+**===== MÉTODO CHAVE MESTRA - 5 ETAPAS SEQUENCIAIS =====**
+
+O vendedor deve seguir estas 5 etapas em ordem:
+
+1. **ABORDAGEM** - Primeira impressão, energia, rapport inicial
+   - Entrar com energia positiva, sorrir
+   - Falar o nome do lead
+   - Mostrar interesse genuíno em conhecer o lead antes de vender
+
+2. **DIAGNÓSTICO** (A MAIS IMPORTANTE!) - Dividida em:
+   - **Situação (SPIN-S)**: Perguntas sobre contexto atual (rotina, experiências anteriores, situação profissional)
+   - **Problema (SPIN-P)**: Cutucar a ferida, identificar dores e desafios
+   - **Implicação (SPIN-I)**: Girar o dedo na ferida, explorar consequências de não resolver
+   - **Necessidade (SPIN-N)**: Fazer o lead se imaginar com o problema resolvido
+   - **Pergunta Mágica**: "Se eu te mostrasse um método, você estaria disposto a iniciar hoje ainda?"
+
+3. **COMBINADO** - Antecipar objeções, gatilho de compromisso
+   - "Se não fizer sentido, pode me dar um NÃO... Se fizer sentido, me dá um SIM e a gente já faz sua inscrição"
+   - Identificar dependência emocional ou financeira
+
+4. **PIT (Solução)** - Apresentação personalizada
+   - Ser claro, personalizar para as dores do diagnóstico
+   - Usar técnica Ping-Pong (perguntas durante apresentação)
+   - Duração recomendada: 10-15 min
+
+5. **FECHAMENTO** - Condução para decisão
+   - Apresentar valor com ancoragem
+   - Condição especial válida apenas para aquela call
+   - Opções de pagamento
+
+**===== 7 PERFIS DE LEADS =====**
+
+Identifique qual perfil o CLIENTE demonstra:
+1. **Apressado** - Demonstra pressa, pergunta quanto tempo vai durar, olha pro lado
+2. **Desconfiado** - Duvida da promessa, questiona o expert, já foi enganado antes
+3. **Medroso** - Reconhece necessidade mas tem medo de perder dinheiro
+4. **Analítico** - Quer números, dados, detalhes técnicos, é racional
+5. **Curioso** - Só quer saber preço, geralmente NÃO COMPRA
+6. **Procrastinador** - "Vou pensar", "depois te falo", sempre empurra decisão
+7. **Social/Papagaio** - Conversa muito, extrovertido, promete e não compra
 
 **PERFIS COMPORTAMENTAIS DISC:**
 
@@ -154,51 +195,14 @@ O vendedor SOMENTE deve tentar fechar a venda se:
 **CRITÉRIOS DE AVALIAÇÃO:**
 
 1. **Conexão (0-100)**: Rapport, empatia, construção de relacionamento
-   - Avalie se o vendedor criou conexão emocional
-   - Usou o nome do cliente? Demonstrou interesse genuíno?
-   - Encontrou pontos em comum?
-
 2. **SPIN - Situação (0-100)**: Perguntas sobre a situação atual do cliente
-   - Quantas perguntas de situação foram feitas?
-   - Foram abertas e exploratórias?
-   - O vendedor entendeu o contexto antes de vender?
-
 3. **SPIN - Problema (0-100)**: Identificação de problemas e desafios
-   - O vendedor identificou dores reais?
-   - Fez o cliente verbalizar os problemas?
-   - Foi além da superfície?
-
 4. **SPIN - Implicação (0-100)**: Exploração das consequências dos problemas
-   - O vendedor explorou o custo de não resolver?
-   - Criou urgência genuína?
-   - Fez o cliente sentir o problema?
-
 5. **SPIN - Necessidade (0-100)**: Desenvolvimento da necessidade de solução
-   - O cliente chegou sozinho à conclusão que precisa da solução?
-   - O vendedor conduziu para que o cliente se vendesse?
-
 6. **Apresentação (0-100)**: Clareza e relevância da apresentação da solução
-   - Apresentou apenas APÓS entender as dores?
-   - Conectou features com os problemas identificados?
-   - Foi claro e objetivo?
-
-7. **Fechamento (0-100)**: Condução para próximos passos
-   ⚠️ AVALIE COM CUIDADO - RESPEITE O PROCESSO:
-   - Se SPIN NÃO foi completado: score baixo é ESPERADO e ACEITÁVEL, NÃO critique por falta de fechamento
-   - Se SPIN foi completado + Apresentação feita, mas não tentou fechar: ponto NEGATIVO legítimo
-   - Se tentou fechar ANTES de completar SPIN: NEGATIVO por fechamento prematuro
-   - Conduziu naturalmente para o fechamento APÓS estabelecer necessidade?
-   - Pediu a venda ou próximo passo no MOMENTO CORRETO?
-
+7. **Fechamento (0-100)**: (RESPEITE O PROCESSO - só critique se SPIN foi completado)
 8. **Objeções (0-100)**: Tratamento de objeções e dúvidas
-   - Como tratou as objeções?
-   - Usou técnicas adequadas?
-   - Transformou objeções em oportunidades?
-
 9. **Compromisso/Pagamento (0-100)**: Discussão sobre investimento
-   - Como apresentou o valor?
-   - Tratou como investimento ou custo?
-   - Criou percepção de valor antes de falar de preço?
 
 **FORMATO DE RESPOSTA (JSON VÁLIDO):**
 {
@@ -214,89 +218,146 @@ O vendedor SOMENTE deve tentar fechar a venda se:
     "compromisso_pagamento": número 0-100,
     "global": (média dos scores acima)
   },
+  "metodologia_chave_mestra": {
+    "etapa_1_abordagem": {
+      "score": número 0-100,
+      "status": "completo" ou "parcial" ou "ausente",
+      "timestamp": "MM:SS exato do início da abordagem",
+      "citacao": "Citação EXATA da primeira fala do vendedor",
+      "avaliacao": "Descrição do que foi feito certo e errado",
+      "pontos_positivos": ["Lista de pontos positivos"],
+      "pontos_negativos": ["Lista de pontos negativos"],
+      "script_ideal": "Script de como deveria ter feito (do manual)"
+    },
+    "etapa_2_diagnostico": {
+      "sub_etapa_situacao": {
+        "score": número 0-100,
+        "status": "completo" ou "parcial" ou "ausente",
+        "timestamp": "MM:SS exato de quando começou",
+        "perguntas_feitas": [
+          {"timestamp": "MM:SS", "pergunta": "Pergunta exata feita pelo vendedor"}
+        ],
+        "red_flags_identificadas": ["Red flags identificadas sobre o lead"],
+        "avaliacao": "Avaliação detalhada",
+        "perguntas_faltantes": ["Perguntas que deveriam ter sido feitas"]
+      },
+      "sub_etapa_problema": {
+        "score": número 0-100,
+        "status": "completo" ou "parcial" ou "ausente",
+        "timestamp": "MM:SS exato de quando começou",
+        "dores_identificadas": [
+          {"timestamp": "MM:SS", "dor": "Dor identificada", "citacao": "Citação exata"}
+        ],
+        "avaliacao": "Avaliação detalhada"
+      },
+      "sub_etapa_implicacao": {
+        "score": número 0-100,
+        "status": "completo" ou "parcial" ou "ausente",
+        "timestamp": "MM:SS ou null se não foi feito",
+        "avaliacao": "Avaliação detalhada",
+        "perguntas_sugeridas": ["Perguntas que deveriam ter sido feitas"]
+      },
+      "sub_etapa_necessidade": {
+        "score": número 0-100,
+        "status": "completo" ou "parcial" ou "ausente",
+        "timestamp": "MM:SS ou null se não foi feito",
+        "avaliacao": "Avaliação detalhada"
+      },
+      "pergunta_magica": {
+        "realizada": true ou false,
+        "timestamp": "MM:SS ou null",
+        "citacao": "Citação exata se foi feita",
+        "script_ideal": "João, você estaria disposto a iniciar hoje ainda?"
+      }
+    },
+    "etapa_3_combinado": {
+      "score": número 0-100,
+      "status": "completo" ou "parcial" ou "ausente",
+      "timestamp": "MM:SS ou null",
+      "citacao": "Citação exata se foi feito",
+      "avaliacao": "Avaliação detalhada",
+      "impacto": "Impacto de não ter feito o combinado",
+      "script_ideal": "Se lá no final não fizer sentido, pode me dar um NÃO. Se fizer sentido, me dá um SIM..."
+    },
+    "etapa_4_pit": {
+      "score": número 0-100,
+      "status": "completo" ou "parcial" ou "ausente",
+      "timestamp": "MM:SS de quando começou o pit",
+      "duracao_minutos": número ou null,
+      "ping_pong_usado": true ou false,
+      "personalizou_para_dores": true ou false,
+      "avaliacao": "Avaliação detalhada"
+    },
+    "etapa_5_fechamento": {
+      "score": número 0-100,
+      "status": "completo" ou "parcial" ou "incompleto" ou "ausente",
+      "spin_completo_antes": true ou false,
+      "tentou_fechar": true ou false,
+      "avaliacao_contextualizada": "Se SPIN não foi completado, explique que score baixo é ACEITÁVEL",
+      "timestamp_tentativa": "MM:SS da tentativa de fechamento ou null"
+    }
+  },
+  "perfil_lead_identificado": {
+    "tipo": "apressado" ou "desconfiado" ou "medroso" ou "analítico" ou "curioso" ou "procrastinador" ou "social",
+    "sinais": ["Lista de sinais identificados na conversa que indicam este perfil"],
+    "abordagem_correta": "Como deveria abordar este perfil específico",
+    "abordagem_vendedor": "adequada" ou "inadequada" + explicação
+  },
   "sale_result": {
     "status": "closed" ou "not_closed" ou "promise" ou "unknown",
-    "status_description": "Descrição clara do resultado: 'Venda fechada', 'Venda não fechada', 'Promessa de venda agendada', ou 'Não foi possível identificar'",
-    "scheduled_date": "Data agendada no formato YYYY-MM-DD se houver promessa de follow-up, reunião ou fechamento marcado. null se não houver.",
-    "scheduled_time": "Horário agendado se mencionado, no formato HH:MM. null se não houver.",
-    "notes": "Detalhes importantes sobre o fechamento ou não fechamento. Cite exatamente o que foi dito sobre compromisso, próximos passos, ou motivo de não fechar.",
-    "next_steps": "O que foi combinado como próximo passo entre vendedor e cliente",
+    "status_description": "Descrição clara do resultado",
+    "scheduled_date": "YYYY-MM-DD se houver, null se não",
+    "scheduled_time": "HH:MM se houver, null se não",
+    "notes": "Detalhes importantes sobre o fechamento",
+    "next_steps": "Próximos passos combinados",
     "closing_moment": {
-      "timestamp": "Timestamp [MM:SS] do momento de fechamento ou tentativa de fechamento",
-      "quote": "Citação exata do momento de fechamento ou tentativa",
+      "timestamp": "MM:SS do momento de fechamento",
+      "quote": "Citação exata",
       "success": true ou false
     }
   },
   "insights": {
-    "pontos_fortes": [
-      "Descreva especificamente o que o vendedor fez bem, citando momentos reais"
-    ],
-    "pontos_fracos": [
-      "Descreva especificamente o que precisa melhorar, citando o que faltou"
-    ],
-    "recomendacoes": [
-      "Ações específicas e práticas para melhorar, baseadas nos pontos fracos. NUNCA recomende acelerar o ritmo, reduzir a duração da call ou falar mais rápido. Foque em técnicas de vendas, abordagem e comunicação."
-    ],
+    "pontos_fortes": ["Pontos fortes específicos com citações"],
+    "pontos_fracos": ["Pontos fracos específicos com citações"],
+    "recomendacoes": ["Recomendações práticas baseadas no Método Chave Mestra"],
     "perfil_disc": {
       "perfil_dominante": "D" ou "I" ou "S" ou "C",
       "perfil_nome": "Dominante" ou "Influente" ou "Estável" ou "Conforme",
       "emoji": "🟥" ou "🟨" ou "🟩" ou "🟦",
-      "descricao": "Descrição curta do perfil identificado",
-      "percentuais": {
-        "D": número 0-100,
-        "I": número 0-100,
-        "S": número 0-100,
-        "C": número 0-100
-      },
-      "caracteristicas_identificadas": [
-        "Lista de características específicas observadas na fala do CLIENTE que indicam este perfil"
-      ],
+      "descricao": "Descrição do perfil identificado",
+      "percentuais": {"D": 0-100, "I": 0-100, "S": 0-100, "C": 0-100},
+      "caracteristicas_identificadas": ["Características observadas no CLIENTE"],
       "comunicacao_vendedor": {
         "adequada": true ou false,
-        "score_adequacao": número 0-100,
-        "analise": "Análise detalhada se o vendedor está comunicando de forma adequada para este perfil",
-        "pontos_positivos": [
-          "Aspectos CORRETOS na comunicação do vendedor para este perfil, citando momentos específicos"
-        ],
-        "pontos_melhorar": [
-          "Aspectos que NÃO se adequam ao perfil, citando momentos específicos onde o vendedor errou a abordagem"
-        ]
+        "score_adequacao": 0-100,
+        "analise": "Análise da adequação",
+        "pontos_positivos": ["Pontos positivos"],
+        "pontos_melhorar": ["Pontos a melhorar"]
       },
-      "recomendacoes_abordagem": [
-        "Como o vendedor deve melhorar a comunicação especificamente para este perfil DISC"
-      ],
-      "objecoes_previstas": [
-        "Objeções típicas que este perfil pode apresentar"
-      ],
-      "estrategia_fechamento": "Como o vendedor deve fechar a venda especificamente para este perfil"
+      "recomendacoes_abordagem": ["Como melhorar para este perfil DISC"],
+      "objecoes_previstas": ["Objeções típicas deste perfil"],
+      "estrategia_fechamento": "Estratégia específica para este perfil"
     },
     "timeline": [
       {
-        "timestamp": "OBRIGATÓRIO: Use o timestamp EXATO que aparece entre colchetes [MM:SS] na transcrição. Copie exatamente sem os colchetes.",
+        "timestamp": "MM:SS EXATO da transcrição",
         "type": "positive" ou "negative",
-        "title": "Título curto e descritivo do momento (máx 60 caracteres)",
-        "quote": "CITAÇÃO EXATA e COMPLETA da fala - copie literalmente pelo menos 2-3 frases do contexto. Esta citação DEVE conter todas as frases mencionadas no campo 'why'.",
-        "speaker": "vendedor" ou "cliente" (use exatamente esses termos em minúsculas)",
-        "why": "Explicação ESPECÍFICA e DETALHADA do porquê esse momento foi bom ou ruim (mínimo 50 palavras). CRÍTICO: Se mencionar frases específicas aqui, elas DEVEM aparecer no campo 'quote'. Mantenha a ordem cronológica EXATA dos eventos como aparecem na transcrição.",
-        "fix": "Como corrigir (APENAS para momentos negativos) - seja específico, prático e detalhado (mínimo 50 palavras)",
-        
-        "⚠️ REGRA CRÍTICA PARA MARCAR NEGATIVO EM FECHAMENTO": "
-        - NÃO marque negativo por 'falta de fechamento' ou 'não fez proposta' se o vendedor ainda está no processo SPIN
-        - NÃO marque negativo se o cliente ainda está compartilhando contexto, problemas ou dúvidas
-        - SÓ marque negativo por fechamento se: (a) fechou prematuramente, ou (b) completou SPIN + Apresentação e não fechou
-        - É CORRETO e POSITIVO o vendedor continuar explorando quando o SPIN não está completo
-        "
+        "title": "Título curto (máx 60 chars)",
+        "quote": "Citação EXATA e COMPLETA",
+        "speaker": "vendedor" ou "cliente",
+        "why": "Explicação detalhada (mín 50 palavras)",
+        "fix": "Como corrigir (APENAS para negativos, mín 50 palavras)"
       }
     ],
     "objecoes": [
       {
         "type": "price" ou "timing" ou "authority" ou "need" ou "competition",
-        "timestamp": "TIMESTAMP REAL que aparece entre colchetes [MM:SS] onde a objeção aconteceu",
-        "cliente_disse": "CITAÇÃO EXATA do que o cliente disse",
-        "vendedor_respondeu": "CITAÇÃO EXATA da resposta do vendedor",
-        "rating": número de 1 a 10 (quão bem o vendedor tratou),
-        "avaliacao": "Análise crítica: o que foi bom e o que foi ruim na resposta",
-        "como_deveria": "Script específico de como deveria ter respondido - seja prático e aplicável"
+        "timestamp": "MM:SS EXATO",
+        "cliente_disse": "Citação EXATA",
+        "vendedor_respondeu": "Citação EXATA",
+        "rating": 1-10,
+        "avaliacao": "Análise crítica",
+        "como_deveria": "Script específico de como deveria responder"
       }
     ]
   }
@@ -310,6 +371,8 @@ const CHUNK_OVERLAP = 2000; // overlap between chunks
 
 interface ChunkAnalysis {
   scores: Record<string, number>;
+  metodologia_chave_mestra?: any;
+  perfil_lead_identificado?: any;
   sale_result?: {
     status: 'closed' | 'not_closed' | 'promise' | 'unknown';
     status_description: string;
@@ -414,8 +477,16 @@ function consolidateAnalyses(analyses: ChunkAnalysis[]): ChunkAnalysis {
     return parseTime(a.timestamp) - parseTime(b.timestamp);
   }).slice(0, 20);
 
+  // Use metodologia_chave_mestra from the first chunk (most comprehensive analysis)
+  const metodologiaChaveMestra = analyses[0]?.metodologia_chave_mestra || null;
+  
+  // Use perfil_lead_identificado from the first chunk
+  const perfilLeadIdentificado = analyses[0]?.perfil_lead_identificado || null;
+
   return {
     scores: avgScores,
+    metodologia_chave_mestra: metodologiaChaveMestra,
+    perfil_lead_identificado: perfilLeadIdentificado,
     sale_result: saleResult || undefined,
     insights: {
       pontos_fortes: uniquePontosFortes,
@@ -904,7 +975,12 @@ Deno.serve(async (req) => {
         score_compromisso_pagamento: analysisData.scores.compromisso_pagamento,
         model: 'gpt-4o-mini',
         processing_time_sec: processingTime,
-        insights_json: { ...analysisData.insights, sale_result: saleResult },
+        insights_json: { 
+          ...analysisData.insights, 
+          sale_result: saleResult,
+          metodologia_chave_mestra: analysisData.metodologia_chave_mestra,
+          perfil_lead_identificado: analysisData.perfil_lead_identificado
+        },
         sale_status: saleResult?.status || 'unknown',
         scheduled_date: scheduledDate,
         sale_notes: saleResult?.notes || null,

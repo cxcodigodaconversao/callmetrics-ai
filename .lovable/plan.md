@@ -1,126 +1,275 @@
 
-## Plano: Ajustar IA para Respeitar a Metodologia SPIN e Não Cobrar Fechamento Prematuro
 
-### Problema Identificado
+## Plano: Reestruturar Relatório de Análise com Metodologia Chave Mestra
 
-Analisando a screenshot, a IA está marcando como **NEGATIVO** um momento onde:
-- O **cliente** está falando sobre o workshop
-- A IA critica: "não houve uma tentativa clara de fechamento ou convite para a próxima etapa"
-- A IA recomenda: "O vendedor deveria ter feito uma proposta clara para o próximo passo"
+### Objetivo
 
-**Isso está ERRADO** porque:
-1. A metodologia SPIN exige completar todas as 4 etapas antes de tentar fechar
-2. Se o SPIN não foi concluído, o vendedor NÃO deve tentar fechar ainda
-3. A IA não está respeitando a sequência do processo de vendas definido
-
-### Causa Raiz
-
-No prompt em `supabase/functions/analyze-transcription/index.ts`, o critério de Fechamento (linhas 166-169) diz:
-```
-7. **Fechamento (0-100)**: Condução para próximos passos
-   - Conduziu naturalmente para o fechamento?
-   - Pediu a venda ou próximo passo?
-   - Foi assertivo?
-```
-
-Falta a instrução clara de que o fechamento só deve ser avaliado/criticado se:
-- As etapas SPIN (S, P, I, N) foram completadas
-- A apresentação foi feita
-- O cliente demonstrou necessidade
-
-### Solução
-
-Modificar o prompt do `ANALYSIS_PROMPT` na edge function `analyze-transcription/index.ts` para:
+Criar um novo componente de análise estruturado que siga **exatamente** as 5 Etapas do Método Chave Mestra, permitindo que o usuário identifique o minuto exato de cada momento da conversa, escute os trechos específicos, e receba feedback detalhado baseado no manual.
 
 ---
 
-**1. Adicionar Regra Crítica sobre Processo de Vendas (antes dos critérios de avaliação)**
+### Resumo da Metodologia (do Manual)
 
-```
-**🚨 REGRA CRÍTICA SOBRE O PROCESSO DE VENDAS - LEIA COM ATENÇÃO:**
+O Método Chave Mestra tem **5 Etapas Sequenciais**:
 
-O vendedor SOMENTE deve tentar fechar a venda se:
-1. Completou a fase de SITUAÇÃO (SPIN-S): fez perguntas sobre o contexto atual
-2. Completou a fase de PROBLEMA (SPIN-P): identificou dores e desafios
-3. Completou a fase de IMPLICAÇÃO (SPIN-I): explorou consequências dos problemas
-4. Completou a fase de NECESSIDADE (SPIN-N): o cliente reconheceu que precisa da solução
-5. Fez a APRESENTAÇÃO: conectou a solução aos problemas identificados
+1. **ABORDAGEM** - Primeira impressão, energia, rapport inicial
+2. **DIAGNÓSTICO** - A etapa mais importante, dividida em:
+   - Perguntas de Situação (SPIN-S)
+   - Perguntas de Problema (SPIN-P)
+   - Perguntas de Implicação (SPIN-I)
+   - Perguntas de Necessidade (SPIN-N)
+   - Pergunta Mágica (transição)
+3. **COMBINADO** - Antecipar objeções, gatilho de compromisso
+4. **PIT (Solução)** - Apresentação personalizada da solução
+5. **FECHAMENTO** - Condução para decisão, ancoragem de valor
 
-⚠️ NUNCA marque como NEGATIVO ou critique o vendedor por:
-- Não tentar fechar quando o processo SPIN ainda não foi completado
-- Não fazer proposta quando ainda está na fase de qualificação
-- Não pedir a venda quando ainda está construindo rapport ou explorando dores
-
-Se o vendedor tentou fechar ANTES de completar o SPIN, isso É um ponto negativo (fechamento prematuro).
-Se o vendedor NÃO tentou fechar porque ainda está no processo SPIN, isso NÃO é um ponto negativo.
-```
+Também tem **7 Perfis de Leads** e análise **DISC** para comportamento do cliente.
 
 ---
 
-**2. Atualizar Critério de Fechamento (linha 166-169)**
+### Arquivos a Criar/Modificar
 
+#### 1. Novo Componente: `src/components/analysis/MethodologyAnalysis.tsx`
+
+Criar um componente principal que exibe a análise completa seguindo as 5 etapas:
+
+```text
++--------------------------------------------------+
+|  📋 ANÁLISE POR ETAPA - MÉTODO CHAVE MESTRA     |
++--------------------------------------------------+
+|                                                  |
+|  ETAPA 1: ABORDAGEM                     ✅ 85%  |
+|  ├─ Timestamp: 00:15                            |
+|  ├─ O que aconteceu: [citação exata]            |
+|  ├─ Avaliação: Energia positiva, usou o nome... |
+|  └─ [🔊 Ouvir Trecho]                           |
+|                                                  |
+|  ETAPA 2: DIAGNÓSTICO                           |
+|  │                                              |
+|  ├─ 2.1 Situação (SPIN-S)              ⚠️ 60%  |
+|  │   ├─ Timestamp: 02:30                        |
+|  │   ├─ Perguntas feitas: [lista]               |
+|  │   ├─ [🔊 Ouvir Trecho]                       |
+|  │                                              |
+|  ├─ 2.2 Problema (SPIN-P)              ✅ 80%  |
+|  │   ├─ Timestamp: 08:45                        |
+|  │   ├─ Dores identificadas: [lista]            |
+|  │   ├─ [🔊 Ouvir Trecho]                       |
+|  │                                              |
+|  ├─ 2.3 Implicação (SPIN-I)            ❌ 20%  |
+|  │   ├─ Timestamp: 15:20                        |
+|  │   ├─ Problema: Não explorou consequências    |
+|  │   ├─ Como deveria: "O que acontece se..."    |
+|  │   ├─ [🔊 Ouvir Trecho]                       |
+|  │                                              |
+|  ├─ 2.4 Necessidade (SPIN-N)           ❌ 30%  |
+|  │   └─ ...                                     |
+|  │                                              |
+|  └─ 2.5 Pergunta Mágica                ❌ 0%   |
+|      └─ Não foi identificada                    |
+|                                                  |
+|  ETAPA 3: COMBINADO                     ❌ 0%  |
+|  └─ Não foi feito - recomendação: [script]      |
+|                                                  |
+|  ETAPA 4: PIT (Solução)                 ⚠️ 50%  |
+|  ├─ Timestamp: 25:00                            |
+|  └─ ...                                         |
+|                                                  |
+|  ETAPA 5: FECHAMENTO                    ⚠️ 40%  |
+|  ├─ Status: Não tentou fechar (processo SPIN    |
+|  │          não estava completo - ACEITÁVEL)    |
+|  └─ ...                                         |
++--------------------------------------------------+
 ```
-7. **Fechamento (0-100)**: Condução para próximos passos
-   - ⚠️ IMPORTANTE: Só avalie fechamento se o processo SPIN foi completado!
-   - Se SPIN não foi completado → Score baixo é aceitável, NÃO critique
-   - Se SPIN foi completado mas não tentou fechar → Ponto negativo legítimo
-   - Se tentou fechar ANTES de completar SPIN → Fechamento prematuro (negativo)
-   - Conduziu naturalmente para o fechamento após estabelecer necessidade?
-   - Pediu a venda ou próximo passo no momento correto?
-```
+
+Cada seção terá:
+- Timestamp clicável para ouvir o trecho
+- Citação exata do que foi dito
+- Avaliação (o que fez certo / o que errou)
+- Script de como deveria ter feito (do manual)
+- Score colorido (verde/amarelo/vermelho)
 
 ---
 
-**3. Atualizar Instruções da Timeline para Respeitar o Processo**
+#### 2. Atualizar Edge Function: `supabase/functions/analyze-transcription/index.ts`
 
-```
-"timeline": [
-  {
-    ...
-    "type": "positive" ou "negative",
-    ⚠️ REGRA PARA MARCAR NEGATIVO EM FECHAMENTO:
-    - NÃO marque negativo por "falta de fechamento" se o vendedor ainda está no processo SPIN
-    - SÓ marque negativo por fechamento se: (a) fechou prematuramente, ou (b) completou SPIN e não fechou
-    ...
+Modificar o `ANALYSIS_PROMPT` para retornar uma estrutura mais detalhada por etapa:
+
+```json
+{
+  "metodologia_chave_mestra": {
+    "etapa_1_abordagem": {
+      "score": 85,
+      "status": "completo",
+      "timestamp": "00:15",
+      "citacao": "Fala João! Boa noite, como é que vão as coisas?",
+      "avaliacao": "Usou energia positiva, falou o nome do lead",
+      "pontos_positivos": ["Usou o nome do cliente", "Tom animado"],
+      "pontos_negativos": [],
+      "script_ideal": "Script de abordagem inbound do manual"
+    },
+    "etapa_2_diagnostico": {
+      "sub_etapa_situacao": {
+        "score": 60,
+        "status": "parcial",
+        "timestamp": "02:30",
+        "perguntas_feitas": [
+          {"timestamp": "02:45", "pergunta": "Como funciona seu processo hoje?"},
+          {"timestamp": "03:20", "pergunta": "Quantas pessoas no time?"}
+        ],
+        "red_flags_identificadas": [],
+        "avaliacao": "Fez 2 de 3-5 perguntas recomendadas",
+        "perguntas_faltantes": ["Quanto tempo pode dedicar?", "Já tentou antes?"]
+      },
+      "sub_etapa_problema": {
+        "score": 80,
+        "status": "completo",
+        "timestamp": "08:45",
+        "dores_identificadas": [
+          {"timestamp": "09:10", "dor": "Perde muitos leads", "citacao": "..."}
+        ],
+        "avaliacao": "Cliente verbalizou os problemas adequadamente"
+      },
+      "sub_etapa_implicacao": {
+        "score": 20,
+        "status": "ausente",
+        "timestamp": null,
+        "avaliacao": "Não explorou as consequências dos problemas",
+        "perguntas_sugeridas": [
+          "O que acontece se não resolver isso?",
+          "Quanto isso está custando?"
+        ]
+      },
+      "sub_etapa_necessidade": {
+        "score": 30,
+        "status": "parcial",
+        "timestamp": "15:20",
+        "avaliacao": "Cliente não chegou sozinho à conclusão"
+      },
+      "pergunta_magica": {
+        "realizada": false,
+        "script_ideal": "João, você estaria disposto a iniciar hoje ainda?"
+      }
+    },
+    "etapa_3_combinado": {
+      "score": 0,
+      "status": "ausente",
+      "avaliacao": "Não foi feito o combinado",
+      "impacto": "Lead pode usar 'vou pensar' no final",
+      "script_ideal": "Se lá no final não fizer sentido, pode me dar um NÃO..."
+    },
+    "etapa_4_pit": {
+      "score": 50,
+      "status": "parcial",
+      "timestamp": "25:00",
+      "duracao_minutos": 12,
+      "ping_pong_usado": false,
+      "personalizou_para_dores": false,
+      "avaliacao": "Apresentou de forma genérica, não conectou com dores"
+    },
+    "etapa_5_fechamento": {
+      "score": 40,
+      "status": "incompleto",
+      "spin_completo_antes": false,
+      "tentou_fechar": false,
+      "avaliacao_contextualizada": "Score baixo é ACEITÁVEL pois o SPIN não foi completado",
+      "timestamp_tentativa": null
+    }
+  },
+  "perfil_lead_identificado": {
+    "tipo": "analítico",
+    "sinais": ["Fez muitas perguntas", "Pediu dados"],
+    "abordagem_correta": "Trazer DADOS e NÚMEROS concretos",
+    "abordagem_vendedor": "adequada/inadequada"
   }
-]
+}
 ```
 
 ---
 
-**4. Adicionar Verificação de Contexto no Prompt**
+#### 3. Atualizar `src/pages/AnalysisDetail.tsx`
 
-```
-Antes de marcar qualquer momento relacionado a fechamento como NEGATIVO, verifique:
-1. O SPIN já foi completado neste ponto da conversa?
-2. O cliente já demonstrou necessidade clara?
-3. A apresentação já foi feita?
+Adicionar o novo componente `MethodologyAnalysis` antes do componente `SpinAnalysis` existente:
 
-Se a resposta for NÃO para qualquer uma, NÃO critique a falta de fechamento.
+```tsx
+// Ordem dos componentes
+<ScoreHeader analysis={analysis} />
+<SaleResult analysis={analysis} />
+<ScoreGrid analysis={analysis} />
+<MethodologyAnalysis analysis={analysis} />  // NOVO - Análise estruturada por etapa
+<CriticalPoints analysis={analysis} />
+<StrongPoints analysis={analysis} />
+<DISCAnalysis analysis={analysis} />
+<LeadProfileAnalysis analysis={analysis} />  // NOVO - 7 Perfis de Leads
+<SpinAnalysis analysis={analysis} />         // Manter para comparação
+// ... resto
 ```
 
 ---
 
-### Arquivo a Ser Modificado
+#### 4. Novo Componente: `src/components/analysis/LeadProfileAnalysis.tsx`
 
-1. **`supabase/functions/analyze-transcription/index.ts`**
-   - Adicionar regra crítica sobre processo de vendas no início do prompt
-   - Atualizar critério de avaliação de Fechamento
-   - Adicionar instruções específicas para a Timeline
-   - Incluir verificação de contexto antes de criticar fechamento
+Análise dos 7 Perfis de Leads do manual:
+- Apressado
+- Desconfiado
+- Medroso
+- Analítico
+- Curioso
+- Procrastinador
+- Social/Papagaio
 
-### O que NÃO Será Alterado
+Com scripts de abordagem específicos para cada perfil.
 
-- Lógica de chunks e consolidação
-- Validação de timestamps
-- Componentes de visualização da análise
-- PDF e relatórios
-- Edge functions de transcrição
-- Qualquer funcionalidade existente de interface
+---
+
+### Detalhes Técnicos
+
+**Estrutura do Botão "Ouvir Trecho":**
+- Cada etapa/sub-etapa terá timestamp específico
+- Botão reutiliza o `AudioPlayer` existente
+- Ao clicar, abre o áudio posicionado no momento exato
+
+**Funcionalidade existente mantida:**
+- PDF continua funcionando
+- Timeline de momentos importantes continua
+- DISC Analysis continua
+- Todas as análises atuais são preservadas
+
+**O que muda:**
+- Nova seção estruturada seguindo exatamente as 5 etapas
+- Análise mais detalhada do diagnóstico (cada sub-etapa do SPIN)
+- Perfis de leads do manual (complementa o DISC)
+- Scripts específicos do manual como sugestão
+
+---
+
+### Arquivos a Criar
+
+1. `src/components/analysis/MethodologyAnalysis.tsx` - Componente principal das 5 etapas
+2. `src/components/analysis/LeadProfileAnalysis.tsx` - Análise dos 7 perfis de leads
+
+### Arquivos a Modificar
+
+1. `supabase/functions/analyze-transcription/index.ts` - Novo formato de JSON para metodologia
+2. `src/pages/AnalysisDetail.tsx` - Adicionar novos componentes
+3. `src/integrations/supabase/types.ts` - Atualizar tipos se necessário
+
+### O que NÃO será alterado
+
+- Lógica de upload e transcrição
+- Componentes existentes de análise (ScoreGrid, Timeline, DISC, etc.)
+- PDF Generator
+- Edge functions de webhook e processamento
+- Autenticação e banco de dados
+
+---
 
 ### Resultado Esperado
 
-- A IA só irá criticar a falta de fechamento quando o processo SPIN tiver sido completado
-- Momentos de qualificação (cliente falando sobre contexto) não serão marcados como negativos por "falta de fechamento"
-- O vendedor receberá feedback correto e alinhado com a metodologia SPIN
-- O score de fechamento será justo considerando o contexto da conversa
+1. Usuário abre uma análise e vê claramente **cada etapa da metodologia**
+2. Para cada etapa, vê o **timestamp exato** e pode **clicar para ouvir**
+3. Vê **citações reais** do que foi dito
+4. Recebe **feedback específico** baseado no manual (scripts, exemplos)
+5. Identifica facilmente o que foi feito certo e o que precisa melhorar
+6. Relatório segue **100% o Método Chave Mestra** das 5 etapas + 7 perfis + DISC
+
